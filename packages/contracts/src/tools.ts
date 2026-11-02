@@ -2,15 +2,15 @@ import { z } from 'zod';
 import { DeviceProfileSchema,RectSchema } from './geometry.js';
 import { WireframeSpecSchema,ConstraintResultSchema } from './constraints.js';
 import { RnStylePatchSchema } from './styles.js';
-import { SpatialSnapshotSchema,SpatialDeltaSchema } from './graph.js';
+import { SpatialSnapshotSchema,SpatialDeltaSchema,ProfileOverridesSchema,WebDiagnosticsSchema } from './graph.js';
 import { CommitReceiptSchema,EditPlanSchema } from './source.js';
 const session={sessionId:z.string().min(1)};
 export const ToolSchemas={
 open_session:z.object({projectRoot:z.string().min(1),webUrl:z.string().url(),scenarioId:z.string().min(1),profile:DeviceProfileSchema,nativePort:z.number().int().min(1024).max(65535).optional(),nativeToken:z.string().min(16).optional()}).strict(),
 load_wireframe_spec:z.object({...session,spec:WireframeSpecSchema}).strict(),
-inspect_ui_spatial_graph:z.object(session).strict(),
+inspect_ui_spatial_graph:z.object({...session,profileOverrides:ProfileOverridesSchema.optional()}).strict(),
 capture_annotated_overlay:z.object({...session,snapshotId:z.string()}).strict(),
-simulate_layout_mutation:z.object({...session,baselineSnapshotId:z.string(),elementId:z.string(),patch:RnStylePatchSchema.nullable()}).strict(),
+simulate_layout_mutation:z.object({...session,baselineSnapshotId:z.string(),elementId:z.string(),patch:RnStylePatchSchema.nullable(),profileOverrides:ProfileOverridesSchema.optional()}).strict(),
 commit_rn_ast_patch:z.object({...session,trialId:z.string(),expectedSourceHash:z.string(),mode:z.enum(['preview','apply'])}).strict(),
 verify_native_layout:z.object({...session,commitId:z.string()}).strict(),
 close_session:z.object(session).strict()
@@ -26,9 +26,9 @@ export type NativeVerification=z.infer<typeof NativeVerificationSchema>;
 export const ToolOutputSchemas={
  open_session:z.object({sessionId:z.string(),native:z.object({port:z.number().int(),token:z.string()}).strict(),capabilities:z.object({trial:z.literal('rn-style-props'),sourceEdits:z.literal('static-local-styles'),nativeVerification:z.literal('required')}).strict()}).strict(),
  load_wireframe_spec:z.object({specId:z.string()}).strict(),
- inspect_ui_spatial_graph:z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema)}).strict(),
+ inspect_ui_spatial_graph:z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),webDiagnostics:WebDiagnosticsSchema.optional()}).strict(),
  capture_annotated_overlay:z.object({image:z.string(),mimeType:z.literal('image/png'),artifact:z.string(),marks:z.array(z.object({label:z.number(),id:z.string(),rect:RectSchema}).strict())}).strict(),
- simulate_layout_mutation:z.union([TrialSchema,z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema)}).strict()]),
+ simulate_layout_mutation:z.union([TrialSchema.extend({webDiagnostics:WebDiagnosticsSchema.optional()}),z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),webDiagnostics:WebDiagnosticsSchema.optional()}).strict()]),
  commit_rn_ast_patch:z.object({plan:EditPlanSchema.optional(),receipt:CommitReceiptSchema.optional(),snapshot:SpatialSnapshotSchema.nullable().optional(),results:z.array(ConstraintResultSchema).optional(),webStatus:z.enum(['passed','failed','reload-timeout','capture-failed']).optional(),nativeStatus:z.literal('pending').optional(),message:z.string().optional()}).strict().refine(o=>(o.plan!==undefined)!==(o.receipt!==undefined),'Result must contain either a preview plan or an applied receipt'),
  verify_native_layout:NativeVerificationSchema,
  close_session:z.object({closed:z.literal(true)}).strict(),

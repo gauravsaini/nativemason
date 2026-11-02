@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { DeviceProfileSchema,RectSchema } from './geometry.js';
-const base={id:z.string().min(1),tolerance:z.number().finite().nonnegative().default(2)};
+const base={id:z.string().min(1),tolerance:z.number().finite().nonnegative().default(2),pixelAware:z.boolean().optional()};
 export const ConstraintSchema=z.discriminatedUnion('type',[
 z.object({...base,type:z.literal('rect'),elementId:z.string(),target:RectSchema}).strict(),
+z.object({...base,type:z.literal('minTouchTarget'),elementId:z.string(),width:z.number().positive().default(48),height:z.number().positive().default(48)}).strict(),
 z.object({...base,type:z.literal('align'),elementIds:z.array(z.string()).min(2),axis:z.enum(['x','y']),edge:z.enum(['start','center','end'])}).strict(),
 z.object({...base,type:z.literal('gap'),first:z.string(),second:z.string(),axis:z.enum(['x','y']),value:z.number().finite().nonnegative()}).strict(),
 z.object({...base,type:z.literal('insideSafeArea'),elementId:z.string()}).strict(),
