@@ -1,0 +1,17 @@
+import { describe,it,expect } from 'vitest';
+import { WireframeSpecSchema, type SpatialSnapshot } from '@rn-layout/contracts';
+import fixture from '../../../contracts/fixtures/footer.json';
+import {safeAreaRect,normalizeRect,normalizePatch,evaluateConstraints,diffSnapshots,buildOverlayScene} from './index.js';
+const spec=WireframeSpecSchema.parse(fixture);
+const make=():SpatialSnapshot=>({schemaVersion:1,sessionId:'s',snapshotId:'a',scenarioId:spec.scenarioId,profile:structuredClone(spec.profile),platform:'web',revisions:{},generation:1,status:'stable',nodes:[{id:'cancel',parentId:'footer',kind:'Pressable',role:'button',rect:{x:16,y:820,width:184,height:48},styles:{},source:null,editable:false,editReason:null},{id:'submit',parentId:'footer',kind:'Pressable',role:'button',rect:{x:212,y:820,width:184,height:48},styles:{},source:null,editable:false,editReason:null},{id:'footer',parentId:null,kind:'View',role:null,rect:{x:16,y:820,width:380,height:48},styles:{},source:null,editable:false,editReason:null}]});
+describe('pure layout core',()=>{
+ it('accepts the corrected footer without mutating inputs',()=>{const s=make();const before=JSON.stringify(s);expect(evaluateConstraints(s,spec).every(r=>r.status==='pass')).toBe(true);expect(JSON.stringify(s)).toBe(before)});
+ it('flags missing required IDs even without corresponding rules',()=>{const s=make();s.nodes=[];expect(evaluateConstraints(s,{...spec,constraints:[]}).every(r=>r.status==='unavailable')).toBe(true)});
+ it('never passes a mismatched profile or scenario',()=>{const s=make();s.profile.fontScale=1.2;expect(evaluateConstraints(s,spec).some(r=>r.constraintId==='capture-context')).toBe(true)});
+ it('subtracts an already inset root only once',()=>{const p={...spec.profile,root:{x:0,y:24,width:412,height:867}};expect(safeAreaRect(p)).toEqual({x:0,y:0,width:412,height:867});expect(normalizeRect({x:12,y:30,width:1,height:2},p.root)).toEqual({x:12,y:6,width:1,height:2})});
+ it('handles touching, fractional overlaps, tolerance and zero size',()=>{const s=make();const constraint={id:'overlap',type:'disjoint' as const,first:'cancel',second:'submit',tolerance:0};s.nodes[1].rect.x=200;expect(evaluateConstraints(s,{...spec,constraints:[constraint]}).at(-1)?.status).toBe('pass');s.nodes[1].rect.x=199.5;expect(evaluateConstraints(s,{...spec,constraints:[constraint]}).at(-1)?.deviation).toBe(.5);s.nodes[1].rect.width=0;expect(evaluateConstraints(s,{...spec,constraints:[constraint]}).at(-1)?.status).toBe('pass')});
+ it('measures all five explicit constraint variants',()=>{const s=make();const constraints=spec.constraints.concat([{id:'rect',type:'rect',elementId:'cancel',target:s.nodes[0].rect,tolerance:0},{id:'separate',type:'disjoint',first:'cancel',second:'submit',tolerance:0}]);expect(evaluateConstraints(s,{...spec,constraints}).every(r=>r.status==='pass')).toBe(true)});
+ it('diffs shrinkage with negative dimensions',()=>{const a=make(),b=make();b.nodes[0].rect.width-=10;expect(diffSnapshots(a,b).changed[0].delta.width).toBe(-10)});
+ it('rejects unsupported and empty styles; freezes valid patches',()=>{expect(normalizePatch({flex:1}).ok).toBe(false);expect(normalizePatch({}).ok).toBe(false);const r=normalizePatch({padding:12,margin:-2});expect(r.ok&&Object.isFrozen(r.value)).toBe(true)});
+ it('produces deterministic marks and window-space overlays',()=>{const s=make();s.profile.root.y=24;const scene=buildOverlayScene(s,spec);expect(scene.marks.map(n=>n.id)).toEqual(['cancel','footer','submit']);expect(scene.marks[0].rect.y).toBe(844)});
+});
