@@ -20,6 +20,10 @@ const token = process.env.EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN ?? 'rn-layout-bridge-t
 const webUrl = process.env.NM_ANDROID_WEB_URL ?? 'http://127.0.0.1:8081?scenario=broken-footer';
 const destination = process.env.NM_ANDROID_SSH;
 const explicitSerial = process.env.ADB_SERIAL;
+// A development build can load the same fixture Metro bundle through its own
+// expo-development-client deep link. Both values must identify that build.
+const androidPackage = process.env.NM_ANDROID_PACKAGE ?? 'host.exp.exponent';
+const launchUrl = process.env.NM_ANDROID_LAUNCH_URL ?? 'exp://127.0.0.1:8081';
 const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 let serial = explicitSerial;
@@ -35,6 +39,9 @@ async function adb(args: string[], useSerial = true) {
   return (await exec('adb', fullArgs, { timeout: 30_000, maxBuffer: 4 * 1024 * 1024 })).stdout;
 }
 async function preflight() {
+  if (!/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$/.test(androidPackage)) throw Error('NM_ANDROID_PACKAGE must be an Android package name');
+  if ((process.env.NM_ANDROID_PACKAGE === undefined) !== (process.env.NM_ANDROID_LAUNCH_URL === undefined)) throw Error('Set NM_ANDROID_PACKAGE and NM_ANDROID_LAUNCH_URL together for an Expo development build');
+  try { new URL(launchUrl); } catch { throw Error('NM_ANDROID_LAUNCH_URL must be an absolute development-client deep link'); }
   const listing = await adb(['devices', '-l'], false);
   const devices = listing.split('\n').map(line => line.trim().split(/\s+/)).filter(parts => parts[1] === 'device');
   if (!serial) {
@@ -47,8 +54,8 @@ async function preflight() {
   console.log(`ANDROID_TARGET ${destination ?? 'explicit local device'} ${serial} API${sdk}`);
   await adb(['reverse', 'tcp:8081', 'tcp:8081']);
   await adb(['reverse', `tcp:${nativePort}`, `tcp:${nativePort}`]);
-  const packages = await adb(['shell', 'pm', 'list', 'packages', 'host.exp.exponent']);
-  if (!packages.includes('host.exp.exponent')) throw Error('Expo Go must be installed on the test device before running acceptance');
+  const packages = await adb(['shell', 'pm', 'list', 'packages', androidPackage]);
+  if (!packages.split(/\r?\n/).includes(`package:${androidPackage}`)) throw Error(`Android package ${androidPackage} must be installed on the test device before running acceptance`);
 }
 async function main() {
   await preflight();
@@ -58,7 +65,7 @@ async function main() {
   const calibration = await createNativeBridge({ port: nativePort, token, scenarioId: 'broken-footer', sessionId: 'android-calibration', timeoutMs: 15_000 });
   let calibrated: SpatialSnapshot | undefined;
   try {
-    await adb(['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', 'exp://127.0.0.1:8081', 'host.exp.exponent']);
+    await adb(['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', launchUrl, androidPackage]);
     let lastError: unknown;
     for (let attempt = 0; attempt < 4; attempt++) {
       try { calibrated = await calibration.capture({}); break; } catch (error) { lastError = error; }
