@@ -18,9 +18,19 @@ export async function createNativeBridge(options: NativeConnectionOptions): Prom
     let authenticated = false;
     const helloTimeout = setTimeout(() => socket.close(1008, 'Handshake timeout'), timeoutMs);
     socket.on('message', raw => {
-      let message;
-      try { message = NativeClientMessageSchema.parse(JSON.parse(raw.toString())); }
-      catch { socket.close(1008, 'Invalid protocol message'); return; }
+      let decoded: unknown;
+      try { decoded = JSON.parse(raw.toString()); } catch { socket.close(1008, 'Invalid protocol message'); return; }
+      const parsed = NativeClientMessageSchema.safeParse(decoded);
+      if (!parsed.success) {
+        // Only correlate validated-schema coherence failures after authentication
+        // to an already pending request. Other malformed traffic closes the peer.
+        const requestId = typeof decoded === 'object' && decoded !== null && 'requestId' in decoded && typeof decoded.requestId === 'string' ? decoded.requestId : undefined;
+        const staleSource = parsed.error.issues.some(issue => issue.code === 'custom' && issue.params?.bridgeCode === 'STALE_SOURCE');
+        const item = authenticated && client === socket && requestId ? pending.get(requestId) : undefined;
+        if (staleSource && item && requestId) { pending.delete(requestId); clearTimeout(item.timer); item.reject(new BridgeFault('STALE_SOURCE', 'Android snapshot contains inconsistent source metadata')); return; }
+        socket.close(1008, 'Invalid protocol message'); return;
+      }
+      const message = parsed.data;
       if (message.type === 'hello') {
         const received = Buffer.from(message.token);
         const expected = Buffer.from(options.token);

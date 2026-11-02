@@ -41,3 +41,16 @@ describe('native transport', () => {
     await expect(bridge.capture({})).rejects.toMatchObject({ code: 'TIMEOUT' });
   });
 });
+
+it('rejects an authenticated mixed-source snapshot as stale without dropping the connection', async () => {
+  const { port, bridge } = await setup(); const socket = await connect(port);
+  let mixed = true;
+  socket.on('message', raw => {
+    const request = JSON.parse(raw.toString());
+    const snapshot = { schemaVersion: 1, sessionId: request.sessionId, snapshotId: 'native-mixed', platform: 'android', scenarioId: 'footer', profile, revisions: { 'App.tsx': 'a'.repeat(64) }, nodes: [{ id: 'root', parentId: null, kind: 'View', role: null, rect: { x: 0, y: 0, width: 412, height: 915 }, styles: {}, source: { path: 'App.tsx', hash: (mixed ? 'b' : 'a').repeat(64), start: 0, end: 20, line: 1, column: 0 }, editable: true, editReason: null }], status: 'stable', generation: 1 };
+    mixed = false;
+    socket.send(JSON.stringify({ type: 'snapshot', requestId: request.requestId, snapshot }));
+  });
+  await expect(bridge.capture({ 'App.tsx': 'a'.repeat(64) })).rejects.toMatchObject({ code: 'STALE_SOURCE' });
+  expect((await bridge.capture({ 'App.tsx': 'a'.repeat(64) })).platform).toBe('android');
+});

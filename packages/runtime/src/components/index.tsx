@@ -1,6 +1,6 @@
 import React, { createContext, forwardRef, useCallback, useContext, useEffect, useLayoutEffect, useRef, useSyncExternalStore, type PropsWithChildren, type Ref } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions, type PressableStateCallbackType, type PressableProps, type TextProps, type ViewProps } from 'react-native';
-import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
+import { SafeAreaFrameContext, SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { BridgeFault, NativeServerMessageSchema, type DeviceProfile, type SourceRef } from '@rn-layout/contracts';
 import { captureNative } from '../capture.native.js';
 import { LayoutRegistry, type HostNode, type Registration } from '../registry/index.js';
@@ -12,22 +12,28 @@ const RegistryContext = createContext<LayoutRegistry | null>(null);
 const ParentContext = createContext<string | null>(null);
 export interface LayoutProviderProps extends PropsWithChildren {
   scenarioId: string;
+  rootId: string;
   profile?: DeviceProfile;
   nativeUrl?: string;
   nativeToken?: string;
 }
-export function LayoutProvider({ scenarioId, profile, nativeUrl, nativeToken, children }: LayoutProviderProps) {
+export function LayoutProvider({ scenarioId, rootId, profile, nativeUrl, nativeToken, children }: LayoutProviderProps) {
   const dimensions = useWindowDimensions();
+  const safeFrame = useContext(SafeAreaFrameContext);
   const safeInsets = useContext(SafeAreaInsetsContext) ?? { top: 0, right: 0, bottom: 0, left: 0 };
-  const fallback: DeviceProfile = { window: { width: dimensions.width, height: dimensions.height }, root: { x: 0, y: 0, width: dimensions.width, height: dimensions.height }, pixelRatio: dimensions.scale, fontScale: dimensions.fontScale, orientation: dimensions.width > dimensions.height ? 'landscape' : 'portrait', insets: safeInsets };
+  const width = Platform.OS === 'web' ? dimensions.width : safeFrame?.width ?? dimensions.width;
+  const height = Platform.OS === 'web' ? dimensions.height : safeFrame?.height ?? dimensions.height;
+  const fallback: DeviceProfile = { window: { width, height }, root: { x: 0, y: 0, width, height }, pixelRatio: dimensions.scale, fontScale: dimensions.fontScale, orientation: width > height ? 'landscape' : 'portrait', insets: safeInsets };
   const registryRef = useRef<LayoutRegistry | null>(null);
-  if (!registryRef.current) registryRef.current = new LayoutRegistry(scenarioId, profile ?? fallback);
+  if (!registryRef.current) registryRef.current = new LayoutRegistry(scenarioId, profile ?? fallback, rootId);
   const registry = registryRef.current;
   useSyncExternalStore(registry.subscribe, registry.getRevision, registry.getRevision);
   useLayoutEffect(() => {
     if (!isDevelopment()) return;
+    if (registry.rootId !== rootId) { registry.rootId = rootId; registry.generation++; registry.resetTrial(); }
     if (registry.scenarioId !== scenarioId) { registry.scenarioId = scenarioId; registry.generation++; registry.resetTrial(); }
     if (Platform.OS !== 'web') {
+      registry.windowOrigin = { x: safeFrame?.x ?? 0, y: safeFrame?.y ?? 0 };
       const next = { ...fallback, insets: safeInsets };
       if (JSON.stringify(next) !== JSON.stringify(registry.profile)) { registry.profile = next; registry.generation++; }
     }

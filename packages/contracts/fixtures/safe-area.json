@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "safe-area",
+  "profile": {
+    "window": {
+      "width": 412,
+      "height": 915
+    },
+    "pixelRatio": 2.625,
+    "fontScale": 1,
+    "insets": {
+      "top": 24,
+      "right": 0,
+      "bottom": 24,
+      "left": 0
+    },
+    "root": {
+      "x": 0,
+      "y": 0,
+      "width": 412,
+      "height": 915
+    },
+    "orientation": "portrait"
+  },
+  "requiredElementIds": [
+    "safe-action"
+  ],
+  "constraints": [
+    {
+      "id": "action-safe",
+      "type": "insideSafeArea",
+      "elementId": "safe-action",
+      "tolerance": 2
+    }
+  ]
+}

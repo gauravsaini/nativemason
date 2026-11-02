@@ -19,7 +19,7 @@ function html(mode: string): string {
     window.__RN_LAYOUT_BRIDGE__={
       configure(c){config=c},
       async capture(){if(mode==='/runtime-error')throw Object.assign(new Error('Registry duplicate'),{code:'DUPLICATE_ELEMENT'});if(mode==='/hanging')await new Promise(()=>{});const r=target.getBoundingClientRect();const node={id:'target',parentId:null,kind:'View',role:null,rect:{x:r.x,y:r.y,width:r.width,height:r.height},styles:style,source:null,editable:false,editReason:'harness'};return {schemaVersion:1,sessionId:config.sessionId,snapshotId:'s'+seq++,platform:'web',scenarioId:config.scenarioId,profile:config.profile,revisions:{},nodes:mode==='/duplicate'?[node,node]:[node],status:mode==='/unstable'?'unstable':'stable',generation}},
-      async applyTrial(id,p){style=p;draw();if(p.width===777)generation++},
+      async applyTrial(id,p){style=p;draw();if(mode==='/apply-fails')throw Object.assign(new Error('Trial failed after applying'),{code:'INTERNAL_ERROR'});if(p.width===777)generation++},
       async resetTrial(){style={};draw()}
     };
   </script></body></html>`;
@@ -78,6 +78,15 @@ describe('Chromium browser adapter', () => {
       await browser.capture();
       await expect(browser.trial('target', { width: 777 })).rejects.toMatchObject({ code: 'STALE_SNAPSHOT' });
       expect((await browser.capture()).nodes[0].rect.width).toBe(50);
+    } finally { await browser.close(); }
+  });
+
+  it('clears a candidate when the runtime throws after applying it', async () => {
+    const browser = await open('/apply-fails');
+    try {
+      const baseline = await browser.capture();
+      await expect(browser.trial('target', { width: 80 })).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
+      expect((await browser.capture()).nodes[0].rect).toEqual(baseline.nodes[0].rect);
     } finally { await browser.close(); }
   });
 

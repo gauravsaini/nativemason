@@ -1,7 +1,8 @@
-import { BridgeFault, type BrowserRuntime, type DeviceProfile, type RnStylePatch, type SourceRef, type SpatialNode } from '@rn-layout/contracts';
+import { BridgeFault, SpatialSnapshotSchema, type SpatialSnapshot, type BrowserRuntime, type DeviceProfile, type RnStylePatch, type SourceRef, type SpatialNode } from '@rn-layout/contracts';
 
 export interface HostNode {
   getBoundingClientRect?: () => { x: number; y: number; width: number; height: number };
+  measure?: (callback: (x: number, y: number, width: number, height: number, pageX: number, pageY: number) => void) => void;
   measureInWindow?: (callback: (x: number, y: number, width: number, height: number) => void) => void;
 }
 export interface Registration {
@@ -23,11 +24,14 @@ export class LayoutRegistry {
   sessionId = 'unconfigured';
   scenarioId: string;
   profile: DeviceProfile;
+  rootId: string;
+  windowOrigin = { x: 0, y: 0 };
   configured = false;
   runtime?: BrowserRuntime;
-  constructor(scenarioId: string, profile: DeviceProfile) {
+  constructor(scenarioId: string, profile: DeviceProfile, rootId: string) {
     this.scenarioId = scenarioId;
     this.profile = profile;
+    this.rootId = rootId;
   }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -91,4 +95,12 @@ export function toSpatialNodes(registry: LayoutRegistry, rectangles: Map<string,
     if (!rect) throw new BridgeFault('MISSING_ELEMENT', `No measurement for ${entry.id}`);
     return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles: { ...entry.styles, ...registry.overrides.get(entry.id) }, source: entry.source, editable: editReason === null, editReason };
   });
+}
+
+/** Boundary validation preserves the frozen machine-readable failure contract. */
+export function validateSnapshot(input: unknown): SpatialSnapshot {
+  const result = SpatialSnapshotSchema.safeParse(input);
+  if (result.success) return result.data;
+  const stale = result.error.issues.some(issue => issue.code === 'custom' && issue.params?.bridgeCode === 'STALE_SOURCE');
+  throw new BridgeFault(stale ? 'STALE_SOURCE' : 'INVALID_INPUT', stale ? 'Mounted elements contain inconsistent source revisions' : result.error.message);
 }

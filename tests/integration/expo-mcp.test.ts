@@ -48,6 +48,29 @@ describe('real Expo + Chromium + MCP',()=>{
    await writeFile(path.join(root,'artifacts/integration/timings.json'),JSON.stringify({capture:{samples:times.captureMs.length,p50:percentile(times.captureMs,.5),p95:percentile(times.captureMs,.95)},trial:{samples:times.trialMs.length,p50:percentile(times.trialMs,.5),p95:percentile(times.trialMs,.95)}},null,2));
   }finally{await call('close_session',{sessionId});}
  },150000);
+ it('covers wrapping, safe-area, intentional overlap, and repeated source sites',async()=>{
+  const scenarios=[['wrapping.json','text-wrapping'],['safe-area.json','safe-area'],['overlap.json','intentional-overlap'],['repeated.json','repeated-elements']] as const;
+  for(const [file,scenarioId] of scenarios){
+   const loaded=WireframeSpecSchema.parse(JSON.parse(await readFile(path.join(root,'packages/contracts/fixtures',file),'utf8')));
+   const opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario='+scenarioId,scenarioId,profile:loaded.profile,nativePort:19484,nativeToken:'nativemason-integration-token'});
+   try {
+    await call('load_wireframe_spec',{sessionId:opened.sessionId,spec:loaded});
+    const inspected=await call('inspect_ui_spatial_graph',{sessionId:opened.sessionId});
+    expect(inspected.snapshot.nodes.some((n:any)=>n.id==='screen')).toBe(true);
+    if(scenarioId==='text-wrapping') {expect(inspected.snapshot.nodes.find((n:any)=>n.id==='wrapping-copy').rect.height).toBeGreaterThanOrEqual(48);expect(inspected.results.every((r:any)=>r.status==='pass')).toBe(true);}
+    if(scenarioId==='safe-area')expect(inspected.results.some((r:any)=>r.constraintId==='action-safe'&&r.status==='fail')).toBe(true);
+    if(scenarioId==='intentional-overlap'){
+      expect(inspected.results.every((r:any)=>r.status==='pass')).toBe(true);
+      await call('load_wireframe_spec',{sessionId:opened.sessionId,spec:{...loaded,constraints:[...loaded.constraints,{id:'layers-disjoint',type:'disjoint',first:'overlap-a',second:'overlap-b',tolerance:0}]}});
+      const forbidden=await call('inspect_ui_spatial_graph',{sessionId:opened.sessionId});expect(forbidden.results.some((r:any)=>r.constraintId==='layers-disjoint'&&r.status==='fail')).toBe(true);
+    }
+    if(scenarioId==='repeated-elements'){
+      expect(inspected.results.every((r:any)=>r.status==='pass')).toBe(true);
+      for(const id of ['repeat-one','repeat-two','repeat-three']){const node=inspected.snapshot.nodes.find((n:any)=>n.id===id);expect(node.editable).toBe(false);expect(node.editReason).toContain('multiple mounted instances');}
+    }
+   } finally {await call('close_session',{sessionId:opened.sessionId});}
+  }
+ },120000);
  it('advertises strict inputs over the actual stdio executable',async()=>{
   const cli=new Client({name:'stdio-integration',version:'1'});const transport=new StdioClientTransport({command:process.execPath,args:[path.join(root,'packages/bridge/dist/cli.js')],stderr:'pipe'});
   try{await cli.connect(transport);expect((await cli.listTools()).tools.map(t=>t.name)).toContain('verify_native_layout');const result=await cli.callTool({name:'close_session',arguments:{sessionId:'missing'}});expect(result.isError).toBe(true);expect(JSON.stringify(result.content)).toContain('SESSION_NOT_FOUND');}finally{await cli.close();}
