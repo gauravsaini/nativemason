@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@rn-layout/contracts": [
+        "packages/contracts/src/index.ts"
+      ],
+      "@rn-layout/runtime": [
+        "packages/runtime/src/index.ts"
+      ],
+      "@rn-layout/bridge/babel": [
+        "packages/bridge/src/instrumentation/index.ts"
+      ]
+    }
+  }
+}

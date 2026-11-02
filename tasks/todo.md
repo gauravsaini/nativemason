@@ -1,0 +1,6 @@
+- [x] Freeze schemas, ownership, fixture, dependency matrix
+- [ ] Runtime, instrumentation, native transport
+- [ ] Browser capture, trials, overlays
+- [ ] Pure analysis and source editor
+- [ ] MCP and integration checks
+- [ ] Android acceptance

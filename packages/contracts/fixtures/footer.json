@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "broken-footer",
+  "profile": {
+    "window": {
+      "width": 412,
+      "height": 915
+    },
+    "pixelRatio": 2.625,
+    "fontScale": 1,
+    "insets": {
+      "top": 24,
+      "right": 0,
+      "bottom": 24,
+      "left": 0
+    },
+    "root": {
+      "x": 0,
+      "y": 0,
+      "width": 412,
+      "height": 915
+    },
+    "orientation": "portrait"
+  },
+  "requiredElementIds": [
+    "footer",
+    "cancel",
+    "submit"
+  ],
+  "constraints": [
+    {
+      "id": "button-row",
+      "type": "align",
+      "axis": "y",
+      "edge": "center",
+      "elementIds": [
+        "cancel",
+        "submit"
+      ],
+      "tolerance": 2
+    },
+    {
+      "id": "button-gap",
+      "type": "gap",
+      "axis": "x",
+      "first": "cancel",
+      "second": "submit",
+      "value": 12,
+      "tolerance": 2
+    },
+    {
+      "id": "footer-safe",
+      "type": "insideSafeArea",
+      "elementId": "footer",
+      "tolerance": 2
+    }
+  ]
+}

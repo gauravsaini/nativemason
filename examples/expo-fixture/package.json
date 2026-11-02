@@ -1,0 +1,22 @@
+{
+  "name": "@rn-layout/expo-fixture",
+  "private": true,
+  "version": "0.1.0",
+  "main": "index.ts",
+  "scripts": {
+    "web": "expo start --web --port 8081",
+    "android": "expo run:android"
+  },
+  "dependencies": {
+    "expo": "58.0.22",
+    "@expo/metro-runtime": "58.0.16",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-web": "0.21.4",
+    "react-native-safe-area-context": "5.10.1",
+    "@rn-layout/runtime": "workspace:*",
+    "@rn-layout/contracts": "workspace:*",
+    "@rn-layout/bridge": "workspace:*"
+  }
+}

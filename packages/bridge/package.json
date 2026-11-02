@@ -1,0 +1,26 @@
+{
+  "name": "@rn-layout/bridge",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "rn-layout-bridge": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/mcp/index.js",
+    "./babel": "./dist/instrumentation/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@rn-layout/contracts": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.24.0",
+    "@babel/core": "^7.28.5",
+    "@babel/types": "^7.28.5",
+    "playwright": "^1.56.1",
+    "ts-morph": "^27.0.2",
+    "diff": "^8.0.2",
+    "sharp": "^0.34.5",
+    "ws": "^8.18.3"
+  }
+}

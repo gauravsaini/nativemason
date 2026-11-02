@@ -1,0 +1,25 @@
+{
+  "name": "@rn-layout/runtime",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@rn-layout/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.10.1"
+  },
+  "devDependencies": {
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.10.1"
+  }
+}
