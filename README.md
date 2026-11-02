@@ -30,7 +30,35 @@ pnpm --filter @rn-layout/expo-fixture web
 
 Its default route is `http://localhost:8081/?scenario=broken-footer`. The footer deliberately starts with vertically stacked buttons. See the [fixture source](examples/expo-fixture/App.tsx) and [JSON constraints](packages/contracts/fixtures/footer.json).
 
+## Connect an AI coding agent
+
+NativeMason is an MCP tool server. Your coding agent decides what to inspect and which changes to try. It needs this checkout, the app source, a running Expo web build, and an instrumented Android development build. Prepare the same named screen and app state on web and Android before each session.
+
+After building this checkout, add a stdio server to your MCP client's configuration. The configuration location depends on the client; a common JSON format is:
+
+```json
+{
+  "mcpServers": {
+    "nativemason": {
+      "command": "node",
+      "args": ["/absolute/path/to/rn-layout-bridge/packages/bridge/dist/cli.js"],
+      "cwd": "/absolute/path/to/rn-layout-bridge"
+    }
+  }
+}
+```
+
+Replace both paths with your checkout's absolute path and restart the client. Confirm it discovers the eight tools below. Give the agent the app project root, development web URL, scenario ID, device profile, and JSON constraints. For example:
+
+> Inspect the checkout screen using NativeMason. Load the checkout constraints, show failing measurements and an overlay, try an allowed React Native style patch, and preview the diff. Apply the patch and verify the matching scenario on the connected Android development build. Report source hashes, constraint results, and any verification failure.
+
+The agent calls `open_session`, `load_wireframe_spec`, `inspect_ui_spatial_graph`, `simulate_layout_mutation`, `commit_rn_ast_patch` in preview and apply modes, and `verify_native_layout`. Close the session when finished. MCP opens its own Chromium context, so a route must reproduce the intended state independently. Use a test setup or a development-only scenario route, and inspect again after navigation or remounting.
+
+For Android, pass `nativeUrl` and `nativeToken` to `LayoutProvider`, and use the same token and port in `open_session`. Run `adb -s <device-serial> reverse tcp:19482 tcp:19482`; the app can then connect to `ws://127.0.0.1:19482`. Use a development bundle containing instrumentation. A release or preview APK does not collect layout metadata. Forward the relevant ports if Metro or MCP runs on another host.
+
 ## Instrument an Expo screen
+
+The packages are private and are not published to npm. A separate Expo app can install all three locally built tarballs; see [installation into a separate project](docs/local-packages.md) for the exact commands and peer-version requirements. the fixture app currently uses React Native 0.88.0, while the runtime declares 0.88.1; compatibility with the fixture app remains to be validated.
 
 Use the runtime components for the elements an agent should measure. Every `layoutId` must be unique within the screen. `rootId` identifies the mounted, full app-root `LayoutView`; the runtime does not infer the root from registration order.
 
@@ -43,7 +71,12 @@ import {
 export function Screen() {
   return (
     <SafeAreaProvider>
-      <LayoutProvider rootId="screen" scenarioId="login">
+      <LayoutProvider
+        rootId="screen"
+        scenarioId="login"
+        nativeUrl={process.env.EXPO_PUBLIC_LAYOUT_NATIVE_URL}
+        nativeToken={process.env.EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN}
+      >
         <LayoutView layoutId="screen" style={{ flex: 1 }}>
           <LayoutPressable layoutId="submit" style={{ height: 48 }}>
             <LayoutText layoutId="submit-label">Submit</LayoutText>
@@ -55,7 +88,7 @@ export function Screen() {
 }
 ```
 
-Add the development source-metadata plugin to the consuming app's Babel configuration:
+Install the runtime and Babel integration in the app, then add the development source-metadata plugin to the consuming app's Babel configuration. Keep any required last plugin, such as `react-native-worklets/plugin`, last:
 
 ```js
 module.exports = function (api) {
@@ -125,9 +158,9 @@ Edits support static inline objects and literal local `StyleSheet.create` entrie
 
 ## Physical Android acceptance
 
-The full footer workflow has passed on an explicitly selected physical Samsung device running Android API 37. Evidence is generated at `artifacts/android-acceptance/acceptance.json`; this is a tested configuration, not a claim of universal device compatibility.
+The full footer workflow has passed on an explicitly selected physical Samsung device running Android API 37. Evidence is generated at `artifacts/android-acceptance/acceptance.json`; this is a tested configuration, not a claim of universal device compatibility. This helper tests the included fixture; use the MCP workflow above to verify a consumer app.
 
-Use a connected, authorized physical Android device with **Expo Go supporting SDK 58** and ADB installed. No local Mac emulator is required or started by the test.
+Use a connected, authorized physical Android device with ADB and either **Expo Go supporting SDK 58** or a compatible development client for the fixture. No local Mac emulator is required or started by the test. See [Android fixture acceptance](docs/android-acceptance.md) for development-client launch options. That launch path still needs validation on a device.
 
 In the terminal that starts Metro, generate a development connection token and enable the native runtime connection:
 
@@ -145,7 +178,7 @@ adb devices -l
 ADB_SERIAL='<device-serial>' pnpm test:e2e:android
 ```
 
-The helper reverses ports 8081 and 19482, opens the fixture in Expo Go, measures the real profile, tests the browser correction, previews/applies it, checks Android after reload, and restores the original fixture source in cleanup. Success prints `ANDROID_ACCEPTANCE_PASSED`. Missing devices, disconnected runtimes, stale sources, or failing constraints produce a nonzero exit and `ANDROID_ACCEPTANCE_INCOMPLETE`; they do not count as native verification.
+The helper reverses ports 8081 and 19482, opens the fixture, measures the real profile, tests the browser correction, previews/applies it, checks Android after reload, and restores the original fixture source in cleanup. Success prints `ANDROID_ACCEPTANCE_PASSED`. Missing devices, disconnected runtimes, stale sources, or failing constraints produce a nonzero exit and `ANDROID_ACCEPTANCE_INCOMPLETE`; they do not count as native verification.
 
 `EXPO_PUBLIC_*` values are embedded in the development app. The connection token is a development pairing value; do not use a credential or other secret. For a remote physical device, the helper also supports `NM_ANDROID_SSH`, `NM_ANDROID_SSH_KEY`, and `ADB_SERIAL`; arrange the required host port forwarding before running it.
 

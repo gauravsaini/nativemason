@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import { existsSync } from 'node:fs';
+import { URL } from 'node:url';
+import process from 'node:process';
+import console from 'node:console';
 
 const entry = new URL('../dist/cli.js', import.meta.url);
 if (!existsSync(entry)) {
