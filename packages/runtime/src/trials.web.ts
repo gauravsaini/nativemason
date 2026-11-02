@@ -5,6 +5,10 @@ export function createBrowserRuntime(registry: LayoutRegistry): BrowserRuntime {
   return {
     configure: input => registry.configure(input),
     capture: () => captureWeb(registry),
+    getDiagnosticTargets: () => [...registry.entries.values()].flatMap(entry => {
+      const element = entry.host as unknown;
+      return element && typeof element === 'object' && 'nodeType' in element ? [{ id: entry.id, element }] : [];
+    }),
     applyTrial: async (id, patch) => { registry.setTrial(id, RnStylePatchSchema.parse(patch)); await settleReact(); },
     resetTrial: async () => { registry.resetTrial(); await settleReact(); },
   };

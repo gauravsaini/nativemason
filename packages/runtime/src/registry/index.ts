@@ -13,6 +13,8 @@ export interface Registration {
   styles: Record<string, unknown>;
   source: SourceRef | null;
   dynamicStyle: boolean;
+  authoredTextProps?: SpatialNode['authoredTextProps'];
+  measuredLineCount?: number;
   host: HostNode;
 }
 export class LayoutRegistry {
@@ -54,6 +56,13 @@ export class LayoutRegistry {
       this.generation++;
     }
   }
+  updateTextMetrics(id: string, measuredLineCount: number) {
+    const entry = this.entries.get(id);
+    if (!entry || entry.measuredLineCount === measuredLineCount) return;
+    this.entries.set(id, { ...entry, measuredLineCount });
+    this.generation++;
+    this.notify();
+  }
   configure(input: Parameters<BrowserRuntime['configure']>[0]) {
     if (input.scenarioId !== this.scenarioId) throw new BridgeFault('INVALID_INPUT', `Scenario mismatch: expected ${this.scenarioId}`);
     if (JSON.stringify(input.profile) !== JSON.stringify(this.profile)) this.generation++;
@@ -93,7 +102,7 @@ export function toSpatialNodes(registry: LayoutRegistry, rectangles: Map<string,
     const editReason = !entry.source ? 'Missing build-time source metadata' : repeated ? 'Source site has multiple mounted instances' : entry.dynamicStyle ? 'Dynamic style expression' : null;
     const rect = rectangles.get(entry.id);
     if (!rect) throw new BridgeFault('MISSING_ELEMENT', `No measurement for ${entry.id}`);
-    return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles: { ...entry.styles, ...registry.overrides.get(entry.id) }, source: entry.source, editable: editReason === null, editReason };
+    return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles: { ...entry.styles, ...registry.overrides.get(entry.id) }, source: entry.source, editable: editReason === null, editReason, ...(entry.authoredTextProps ? { authoredTextProps: entry.authoredTextProps } : {}), ...(entry.measuredLineCount === undefined ? {} : { measuredLineCount: entry.measuredLineCount }) };
   });
 }
 

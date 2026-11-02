@@ -89,7 +89,7 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
   if (ref) ref.current = value;
   return undefined;
 }
-function useRegistration(props: LayoutElementProps & { style?: unknown; accessibilityRole?: unknown }, kind: Registration['kind'], forwarded: Ref<any>) {
+function useRegistration(props: LayoutElementProps & { style?: unknown; accessibilityRole?: unknown }, kind: Registration['kind'], forwarded: Ref<any>, authoredTextProps?: Registration['authoredTextProps']) {
   const registry = useContext(RegistryContext);
   const parentId = useContext(ParentContext);
   useSyncExternalStore(registry?.subscribe ?? noSubscribe, registry?.getRevision ?? zeroRevision, registry?.getRevision ?? zeroRevision);
@@ -97,7 +97,7 @@ function useRegistration(props: LayoutElementProps & { style?: unknown; accessib
   const forwardedCleanup = useRef<(() => void) | undefined>(undefined);
   const registration = useRef<Omit<Registration, 'host'>>({} as Omit<Registration, 'host'>);
   const dynamicStyle = typeof props.style === 'function';
-  registration.current = { id: props.layoutId, parentId, kind, role: typeof props.accessibilityRole === 'string' ? props.accessibilityRole : kind === 'Pressable' ? 'button' : null, styles: dynamicStyle ? {} : StyleSheet.flatten(props.style as any) ?? {}, source: props.__bridgeSource ?? null, dynamicStyle };
+  registration.current = { id: props.layoutId, parentId, kind, role: typeof props.accessibilityRole === 'string' ? props.accessibilityRole : kind === 'Pressable' ? 'button' : null, styles: dynamicStyle ? {} : StyleSheet.flatten(props.style as any) ?? {}, source: props.__bridgeSource ?? null, dynamicStyle, ...(authoredTextProps ? { authoredTextProps } : {}) };
   const ref = useCallback((host: HostNode | null) => {
     if (hostRef.current && registry) registry.unregister(props.layoutId, hostRef.current);
     hostRef.current = host;
@@ -107,7 +107,7 @@ function useRegistration(props: LayoutElementProps & { style?: unknown; accessib
     if (host) { const cleanup = assignRef(forwarded, host); if (typeof cleanup === 'function') forwardedCleanup.current = cleanup; }
   }, [forwarded, props.layoutId, registry]);
   useLayoutEffect(() => { if (registry && hostRef.current) registry.register({ ...registration.current, host: hostRef.current }); });
-  return { ref, override: registry?.overrides.get(props.layoutId) };
+  return { ref, override: registry?.overrides.get(props.layoutId), registry };
 }
 const noSubscribe = () => () => {};
 const zeroRevision = () => 0;
@@ -116,8 +116,20 @@ export const LayoutView = forwardRef<View, ViewProps & LayoutElementProps>(funct
   return <ParentContext.Provider value={layoutId}><View {...props} collapsable={isDevelopment() ? false : props.collapsable} ref={ref} style={override ? [props.style, override] : props.style}>{children}</View></ParentContext.Provider>;
 });
 export const LayoutText = forwardRef<Text, TextProps & LayoutElementProps>(function LayoutText({ layoutId, __bridgeSource, children, ...props }, forwarded) {
-  const { ref, override } = useRegistration({ ...props, layoutId, __bridgeSource }, 'Text', forwarded);
-  return <ParentContext.Provider value={layoutId}><Text {...props} ref={ref} style={override ? [props.style, override] : props.style}>{children}</Text></ParentContext.Provider>;
+  const flattened = StyleSheet.flatten(props.style) ?? {};
+  const authoredTextProps: Registration['authoredTextProps'] = {
+    ...(typeof flattened.fontSize === 'number' ? { fontSize: flattened.fontSize } : {}),
+    ...(typeof flattened.lineHeight === 'number' ? { lineHeight: flattened.lineHeight } : {}),
+    ...(typeof props.numberOfLines === 'number' ? { numberOfLines: props.numberOfLines } : {}),
+    ...(typeof props.allowFontScaling === 'boolean' ? { allowFontScaling: props.allowFontScaling } : {}),
+    ...(props.ellipsizeMode ? { ellipsizeMode: props.ellipsizeMode } : {}),
+  };
+  const { ref, override, registry } = useRegistration({ ...props, layoutId, __bridgeSource }, 'Text', forwarded, authoredTextProps);
+  const onTextLayout: TextProps['onTextLayout'] = event => {
+    registry?.updateTextMetrics(layoutId, event.nativeEvent.lines.length);
+    props.onTextLayout?.(event);
+  };
+  return <ParentContext.Provider value={layoutId}><Text {...props} onTextLayout={onTextLayout} ref={ref} style={override ? [props.style, override] : props.style}>{children}</Text></ParentContext.Provider>;
 });
 export const LayoutPressable = forwardRef<View, PressableProps & LayoutElementProps>(function LayoutPressable({ layoutId, __bridgeSource, children, ...props }, forwarded) {
   const { ref, override } = useRegistration({ ...props, layoutId, __bridgeSource }, 'Pressable', forwarded);
