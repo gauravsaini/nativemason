@@ -23,7 +23,7 @@ export function normalizePatch(patch: unknown): Result<NormalizedPatch> {
 
 function idsFor(rule: Constraint): string[] {
   switch (rule.type) {
-    case 'rect': case 'insideSafeArea': return [rule.elementId];
+    case 'rect': case 'minTouchTarget': case 'insideSafeArea': return [rule.elementId];
     case 'align': return rule.elementIds;
     default: return [rule.first, rule.second];
   }
@@ -36,6 +36,7 @@ function deviation(rule: Constraint, rects: Rect[], profile: DeviceProfile): num
   const [a, b] = rects;
   switch (rule.type) {
     case 'rect': return Math.max(...(['x', 'y', 'width', 'height'] as const).map(k => Math.abs(a[k] - rule.target[k])));
+    case 'minTouchTarget': return Math.max(0, rule.width - a.width, rule.height - a.height);
     case 'align': {
       const values = rects.map(r => axisValue(r, rule.axis, rule.edge));
       return Math.max(...values) - Math.min(...values);
@@ -76,7 +77,8 @@ export function evaluateConstraints(snapshot: SpatialSnapshot, spec: WireframeSp
       continue;
     }
     const amount = deviation(rule, ids.map(id => nodes.get(id)!.rect), snapshot.profile);
-    results.push({ constraintId: rule.id, status: amount <= rule.tolerance ? 'pass' : 'fail', elementIds: ids, deviation: amount, tolerance: rule.tolerance, message: amount <= rule.tolerance ? 'Within tolerance' : `Deviation ${amount} exceeds tolerance ${rule.tolerance}` });
+    const tolerance = rule.pixelAware ? Math.max(rule.tolerance, 2 / snapshot.profile.pixelRatio) : rule.tolerance;
+    results.push({ constraintId: rule.id, status: amount <= tolerance ? 'pass' : 'fail', elementIds: ids, deviation: amount, tolerance, message: amount <= tolerance ? 'Within tolerance' : `Deviation ${amount} exceeds tolerance ${tolerance}` });
   }
   return results;
 }

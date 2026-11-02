@@ -31,4 +31,4 @@ export const OverlaySceneSchema=z.object({width:z.number(),height:z.number(),mar
 export type OverlayScene=z.infer<typeof OverlaySceneSchema>;
 export const ProfileOverridesSchema=z.object({fontScale:z.number().positive().optional(),orientation:z.enum(['portrait','landscape']).optional()}).strict().refine(value=>Object.keys(value).length>0,'Profile override must set a value');
 export type ProfileOverrides=z.infer<typeof ProfileOverridesSchema>;
-export interface BrowserRuntime {configure(input:{sessionId:string;scenarioId:string;profile:z.infer<typeof DeviceProfileSchema>}):void;capture():Promise<SpatialSnapshot>;applyTrial(id:string,patch:z.infer<typeof RnStylePatchSchema>):Promise<void>;resetTrial():Promise<void>}
+export interface BrowserRuntime {configure(input:{sessionId:string;scenarioId:string;profile:z.infer<typeof DeviceProfileSchema>}):void;capture():Promise<SpatialSnapshot>;applyTrial(id:string,patch:z.infer<typeof RnStylePatchSchema>):Promise<void>;resetTrial():Promise<void>;getDiagnosticTargets():readonly {id:string;element:unknown}[]}

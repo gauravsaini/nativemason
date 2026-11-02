@@ -9,7 +9,7 @@ The BrowserPort owns one Playwright Chromium instance and one CDP session for it
 ## CDP collection
 
 - Create a CDP session with Playwright `page.context().newCDPSession(page)` after navigation and runtime discovery. Enable DOM and CSS domains as required; detach and close Chromium in `close()` and every failed-open path.
-- Use `DOMSnapshot.captureSnapshot` with paint order enabled. Map DOM node backend IDs to runtime registered host elements by evaluating each host's DOM node identity in the page; never infer mappings from text or layout order.
+- Use the development runtime's `getDiagnosticTargets()` to map each ID to its actual host element. Resolve those element handles to CDP node/backend IDs, then use `DOMSnapshot.captureSnapshot` with paint order enabled; never infer mappings from text or layout order.
 - Determine clipping from registered element client rects intersected with ancestor client boxes where overflow clips. Determine center hit test with `DOM.getNodeForLocation`; the hit must resolve to the registered host or a descendant. Use explicit `unknown` where a host cannot map or a cross-origin boundary prevents evidence.
 - Collect scroll dimensions from the element and clipping ancestors. Paint order is nullable and diagnostic; DOM order is not a substitute.
 - Use `CSS.getPlatformFontsForNode` for all reported families and glyph counts. `isCustom` may be null when CDP cannot classify a family. A confirmed `FONT_LOAD_FAILED` warning requires a requested custom font to be absent from the returned usage after `document.fonts.ready`; missing/ambiguous evidence is uncertain.
