@@ -1,0 +1,94 @@
+import { BridgeFault, type BrowserRuntime, type DeviceProfile, type RnStylePatch, type SourceRef, type SpatialNode } from '@rn-layout/contracts';
+
+export interface HostNode {
+  getBoundingClientRect?: () => { x: number; y: number; width: number; height: number };
+  measureInWindow?: (callback: (x: number, y: number, width: number, height: number) => void) => void;
+}
+export interface Registration {
+  id: string;
+  parentId: string | null;
+  kind: SpatialNode['kind'];
+  role: string | null;
+  styles: Record<string, unknown>;
+  source: SourceRef | null;
+  dynamicStyle: boolean;
+  host: HostNode;
+}
+export class LayoutRegistry {
+  readonly entries = new Map<string, Registration>();
+  readonly overrides = new Map<string, RnStylePatch>();
+  readonly listeners = new Set<() => void>();
+  generation = 0;
+  revision = 0;
+  sessionId = 'unconfigured';
+  scenarioId: string;
+  profile: DeviceProfile;
+  configured = false;
+  runtime?: BrowserRuntime;
+  constructor(scenarioId: string, profile: DeviceProfile) {
+    this.scenarioId = scenarioId;
+    this.profile = profile;
+  }
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  };
+  getRevision = () => this.revision;
+  notify() {
+    this.revision++;
+    this.listeners.forEach(listener => listener());
+  }
+  register(entry: Registration) {
+    const old = this.entries.get(entry.id);
+    if (old && old.host !== entry.host) throw new BridgeFault('DUPLICATE_ELEMENT', `Duplicate layoutId: ${entry.id}`);
+    if (!old || JSON.stringify({ ...old, host: null }) !== JSON.stringify({ ...entry, host: null })) this.generation++;
+    this.entries.set(entry.id, entry);
+  }
+  unregister(id: string, host: HostNode) {
+    if (this.entries.get(id)?.host === host) {
+      this.entries.delete(id);
+      this.generation++;
+    }
+  }
+  configure(input: Parameters<BrowserRuntime['configure']>[0]) {
+    if (input.scenarioId !== this.scenarioId) throw new BridgeFault('INVALID_INPUT', `Scenario mismatch: expected ${this.scenarioId}`);
+    if (JSON.stringify(input.profile) !== JSON.stringify(this.profile)) this.generation++;
+    this.sessionId = input.sessionId;
+    this.profile = input.profile;
+    this.configured = true;
+    this.notify();
+  }
+  setTrial(id: string, patch: RnStylePatch) {
+    if (!this.entries.has(id)) throw new BridgeFault('MISSING_ELEMENT', `Unknown layoutId: ${id}`);
+    this.overrides.clear();
+    this.overrides.set(id, patch);
+    this.notify();
+  }
+  resetTrial() {
+    this.overrides.clear();
+    this.notify();
+  }
+}
+
+export const nextFrame = () => new Promise<void>(resolve => {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
+  else setTimeout(resolve, 16);
+});
+export async function settleReact() { await nextFrame(); await nextFrame(); }
+
+export function toSpatialNodes(registry: LayoutRegistry, rectangles: Map<string, SpatialNode['rect']>): SpatialNode[] {
+  const sites = new Map<string, number>();
+  for (const entry of registry.entries.values()) {
+    if (entry.source) {
+      const key = `${entry.source.path}:${entry.source.start}`;
+      sites.set(key, (sites.get(key) ?? 0) + 1);
+    }
+  }
+  return [...registry.entries.values()].map(entry => {
+    const repeated = entry.source && (sites.get(`${entry.source.path}:${entry.source.start}`) ?? 0) > 1;
+    const editReason = !entry.source ? 'Missing build-time source metadata' : repeated ? 'Source site has multiple mounted instances' : entry.dynamicStyle ? 'Dynamic style expression' : null;
+    const rect = rectangles.get(entry.id);
+    if (!rect) throw new BridgeFault('MISSING_ELEMENT', `No measurement for ${entry.id}`);
+    return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles: { ...entry.styles, ...registry.overrides.get(entry.id) }, source: entry.source, editable: editReason === null, editReason };
+  });
+}

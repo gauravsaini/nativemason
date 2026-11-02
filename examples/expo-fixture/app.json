@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "RN Layout Bridge Fixture",
+    "slug": "rn-layout-bridge-fixture",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "android": { "package": "dev.rnlayout.fixture" },
+    "web": { "bundler": "metro" }
+  }
+}

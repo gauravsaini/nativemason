@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest';
+import { LayoutRegistry, toSpatialNodes, type Registration } from './index.js';
+const profile = { window: { width: 412, height: 915 }, pixelRatio: 2.625, fontScale: 1, insets: { top: 24, right: 0, bottom: 24, left: 0 }, root: { x: 0, y: 0, width: 412, height: 915 }, orientation: 'portrait' as const };
+const source = { path: 'App.tsx', hash: 'a'.repeat(64), start: 10, end: 30, line: 1, column: 10 };
+function entry(id = 'footer'): Registration { return { id, parentId: null, kind: 'View', role: null, styles: { flexDirection: 'column' }, source, dynamicStyle: false, host: {} }; }
+describe('LayoutRegistry', () => {
+  it('rejects duplicate mounted IDs, permits metadata refresh and increments generation for source changes', () => {
+    const registry = new LayoutRegistry('footer', profile);
+    const first = entry(); registry.register(first); const generation = registry.generation;
+    registry.register({ ...first }); expect(registry.generation).toBe(generation);
+    expect(() => registry.register(entry())).toThrow('Duplicate layoutId');
+    registry.register({ ...first, source: { ...source, hash: 'b'.repeat(64) } }); expect(registry.generation).toBe(generation + 1);
+  });
+  it('replaces overrides without invalidating baseline identity or mutating base styles', () => {
+    const registry = new LayoutRegistry('footer', profile); registry.register(entry()); registry.register(entry('other'));
+    const generation = registry.generation;
+    registry.setTrial('footer', { flexDirection: 'row' }); registry.setTrial('other', { gap: 4 });
+    expect(registry.overrides.has('footer')).toBe(false); registry.resetTrial();
+    expect(registry.generation).toBe(generation); expect(registry.entries.get('footer')?.styles).toEqual({ flexDirection: 'column' });
+  });
+  it('rejects mismatched scenarios and reports repeated source sites as uneditable', () => {
+    const registry = new LayoutRegistry('footer', profile);
+    expect(() => registry.configure({ sessionId: 's', scenarioId: 'other', profile })).toThrow('Scenario mismatch');
+    registry.register(entry('one')); registry.register(entry('two'));
+    const nodes = toSpatialNodes(registry, new Map([['one', { x: 0, y: 0, width: 20, height: 20 }], ['two', { x: 0, y: 30, width: 20, height: 20 }]]));
+    expect(nodes.every(node => !node.editable)).toBe(true);
+  });
+  it('does not unregister a newer host when an old ref cleanup arrives', () => {
+    const registry = new LayoutRegistry('footer', profile); const old = entry(); registry.register(old); registry.unregister(old.id, old.host);
+    const newer = entry(); registry.register(newer); registry.unregister(old.id, old.host);
+    expect(registry.entries.size).toBe(1);
+  });
+});
