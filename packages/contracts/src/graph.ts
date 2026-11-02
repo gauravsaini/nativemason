@@ -14,6 +14,7 @@ export const WebNodeDiagnosticsSchema=z.object({
   lineBoxCount:z.number().int().nonnegative().nullable(),
 }).strict();
 export const WebDiagnosticsSchema=z.object({nodes:z.record(z.string(),WebNodeDiagnosticsSchema),warnings:z.array(z.object({elementId:z.string(),code:z.enum(['CLIPPED','OCCLUDED','FONT_LOAD_FAILED','EVIDENCE_UNAVAILABLE']),severity:z.enum(['confirmed','uncertain']),message:z.string()}).strict())}).strict();
+export type WebDiagnostics=z.infer<typeof WebDiagnosticsSchema>;
 export const SpatialNodeSchema=z.object({id:z.string().min(1),parentId:z.string().nullable(),kind:z.enum(['View','Text','Pressable']),role:z.string().nullable(),rect:RectSchema,styles:z.record(z.string(),z.unknown()),source:SourceRefSchema.nullable(),editable:z.boolean(),editReason:z.string().nullable(),authoredTextProps:AuthoredTextPropsSchema.optional(),measuredLineCount:z.number().int().nonnegative().optional()}).strict();
 export type SpatialNode=z.infer<typeof SpatialNodeSchema>;
 export const SpatialSnapshotSchema=z.object({schemaVersion:z.literal(1),sessionId:z.string(),snapshotId:z.string(),platform:z.enum(['web','android']),scenarioId:z.string(),profile:DeviceProfileSchema,revisions:SourceRevisionsSchema,nodes:z.array(SpatialNodeSchema),status:z.enum(['stable','unstable']),generation:z.number().int().nonnegative(),webDiagnostics:WebDiagnosticsSchema.optional()}).strict().superRefine((snapshot,ctx)=>{
