@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "rn-layout-bridge": "./dist/cli.js"
+    "rn-layout-bridge": "./dist/cli.js",
+    "nativemason": "./dist/cli.js"
   },
   "exports": {
     ".": "./dist/mcp/index.js",

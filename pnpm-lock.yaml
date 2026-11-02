@@ -17,6 +17,15 @@ importers:
       '@eslint/js':
         specifier: ^9.39.1
         version: 9.39.5
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.24.0
+        version: 1.32.2
+      '@rn-layout/bridge':
+        specifier: workspace:*
+        version: link:packages/bridge
+      '@rn-layout/contracts':
+        specifier: workspace:*
+        version: link:packages/contracts
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5

@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { DeviceProfileSchema } from './geometry.js';
+import { DeviceProfileSchema,RectSchema } from './geometry.js';
 import { WireframeSpecSchema,ConstraintResultSchema } from './constraints.js';
 import { RnStylePatchSchema } from './styles.js';
 import { SpatialSnapshotSchema,SpatialDeltaSchema } from './graph.js';
-import { CommitReceiptSchema } from './source.js';
+import { CommitReceiptSchema,EditPlanSchema } from './source.js';
 const session={sessionId:z.string().min(1)};
 export const ToolSchemas={
 open_session:z.object({projectRoot:z.string().min(1),webUrl:z.string().url(),scenarioId:z.string().min(1),profile:DeviceProfileSchema,nativePort:z.number().int().min(1024).max(65535).optional(),nativeToken:z.string().min(16).optional()}).strict(),
@@ -21,3 +21,16 @@ export const TrialSchema=z.object({trialId:z.string(),baselineSnapshotId:z.strin
 export type Trial=z.infer<typeof TrialSchema>;
 export const NativeVerificationSchema=z.object({receipt:CommitReceiptSchema,snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),delta:SpatialDeltaSchema,passed:z.boolean()}).strict();
 export type NativeVerification=z.infer<typeof NativeVerificationSchema>;
+
+/** Every JSON tool result is validated here before reaching an MCP client. */
+export const ToolOutputSchemas={
+ open_session:z.object({sessionId:z.string(),native:z.object({port:z.number().int(),token:z.string()}).strict(),capabilities:z.object({trial:z.literal('rn-style-props'),sourceEdits:z.literal('static-local-styles'),nativeVerification:z.literal('required')}).strict()}).strict(),
+ load_wireframe_spec:z.object({specId:z.string()}).strict(),
+ inspect_ui_spatial_graph:z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema)}).strict(),
+ capture_annotated_overlay:z.object({image:z.string(),mimeType:z.literal('image/png'),artifact:z.string(),marks:z.array(z.object({label:z.number(),id:z.string(),rect:RectSchema}).strict())}).strict(),
+ simulate_layout_mutation:z.union([TrialSchema,z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema)}).strict()]),
+ commit_rn_ast_patch:z.object({plan:EditPlanSchema.optional(),receipt:CommitReceiptSchema.optional(),snapshot:SpatialSnapshotSchema.nullable().optional(),results:z.array(ConstraintResultSchema).optional(),webStatus:z.enum(['passed','failed','reload-timeout','capture-failed']).optional(),nativeStatus:z.literal('pending').optional(),message:z.string().optional()}).strict().refine(o=>(o.plan!==undefined)!==(o.receipt!==undefined),'Result must contain either a preview plan or an applied receipt'),
+ verify_native_layout:NativeVerificationSchema,
+ close_session:z.object({closed:z.literal(true)}).strict(),
+} as const;
+export type ToolOutput<K extends ToolName>=z.infer<(typeof ToolOutputSchemas)[K]>;
