@@ -11,3 +11,13 @@ The Android logical window is the full SafeAreaProvider frame, not the potential
 A snapshot is coherent only when every SourceRef hash equals its file entry in revisions. Mixed source revisions cannot establish native acceptance. Overlay output requires matching identity and geometry immediately before and after rasterization; a detected change returns STALE_SNAPSHOT.
 
 ToolOutputSchemas and ToolOutput<K> define every tool JSON output and are enforced before MCP delivery. Source preview/apply outputs contain exactly one of plan or receipt. Reset results carry snapshot/results; mutation results additionally carry a trial ID, patch and delta.
+
+## Browser diagnostics and profile trials
+
+SpatialNode geometry and ConstraintResult remain cross-platform evidence. Text props describe authored values; `measuredLineCount` is present only when a settled native or web text-layout callback supplied it. It does not prove no truncation. `WebDiagnostics` is an optional sidecar allowed only on web snapshots; it reports clipping, center hit test, scroll overflow, paint order and all CDP font records. `confirmed`, `clear` and `unknown` distinguish positive, negative and unavailable evidence. Diagnostics never enter Android evaluation.
+
+The `minTouchTarget` constraint measures the registered layout box dimensions only; it does not claim that the element is reachable or unobscured. Browser warnings describe proven clipping, center occlusion, and custom-font load failures. Confirmed warnings block apply; uncertain evidence is returned without blocking. No cross-platform no-truncation constraint is defined.
+
+Profile overrides currently cover orientation. Font-scale override is represented in the tool contract but the managed browser must return `UNSUPPORTED_PROFILE` until it verifies rendered text changes. Orientation changes create a new profile-bound capture and invalidate prior trials. `pixelAware` is opt-in and applies a tolerance floor of `2 / pixelRatio`; omitted `pixelAware` preserves the requested tolerance, including zero.
+
+The bridge does not simulate Yoga pixel rounding. Accurate Yoga rounding requires the full ordered layout tree, parent absolute offsets, Yoga version/configuration, and text measurement behavior; the registered spatial graph does not contain those inputs. Android measured geometry remains authoritative.
