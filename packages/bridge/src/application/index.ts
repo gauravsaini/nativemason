@@ -17,12 +17,14 @@ interface Dependencies {
 }
 interface Session {
   id:string;browser:BrowserPort;native:ClosableNative;source:SourcePort;scenarioId:string;profile:DeviceProfile;
-  spec?:WireframeSpec;baseline?:SpatialSnapshot;trial?:Trial;
+  spec?:WireframeSpec;baseline?:SpatialSnapshot;baselineSpec?:WireframeSpec;baselineOverrideKey?:string;trial?:Trial;
   snapshots:Map<string,SpatialSnapshot>;commits:Map<string,{receipt:CommitReceipt;web:SpatialSnapshot|null;plan:EditPlan;trialId:string;spec:WireframeSpec}>;
   busy:boolean;
 }
 function allPass(results:ReturnType<typeof evaluateConstraints>):boolean {return results.every(r=>r.status==='pass');}
 function fingerprint(s:SpatialSnapshot):string {return JSON.stringify({profile:s.profile,scenario:s.scenarioId,generation:s.generation,revisions:Object.entries(s.revisions).sort()});}
+function overrideKey(value:ToolInput<'inspect_ui_spatial_graph'>['profileOverrides']):string{return JSON.stringify(value??{});}
+function specForProfile(spec:WireframeSpec,snapshot:SpatialSnapshot):WireframeSpec{return {...spec,profile:snapshot.profile};}
 
 export class BridgeApplication {
   private sessions=new Map<string,Session>();
@@ -47,13 +49,15 @@ export class BridgeApplication {
         case 'load_wireframe_spec': {
           const {spec}=ToolSchemas.load_wireframe_spec.parse(input);
           if(spec.scenarioId!==s.scenarioId||!profilesMatch(spec.profile,s.profile))throw new BridgeFault('INVALID_INPUT','Spec scenario and profile must match the session');
-          s.spec=spec;s.trial=undefined;
+          s.spec=spec;s.trial=undefined;s.baseline=undefined;s.baselineSpec=undefined;s.baselineOverrideKey=undefined;
           return {specId:randomUUID()};
         }
         case 'inspect_ui_spatial_graph': {
+          const {profileOverrides}=ToolSchemas.inspect_ui_spatial_graph.parse(input);
           await s.browser.resetTrial();s.trial=undefined;
-          const snapshot=await this.capture(s);s.baseline=snapshot;
-          return {snapshot,results:s.spec?evaluateConstraints(snapshot,s.spec):[]};
+          const snapshot=await this.capture(s,profileOverrides);s.baseline=snapshot;s.baselineOverrideKey=overrideKey(profileOverrides);
+          s.baselineSpec=s.spec?specForProfile(s.spec,snapshot):undefined;
+          return {snapshot,results:s.baselineSpec?evaluateConstraints(snapshot,s.baselineSpec):[],webDiagnostics:snapshot.webDiagnostics};
         }
         case 'capture_annotated_overlay': {
           const {snapshotId}=ToolSchemas.capture_annotated_overlay.parse(input);
@@ -70,18 +74,19 @@ export class BridgeApplication {
           return {image:Buffer.from(png).toString('base64'),mimeType:'image/png',artifact,marks:scene.marks};
         }
         case 'simulate_layout_mutation': {
-          const {baselineSnapshotId,elementId,patch}=ToolSchemas.simulate_layout_mutation.parse(input);
+          const {baselineSnapshotId,elementId,patch,profileOverrides}=ToolSchemas.simulate_layout_mutation.parse(input);
           const baseline=s.baseline;
           if(!baseline||baseline.snapshotId!==baselineSnapshotId)throw new BridgeFault('STALE_SNAPSHOT','Inspect the UI before starting a trial');
+          if(overrideKey(profileOverrides)!==s.baselineOverrideKey)throw new BridgeFault('STALE_SNAPSHOT','Profile overrides differ from the inspected baseline; inspect again for each profile');
           await this.assertRevisions(s,baseline);
-          if(patch===null){await s.browser.resetTrial();s.trial=undefined;const snapshot=await this.capture(s);s.baseline=snapshot;return {snapshot,results:s.spec?evaluateConstraints(snapshot,s.spec):[]};}
+          if(patch===null){await s.browser.resetTrial();s.trial=undefined;const snapshot=await this.capture(s,profileOverrides);s.baseline=snapshot;return {snapshot,results:s.baselineSpec?evaluateConstraints(snapshot,s.baselineSpec):[],webDiagnostics:snapshot.webDiagnostics};}
           if(!baseline.nodes.some(n=>n.id===elementId))throw new BridgeFault('MISSING_ELEMENT',`Element ${elementId} is absent`);
           s.trial=undefined;
-          const snapshot=await s.browser.trial(elementId,patch);
+          const snapshot=await s.browser.trial(elementId,patch,profileOverrides);
           if(fingerprint(snapshot)!==fingerprint(baseline))throw new BridgeFault('STALE_SNAPSHOT','Layout identity changed during trial');
           s.snapshots.set(snapshot.snapshotId,snapshot);
-          const trial:Trial={trialId:randomUUID(),baselineSnapshotId,elementId,patch,snapshot,delta:diffSnapshots(baseline,snapshot),results:[...evaluateConstraints(snapshot,this.spec(s))]};
-          s.trial=trial;return trial;
+          const trial:Trial={trialId:randomUUID(),baselineSnapshotId,elementId,patch,snapshot,delta:diffSnapshots(baseline,snapshot),results:[...evaluateConstraints(snapshot,s.baselineSpec??this.spec(s))]};
+          s.trial=trial;return {...trial,webDiagnostics:snapshot.webDiagnostics};
         }
         case 'commit_rn_ast_patch': return await this.commit(s,ToolSchemas.commit_rn_ast_patch.parse(input));
         case 'verify_native_layout': return await this.verify(s,ToolSchemas.verify_native_layout.parse(input).commitId);
@@ -104,9 +109,15 @@ export class BridgeApplication {
     return {sessionId:id,native:{port,token},capabilities:{trial:'rn-style-props',sourceEdits:'static-local-styles',nativeVerification:'required'}};
   }
   private spec(s:Session):WireframeSpec {if(!s.spec)throw new BridgeFault('INVALID_INPUT','Load a wireframe specification first');return s.spec;}
-  private async capture(s:Session):Promise<SpatialSnapshot> {
-    const snapshot=await s.browser.capture();
-    if(snapshot.scenarioId!==s.scenarioId||!profilesMatch(snapshot.profile,s.profile))throw new BridgeFault('STALE_SNAPSHOT','Runtime context differs from the session');
+  private async capture(s:Session,profileOverrides?:ToolInput<'inspect_ui_spatial_graph'>['profileOverrides']):Promise<SpatialSnapshot> {
+    const snapshot=await s.browser.capture(profileOverrides);
+    const expectedWindow=profileOverrides?.orientation&&profileOverrides.orientation!==s.profile.orientation ?
+      {width:s.profile.window.height,height:s.profile.window.width}:s.profile.window;
+    const dimensionsMatch=Math.abs(snapshot.profile.window.width-expectedWindow.width)<=0.01&&Math.abs(snapshot.profile.window.height-expectedWindow.height)<=0.01;
+    if(snapshot.scenarioId!==s.scenarioId||(!profileOverrides&&!profilesMatch(snapshot.profile,s.profile))||
+      (profileOverrides?.orientation&&snapshot.profile.orientation!==profileOverrides.orientation)||
+      (profileOverrides?.fontScale!==undefined&&snapshot.profile.fontScale!==profileOverrides.fontScale)||!dimensionsMatch)
+      throw new BridgeFault('STALE_SNAPSHOT','Runtime context differs from the requested session profile');
     if(snapshot.status!=='stable')throw new BridgeFault('UNSTABLE_LAYOUT','Layout did not settle');
     s.snapshots.set(snapshot.snapshotId,snapshot);
     while(s.snapshots.size>32)s.snapshots.delete(s.snapshots.keys().next().value!);
@@ -121,6 +132,8 @@ export class BridgeApplication {
     const trial=s.trial;
     if(!trial||trial.trialId!==input.trialId||!s.baseline)throw new BridgeFault('TRIAL_NOT_FOUND','Trial is no longer active');
     if(!allPass(trial.results))throw new BridgeFault('VERIFICATION_FAILED','Trial must pass every required constraint before committing');
+    if(input.mode==='apply'&&s.baseline&&!profilesMatch(s.baseline.profile,s.profile))throw new BridgeFault('UNSUPPORTED_PROFILE','Trials captured with profile overrides can be previewed but not committed for Android acceptance');
+    if(input.mode==='apply'&&trial.snapshot.webDiagnostics?.warnings.some(w=>w.severity==='confirmed'))throw new BridgeFault('VERIFICATION_FAILED','Confirmed Chromium diagnostics must be resolved before applying this trial');
     const current=await s.browser.capture();
     if(fingerprint(current)!==fingerprint(trial.snapshot)||JSON.stringify(current.nodes.map(n=>n.rect))!==JSON.stringify(trial.snapshot.nodes.map(n=>n.rect)))throw new BridgeFault('STALE_SNAPSHOT','Trial layout changed before commit');
     await this.assertRevisions(s,s.baseline);
@@ -133,7 +146,7 @@ export class BridgeApplication {
     if(!planned.ok)throw new BridgeFault(planned.error.code,planned.error.message);
     if(input.mode==='preview')return {plan:planned.value};
     const receipt=await s.source.apply(planned.value);
-    const entry={receipt,web:null as SpatialSnapshot|null,plan:planned.value,trialId:trial.trialId,spec:structuredClone(this.spec(s))};s.commits.set(receipt.commitId,entry);
+    const entry={receipt,web:null as SpatialSnapshot|null,plan:planned.value,trialId:trial.trialId,spec:structuredClone(s.baselineSpec??this.spec(s))};s.commits.set(receipt.commitId,entry);
     s.trial=undefined;s.baseline=undefined;
     // A source write can succeed even when HMR fails. Preserve and return its receipt.
     try {
