@@ -8,3 +8,7 @@ android/
 ios/
 *.bak
 
+
+.yarn/
+.nativemason/
+.DS_Store

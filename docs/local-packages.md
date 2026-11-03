@@ -13,10 +13,10 @@ From the NativeMason checkout (set `NATIVEMASON_ROOT` to its absolute path):
 ```sh
 export NATIVEMASON_ROOT=/absolute/path/to/rn-layout-bridge
 cd "$NATIVEMASON_ROOT"
-pnpm install --frozen-lockfile
-pnpm build
+yarn install --frozen-lockfile
+yarn build
 mkdir -p artifacts/packs
-pnpm --filter @rn-layout/contracts --filter @rn-layout/runtime --filter @rn-layout/bridge pack --pack-destination artifacts/packs
+yarn --filter @nativemason/contracts --filter @nativemason/runtime --filter nativemason pack --pack-destination artifacts/packs
 ```
 
 From the Expo app's package directory, install all three tarballs together so
@@ -34,9 +34,9 @@ The app needs its own compatible React, React Native, and
 must remain accessible to other developers and CI; alternatively distribute
 the three packages through a private registry and install matching versions.
 After NativeMason changes, rebuild, repack, and reinstall the tarballs. The
-`@rn-layout/bridge/babel` export supplies the Babel plugin. The MCP server can
+`nativemason/babel` export supplies the Babel plugin. The MCP server can
 also be launched directly from the built NativeMason checkout.
 
 The workspace executable is present before the build so first installation does
-not warn about a missing binary. Invoking it before `pnpm build` reports the
+not warn about a missing binary. Invoking it before `yarn build` reports the
 required build step on stderr.

@@ -1,5 +1,5 @@
 {
-  "name": "@rn-layout/expo-fixture",
+  "name": "@nativemason/expo-fixture",
   "private": true,
   "version": "0.1.0",
   "main": "index.ts",
@@ -8,15 +8,15 @@
     "android": "expo run:android"
   },
   "dependencies": {
-    "expo": "58.0.22",
     "@expo/metro-runtime": "58.0.16",
+    "@nativemason/contracts": "workspace:*",
+    "@nativemason/runtime": "workspace:*",
+    "expo": "58.0.22",
+    "nativemason": "workspace:*",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
-    "react-native-web": "0.21.4",
     "react-native-safe-area-context": "5.10.1",
-    "@rn-layout/runtime": "workspace:*",
-    "@rn-layout/contracts": "workspace:*",
-    "@rn-layout/bridge": "workspace:*"
+    "react-native-web": "0.21.4"
   }
 }

@@ -1,11 +1,11 @@
 {
-  "name": "@rn-layout/runtime",
-  "version": "0.1.0",
+  "name": "@nativemason/runtime",
+  "version": "0.2.0",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
   },
@@ -13,7 +13,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@rn-layout/contracts": "workspace:*"
+    "@nativemason/contracts": "workspace:*"
   },
   "peerDependencies": {
     "react": "19.3.0",
@@ -24,5 +24,17 @@
     "react": "19.3.0",
     "react-native": "0.88.1",
     "react-native-safe-area-context": "~5.10.1"
+  },
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "bin",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gauravsaini/nativemason.git",
+    "directory": "packages/runtime"
   }
 }

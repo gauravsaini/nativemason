@@ -17,13 +17,13 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@rn-layout/contracts": [
+      "@nativemason/contracts": [
         "packages/contracts/src/index.ts"
       ],
-      "@rn-layout/runtime": [
+      "@nativemason/runtime": [
         "packages/runtime/src/index.ts"
       ],
-      "@rn-layout/bridge/babel": [
+      "nativemason/babel": [
         "packages/bridge/src/instrumentation/index.ts"
       ]
     }

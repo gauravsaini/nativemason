@@ -1,10 +1,10 @@
 {
-  "name": "@rn-layout/bridge",
-  "version": "0.1.0",
+  "name": "nativemason",
+  "version": "0.2.0",
   "type": "module",
   "bin": {
-    "rn-layout-bridge": "./bin/nativemason.js",
-    "nativemason": "./bin/nativemason.js"
+    "nativemason": "./bin/nativemason.js",
+    "rn-layout-bridge": "./bin/nativemason.js"
   },
   "exports": {
     ".": "./dist/mcp/index.js",
@@ -14,14 +14,26 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@rn-layout/contracts": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.24.0",
     "@babel/core": "^7.28.5",
     "@babel/types": "^7.28.5",
-    "playwright": "^1.56.1",
-    "ts-morph": "^27.0.2",
+    "@modelcontextprotocol/sdk": "^1.24.0",
+    "@nativemason/contracts": "workspace:*",
     "diff": "^8.0.2",
+    "playwright": "^1.56.1",
     "sharp": "^0.34.5",
+    "ts-morph": "^27.0.2",
     "ws": "^8.18.3"
+  },
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "bin",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gauravsaini/nativemason.git",
+    "directory": "packages/bridge"
   }
 }

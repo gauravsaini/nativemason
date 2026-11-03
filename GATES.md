@@ -1,22 +1,22 @@
 # Completion gates
 
 - [ ] G1: Strict typechecking
-  CHECK: pnpm typecheck
+  CHECK: yarn typecheck
   EXPECT: tsc --noEmit
   EVIDENCE: pending
 - [ ] G2: Import boundaries and lint
-  CHECK: pnpm lint
+  CHECK: yarn lint
   EXPECT: eslint
   EVIDENCE: pending
 - [ ] G3: Unit behavior checks
-  CHECK: pnpm test
+  CHECK: yarn test
   EXPECT: Tests.*passed
   EVIDENCE: pending
 - [ ] G4: Real browser and MCP integration
-  CHECK: pnpm test:integration
+  CHECK: yarn test:integration
   EXPECT: Tests.*passed
   EVIDENCE: pending
 - [ ] G5: Real Android acceptance
-  CHECK: pnpm test:e2e:android
+  CHECK: yarn test:e2e:android
   EXPECT: ANDROID_ACCEPTANCE_PASSED
   EVIDENCE: pending

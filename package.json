@@ -1,11 +1,11 @@
 {
-  "name": "nativemason",
+  "name": "nativemason-workspace",
   "private": true,
-  "version": "0.1.0",
-  "packageManager": "pnpm@10.28.2",
+  "version": "0.2.0",
+  "packageManager": "yarn@4.18.1",
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "yarn workspaces foreach -A --topological run build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude \"tests/**\"",
@@ -13,25 +13,32 @@
     "test:e2e:android": "tsx tests/e2e/android.ts"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/types": "^7.28.5",
     "@eslint/js": "^9.39.1",
+    "@modelcontextprotocol/sdk": "^1.24.0",
+    "@nativemason/contracts": "workspace:*",
+    "@types/babel__core": "^7.20.5",
+    "@types/diff": "^7.0.2",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@types/ws": "^8.18.1",
-    "@types/babel__core": "^7.20.5",
-    "@types/diff": "^7.0.2",
     "eslint": "^9.39.1",
-    "typescript-eslint": "^8.46.0",
-    "typescript": "^5.9.3",
-    "tsx": "^4.20.6",
-    "vitest": "^3.2.4",
-    "@babel/core": "^7.28.5",
-    "@babel/types": "^7.28.5",
+    "nativemason": "workspace:*",
+    "playwright": "^1.56.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "playwright": "^1.56.1",
-    "@rn-layout/contracts": "workspace:*",
-    "@rn-layout/bridge": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.24.0"
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^3.2.4"
+  },
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "resolutions": {
+    "zod": "3.25.76"
   }
 }

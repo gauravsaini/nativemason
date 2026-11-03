@@ -1,6 +1,6 @@
 # Android fixture acceptance contract
 
-`pnpm test:e2e:android` exercises the repository's `broken-footer` Expo fixture.
+`yarn test:e2e:android` exercises the repository's `broken-footer` Expo fixture.
 It edits and restores that fixture and expects its Metro server on port 8081.
 It does not run acceptance against an arbitrary consumer application.
 

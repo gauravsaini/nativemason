@@ -31,16 +31,16 @@ The current integration limits are described in the [compatibility matrix](docs/
 
 ## Setup and checks
 
-Use Node 24 and pnpm 10.28.2. From the repository root:
+Use Node 24 and yarn 10.28.2. From the repository root:
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm exec playwright install chromium
-pnpm build
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm test:integration
+yarn install --frozen-lockfile
+yarn exec playwright install chromium
+yarn build
+yarn lint
+yarn typecheck
+yarn test
+yarn test:integration
 ```
 
 Build before starting the fixture or MCP server. Integration tests launch an isolated Expo web fixture and real Chromium, exercise the MCP workflow, and restore their temporary source copy. Generated screenshots, source diffs, measurements, and timings go under ignored `artifacts/`.
@@ -48,7 +48,7 @@ Build before starting the fixture or MCP server. Integration tests launch an iso
 Start the example web app:
 
 ```sh
-pnpm --filter @rn-layout/expo-fixture web
+yarn --filter @nativemason/expo-fixture web
 ```
 
 Its default route is `http://localhost:8081/?scenario=broken-footer`. The footer deliberately starts with vertically stacked buttons. See the [fixture source](examples/expo-fixture/App.tsx) and [JSON constraints](packages/contracts/fixtures/footer.json).
@@ -89,7 +89,7 @@ Use the runtime components for the elements an agent should measure. Every `layo
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   LayoutProvider, LayoutView, LayoutText, LayoutPressable,
-} from '@rn-layout/runtime';
+} from '@nativemason/runtime';
 
 export function Screen() {
   return (
@@ -118,7 +118,7 @@ module.exports = function (api) {
   api.cache(true);
   return {
     presets: ['babel-preset-expo'],
-    plugins: [[require.resolve('@rn-layout/bridge/babel'), {
+    plugins: [[require.resolve('nativemason/babel'), {
       projectRoot: __dirname,
     }]],
   };
@@ -134,7 +134,7 @@ Launch the stdio server from the repository root using either command:
 ```sh
 node packages/bridge/dist/cli.js
 # Equivalent workspace executable:
-pnpm exec nativemason
+yarn exec nativemason
 ```
 
 Configure an MCP client to launch `node` with the absolute path to `packages/bridge/dist/cli.js`. The server speaks MCP on stdin/stdout; it is not an HTTP server.
@@ -223,14 +223,14 @@ In the terminal that starts Metro, generate a development connection token and e
 export EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN="$(node -e 'process.stdout.write(require("node:crypto").randomUUID())')"
 export EXPO_PUBLIC_LAYOUT_NATIVE_URL=ws://127.0.0.1:19482
 export EXPO_PUBLIC_LAYOUT_SCENARIO=broken-footer
-pnpm --filter @rn-layout/expo-fixture web
+yarn --filter @nativemason/expo-fixture web
 ```
 
 In a second terminal, set `EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN` to the **same generated value**, then select the device explicitly:
 
 ```sh
 adb devices -l
-ADB_SERIAL='<device-serial>' pnpm test:e2e:android
+ADB_SERIAL='<device-serial>' yarn test:e2e:android
 ```
 
 The helper reverses ports 8081 and 19482, opens the fixture, measures the real profile, tests the browser correction, previews/applies it, checks Android after reload, and restores the original fixture source in cleanup. Success prints `ANDROID_ACCEPTANCE_PASSED`. Missing devices, disconnected runtimes, stale sources, or failing constraints produce a nonzero exit and `ANDROID_ACCEPTANCE_INCOMPLETE`; they do not count as native verification.

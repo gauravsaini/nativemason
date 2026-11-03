@@ -5,3 +5,4 @@ export * from './graph.js';
 export * from './constraints.js';
 export * from './native-protocol.js';
 export * from './tools.js';
+export * from './workflow.js';
