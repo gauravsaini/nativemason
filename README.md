@@ -1,33 +1,13 @@
 # NativeMason
 
-## Logo options
-
-Four abstract geometric SVG design options for NativeMason:
-
-| 1. Quantum Keystone | 2. Orthogonal Nexus | 3. Mason Monolith | 4. Kinetic Apex |
-| :---: | :---: | :---: | :---: |
-| ![Option 1: Quantum Keystone](assets/logos/01-keystone.svg) | ![Option 2: Orthogonal Nexus](assets/logos/02-blueprint.svg) | ![Option 3: Mason Monolith](assets/logos/03-courtyard.svg) | ![Option 4: Kinetic Apex](assets/logos/04-mason-mark.svg) |
-| **Quantum Keystone**<br>Cantilevered structural pylons with suspended floating keystone prism, electric cyan / cobalt gradients, and precision laser alignment. | **Orthogonal Nexus**<br>Isometric dual-viewport bridge ribbon forming an abstract N-M glyph with spatial drafting coordinates and emerald / teal glow. | **Mason Monolith**<br>Interlocking architectural polyhedra in impossible isometric perspective, solar amber highlights, and warm terracotta craftsmanship. | **Kinetic Apex**<br>Ultra-minimalist geometric delta and layout cursor glyph with neon cyber violet & fuchsia core on deep void obsidian. |
-
 <p align="center">
-  <img src="assets/logos/options-preview.png" alt="NativeMason Abstract Logo Options Preview" width="800" />
+  <img src="assets/app-logos/08-vision-acrylic.svg" alt="NativeMason Vision Acrylic logo" width="180" />
 </p>
 
-## App icon & logo options
+<h1 align="center">NativeMason</h1>
+<p align="center">React Native layout inspection and Android verification for AI coding agents</p>
 
-Eight mobile and desktop application icons under `assets/app-logos/`, formatted as 512×512 squircle masters (iOS, macOS, and desktop) along with Android Adaptive Icon assets:
-
-| Cyber Keystone (Pro Dark) | Neon Blueprint (Spatial) | Solar Monolith (Artisan) | Kinetic Apex (Violet) |
-| :---: | :---: | :---: | :---: |
-| ![Cyber Keystone](assets/app-logos/01-cyber-keystone.svg) | ![Neon Blueprint](assets/app-logos/02-neon-blueprint.svg) | ![Solar Monolith](assets/app-logos/03-solar-monolith.svg) | ![Kinetic Apex](assets/app-logos/04-kinetic-apex.svg) |
-| **Stealth Mono (Minimal Dark)** | **Studio Snow (Ceramic Light)** | **Terminal Amber (Phosphor)** | **Vision Acrylic (Glassmorphic)** |
-| ![Stealth Mono](assets/app-logos/05-stealth-mono.svg) | ![Studio Snow](assets/app-logos/06-snow-mono.svg) | ![Terminal Amber](assets/app-logos/07-terminal-amber.svg) | ![Vision Acrylic](assets/app-logos/08-vision-acrylic.svg) |
-
-<p align="center">
-  <img src="assets/app-logos/preview.png" alt="NativeMason App Logo Suite Preview" width="800" />
-</p>
-
-Also includes Android adaptive icons in [`assets/app-logos/adaptive-icon/`](assets/app-logos/adaptive-icon/) (`foreground.svg` and `background.svg`) adhering to Android's 108dp safe-zone specifications.
+The repository uses the **Vision Acrylic** mark as its sole logo. Its source SVG is [assets/app-logos/08-vision-acrylic.svg](assets/app-logos/08-vision-acrylic.svg).
 
 NativeMason gives an MCP coding agent a measured React Native layout loop: inspect an Expo web mirror, test React Native style props in Chromium, preview or apply a small source edit, and verify the committed result on Android.
 
