@@ -78,7 +78,7 @@ export function planTransaction(files:readonly SourceFile[], mutations:readonly 
         try {if(resolveObject(node)!==object)continue;}catch{continue;}
         const parent=node.getParent();
         if(parent&&(Node.isPropertyAccessExpression(parent)&&parent.getExpression()===node)){try{resolveObject(parent);continue;}catch{blastRadius.unresolvedReferences.push(candidate.getFilePath().slice(1)+':'+parent.getStart());continue;}}
-        if(Node.isVariableDeclaration(parent))continue;
+        if(Node.isVariableDeclaration(parent)){if(parent.getInitializer()===node)blastRadius.unresolvedReferences.push(candidate.getFilePath().slice(1)+':'+node.getStart());continue;}
         const jsx=node.getAncestors().find(n=>Node.isJsxElement(n)||Node.isJsxSelfClosingElement(n));
         if(!jsx){blastRadius.unresolvedReferences.push(candidate.getFilePath().slice(1)+':'+node.getStart());continue;}
         references++;

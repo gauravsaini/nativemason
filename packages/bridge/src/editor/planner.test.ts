@@ -91,7 +91,7 @@ describe('source patch planning', () => {
   });
   it('rejects unknown style mutations at the boundary', () => {
     const text='const Screen=()=> <LayoutView />;';
-    const result=planSourcePatch(text,reference(text),{position:'absolute'} as unknown as RnStylePatch);
+    const result=planSourcePatch(text,reference(text),{transform:[]} as unknown as RnStylePatch);
     expect(result).toMatchObject({ok:false,error:{code:'INVALID_INPUT'}});
   });
   it('does not mutate its inputs or consult project files', () => {

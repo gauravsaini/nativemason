@@ -81,6 +81,7 @@ export class BridgeApplication {
           if(overrideKey(profileOverrides)!==s.baselineOverrideKey)throw new BridgeFault('STALE_SNAPSHOT','Profile overrides differ from the inspected baseline; inspect again for each profile');
           await this.assertRevisions(s,baseline);
           if(patch===null){await s.browser.resetTrial();s.trial=undefined;const snapshot=await this.capture(s,profileOverrides);s.baseline=snapshot;return {snapshot,results:s.baselineSpec?evaluateConstraints(snapshot,s.baselineSpec):[],webDiagnostics:snapshot.webDiagnostics};}
+          if(mutations&&(elementId!==undefined||patch!==undefined))throw new BridgeFault('INVALID_INPUT','Supply either mutations or the single-element shorthand');
           const batch=mutations??(elementId&&patch?[{elementId,patch}]:[]);
           if(!batch.length||new Set(batch.map(m=>m.elementId)).size!==batch.length)throw new BridgeFault('INVALID_INPUT','Supply unique mutations or elementId and patch');
           for(const m of batch)if(!baseline.nodes.some(n=>n.id===m.elementId))throw new BridgeFault('MISSING_ELEMENT',m.elementId);
@@ -150,7 +151,7 @@ export class BridgeApplication {
     await this.assertRevisions(s,s.baseline);
     const mutations=trial.mutations??[{elementId:trial.elementId,patch:trial.patch}];
     const source=s.source as TransactionSourcePort;
-    const sourceMutations=mutations.map(m=>{const node=trial.snapshot.nodes.find(n=>n.id===m.elementId);if(!node?.source)throw new BridgeFault('UNSUPPORTED_EDIT','Source metadata missing');if(input.expectedRevisions?.[node.source.path]!==undefined&&input.expectedRevisions[node.source.path]!==node.source.hash)throw new BridgeFault('STALE_SOURCE','Expected revision differs');if(input.expectedSourceHash&&input.expectedSourceHash!==node.source.hash)throw new BridgeFault('STALE_SOURCE','Expected hash differs');const instances=trial.snapshot.nodes.filter(n=>n.source?.path===node.source!.path&&n.source.start===node.source!.start);if(instances.length>1&&!input.scope?.acknowledgeInstances)throw new BridgeFault('UNSUPPORTED_EDIT','Repeated site requires acknowledgment');return {source:node.source,patch:m.patch,scope:input.scope??{kind:'local' as const}};});
+    const sourceMutations=mutations.map(m=>{const node=trial.snapshot.nodes.find(n=>n.id===m.elementId);if(!node?.source)throw new BridgeFault('UNSUPPORTED_EDIT','Source metadata missing');if(node.editReason==='Dynamic style expression')throw new BridgeFault('UNSUPPORTED_EDIT','Style callbacks are not source-editable');if(input.expectedRevisions?.[node.source.path]!==undefined&&input.expectedRevisions[node.source.path]!==node.source.hash)throw new BridgeFault('STALE_SOURCE','Expected revision differs');if(input.expectedSourceHash&&input.expectedSourceHash!==node.source.hash)throw new BridgeFault('STALE_SOURCE','Expected hash differs');const instances=trial.snapshot.nodes.filter(n=>n.source?.path===node.source!.path&&n.source.start===node.source!.start);if(instances.length>1&&!input.scope?.acknowledgeInstances)throw new BridgeFault('UNSUPPORTED_EDIT','Repeated site requires acknowledgment');return {source:node.source,patch:m.patch,scope:input.scope??{kind:'local' as const}};});
     if(!input.expectedSourceHash&&!input.expectedRevisions)throw new BridgeFault('INVALID_INPUT','Expected source revisions are required');
     const files=source.readProject?await source.readProject():await Promise.all([...new Set(sourceMutations.map(m=>m.source.path))].map(p=>source.read(p)));
     const planned=planTransaction(files,sourceMutations);
@@ -172,7 +173,7 @@ export class BridgeApplication {
       const results=evaluateConstraints(entry.web,entry.spec);
       await this.artifact(s.id,`${receipt.commitId}.web.json`,JSON.stringify({receipt,snapshot:entry.web,results},null,2));
       return {receipt,snapshot:entry.web,results,webStatus:allPass(results)?'passed':'failed'};
-    }catch(e){return {receipt,webStatus:'capture-failed',message:e instanceof Error?e.message:String(e)};}
+    }catch(e){const failure={receipt,webStatus:'capture-failed',message:e instanceof Error?e.message:String(e)};await this.artifact(s.id,receipt.commitId+'.web-failure.json',JSON.stringify(failure,null,2));return failure;}
   }
   private async verify(s:Session,commitId:string) {
     const entry=s.commits.get(commitId);

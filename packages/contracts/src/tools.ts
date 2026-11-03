@@ -47,3 +47,6 @@ export const ToolOutputSchemas={
  close_session:z.object({closed:z.literal(true)}).strict(),
 } as const;
 export type ToolOutput<K extends ToolName>=z.infer<(typeof ToolOutputSchemas)[K]>;
+/** MCP's object-root output schema describes both existing trial and reset wire shapes.
+ * ToolOutputSchemas still enforces the complete union before any response is sent. */
+export const ToolMcpOutputSchemas={...ToolOutputSchemas,simulate_layout_mutation:TrialSchema.partial().extend({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),webDiagnostics:WebDiagnosticsSchema.optional()}).strict()} as const;

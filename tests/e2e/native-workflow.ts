@@ -40,7 +40,7 @@ export async function runNativeAcceptance(options:{target:NativeTarget;launch():
     assert.ok(preview.transactionPlan?.files.length);assert.match(preview.plan?.diff??'',/row/);
     assert.equal(await readFile(sourcePath,'utf8'),original,'Preview must not write source');
     const applied=await app.execute('commit_rn_ast_patch',{sessionId,trialId:trial.trialId,expectedRevisions,mode:'apply'});
-    assert.ok(applied.receipt);assert.equal(applied.webStatus,'passed');assert.equal(applied.receipt.nativeStatus,'pending');
+    assert.ok(applied.receipt);assert.equal(applied.webStatus,'passed',JSON.stringify(applied));assert.equal(applied.receipt.nativeStatus,'pending');
     const verify=async(commitId:string):Promise<ToolOutput<'verify_native_layout'>>=>{
       let last:unknown;for(let i=0;i<15;i++){try{return await app.execute('verify_native_layout',{sessionId,commitId});}catch(error){last=error;await pause(1000);}}throw last??Error('Native verification did not complete');
     };

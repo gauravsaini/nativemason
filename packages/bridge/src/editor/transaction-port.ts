@@ -59,7 +59,7 @@ export function createTransactionSourcePort(projectRoot:string):TransactionSourc
   async function applyUnlocked(plan:TransactionPlan,dir:string,revertsCommitId?:string):Promise<TransactionReceipt>{
     const parsed=TransactionPlanSchema.safeParse(plan);if(!parsed.success)throw new BridgeFault('INVALID_INPUT','Invalid transaction plan');
     const paths=plan.files.map(f=>f.source.path);if(new Set(paths).size!==paths.length)throw new BridgeFault('INVALID_INPUT','A transaction must coalesce each source file');
-    const id=hashSource(JSON.stringify(plan.files.map(f=>[f.source.path,f.expectedHash,hashSource(f.updatedText)])));
+    const id=hashSource(JSON.stringify([plan.intentId??null,plan.files.map(f=>[f.source.path,f.expectedHash,hashSource(f.updatedText)])]));
     const receiptPath=path.join(dir,id+'.receipt.json');
     try{const prior=JSON.parse(await readFile(receiptPath,'utf8')) as {receipt:TransactionReceipt};for(const file of prior.receipt.files)if((await base.read(file.path)).hash!==file.newHash)throw new BridgeFault('STALE_SOURCE','Previously committed transaction source changed');return TransactionReceiptSchema.parse(prior.receipt);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
     const files:JournalFile[]=[];

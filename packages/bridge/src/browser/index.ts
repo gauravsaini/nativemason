@@ -307,7 +307,7 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
         const started = performance.now();
         ensureOpen();
         if (!mutations.length) throw new BridgeFault('INVALID_INPUT','A trial needs at least one mutation');
-        const parsed = mutations.map(mutation=>LayoutMutationSchema.parse(mutation));
+        const parsed = mutations.map(mutation=>{const result=LayoutMutationSchema.safeParse(mutation);if(!result.success)throw new BridgeFault('INVALID_INPUT',result.error.message);return result.data;});
         if(new Set(parsed.map(m=>m.elementId)).size!==parsed.length)throw new BridgeFault('INVALID_INPUT','A batch must contain each element only once');
         if (!baseline) throw new BridgeFault('STALE_SNAPSHOT', 'Capture a baseline before trying a layout mutation');
         try {

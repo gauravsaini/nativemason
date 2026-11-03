@@ -135,7 +135,7 @@ export function toSpatialNodes(registry: LayoutRegistry, rectangles: Map<string,
   }
   return [...registry.entries.values()].map(entry => {
     const repeated = entry.source && (sites.get(`${entry.source.path}:${entry.source.start}`) ?? 0) > 1;
-    const editReason = !entry.source ? 'Missing build-time source metadata' : repeated ? 'Source site has multiple mounted instances' : entry.dynamicStyle ? 'Dynamic style expression' : null;
+    const editReason = !entry.source ? 'Missing build-time source metadata' : entry.dynamicStyle ? 'Dynamic style expression' : repeated ? 'Source site has multiple mounted instances' : null;
     const rect = rectangles.get(entry.id);
     if (!rect) throw new BridgeFault('MISSING_ELEMENT', `No measurement for ${entry.id}`);
     return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles: { ...entry.styles, ...registry.overrides.get(entry.id) }, source: entry.source, editable: editReason === null, editReason, ...(entry.textFit ? { textFit: entry.textFit } : {}), ...(entry.authoredTextProps ? { authoredTextProps: entry.authoredTextProps } : {}), ...(entry.measuredLineCount === undefined ? {} : { measuredLineCount: entry.measuredLineCount }) };

@@ -20,7 +20,7 @@ beforeAll(async()=>{
  await mkdir(path.join(root,'artifacts'),{recursive:true});project=await mkdtemp(path.join(root,'artifacts/expo-integration-'));
  await cp(path.join(root,'examples/expo-fixture'),project,{recursive:true,filter:source=>!source.split(path.sep).some(part=>['node_modules','.expo','android','ios'].includes(part))});
  await symlink(path.join(root,'node_modules'),path.join(project,'node_modules'),'dir');
- metro=spawn(process.execPath,[path.join(root,'node_modules/expo/bin/cli'),'start',project,'--web','--localhost','--port','18081'],{cwd:project,detached:true,stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'false',NODE_ENV:'development',EXPO_PUBLIC_LAYOUT_NATIVE_URL:'',EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN:''}});
+ metro=spawn(process.execPath,[path.join(root,'node_modules/expo/bin/cli'),'start',project,'--clear','--web','--localhost','--port','18081'],{cwd:project,detached:true,stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'false',NODE_ENV:'development',EXPO_PUBLIC_LAYOUT_NATIVE_URL:'',EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN:''}});
  metro.stdout!.on('data',b=>{logs+=String(b);});metro.stderr!.on('data',b=>{logs+=String(b);});
  const deadline=Date.now()+60000;let ready=false;
  while(Date.now()<deadline){if(metro.exitCode!==null)throw new Error(`Metro exited: ${logs}`);try{const r=await fetch('http://localhost:18081/status');if((await r.text()).includes('packager-status:running')){ready=true;break;}}catch{ /* Retry until Metro is ready or deadline expires. */ }await new Promise(r=>setTimeout(r,200));}

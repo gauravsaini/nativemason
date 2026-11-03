@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { BridgeFault,ToolSchemas,ToolOutputSchemas,type ToolName } from '@nativemason/contracts';
+import { BridgeFault,ToolSchemas,ToolOutputSchemas,ToolMcpOutputSchemas,type ToolName } from '@nativemason/contracts';
 import { BridgeApplication } from '../application/index.js';
 const descriptions:Record<ToolName,string>={
  open_session:'Start a local Expo web mirror and Android measurement session. Returns native connection port and token.',
@@ -21,7 +21,7 @@ export function createMcpServer(application=new BridgeApplication()):McpServer {
  const server=new McpServer({name:'nativemason',version:'0.2.0'});
  server.registerPrompt('layout-workflow',{description:'Measured layout correction workflow'},async()=>({messages:[{role:'user',content:{type:'text',text:'Open a session for the same named scenario on web and native. Inspect measurements and diagnostics; load or infer and review constraints. Use suggest_fix or batch trials, preview the transaction and blast radius, then apply only an accepted candidate. Verify matching committed revisions on the selected native target. Report unavailable evidence; use revert_commit when requested and verify the revert. Close the session.'}}]}));
  for(const name of Object.keys(ToolSchemas) as ToolName[]) {
-  server.registerTool(name,{description:descriptions[name],inputSchema:ToolSchemas[name].shape,outputSchema:ToolOutputSchemas[name]},async (input:unknown)=>{
+  server.registerTool(name,{description:descriptions[name],inputSchema:ToolSchemas[name].shape,outputSchema:ToolMcpOutputSchemas[name]},async (input:unknown)=>{
    try {
     const result=await application.execute(name,input);
     if(name==='capture_annotated_overlay'){
