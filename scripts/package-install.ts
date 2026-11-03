@@ -20,10 +20,11 @@ async function main(){
     }
     const fixture=JSON.parse(await readFile(path.join(root,'examples/expo-fixture/package.json'),'utf8')) as {dependencies:Record<string,string>};
     const dependencies=Object.fromEntries(Object.entries(fixture.dependencies).filter(([name,value])=>!value.startsWith('workspace:')&&!names.includes(name)&&!['nativewind','tailwindcss','react-native-reanimated','react-native-worklets'].includes(name)));
-    await writeFile(path.join(temp,'package.json'),JSON.stringify({name:'nativemason-external-consumer',private:true,type:'module',dependencies},null,2));
+    const devDependencies={typescript:JSON.parse(await readFile(path.join(root,'node_modules/typescript/package.json'),'utf8')).version,'@types/react':JSON.parse(await readFile(path.join(root,'node_modules/@types/react/package.json'),'utf8')).version};
+    await writeFile(path.join(temp,'package.json'),JSON.stringify({name:'nativemason-external-consumer',private:true,type:'module',dependencies,devDependencies},null,2));
     await writeFile(path.join(temp,'app.json'),JSON.stringify({expo:{name:'NativeMason Consumer',slug:'nativemason-consumer'}}));
     await writeFile(path.join(temp,'App.tsx'),"import {View, Text} from 'react-native'; export default function App(){return <View testID='consumer-root' style={{flex:1}}><Text testID='consumer-copy'>Consumer</Text></View>;}\n");
-    await exec('npm',['install','--no-audit','--no-fund',...tarballs],{cwd:temp,env:{...process.env,SHARP_IGNORE_GLOBAL_LIBVIPS:'1'},timeout:300000,maxBuffer:8*1024*1024});
+    await exec('npm',['install','--no-audit','--no-fund',...tarballs],{cwd:temp,env:{...process.env,SHARP_IGNORE_GLOBAL_LIBVIPS:'1'},timeout:600000,maxBuffer:8*1024*1024});
     const binary=path.join(temp,'node_modules/nativemason/bin/nativemason.js');
     const help=(await exec(process.execPath,[binary,'--help'],{cwd:temp})).stdout;assert.match(help,/nativemason/);
     const first=JSON.parse((await exec(process.execPath,[binary,'init',temp],{cwd:temp})).stdout);assert.ok(first);
@@ -33,10 +34,10 @@ async function main(){
     const client=new Client({name:'package-install-smoke',version:'0.2.0'}),transport=new StdioClientTransport({command:process.execPath,args:[binary],cwd:temp,stderr:'pipe'});
     try{
       await client.connect(transport);const tools=await client.listTools();for(const name of ['revert_commit','suggest_fix','run_profile_matrix','find_elements'])assert.ok(tools.tools.some(tool=>tool.name===name),'Missing MCP tool '+name);
-      metro=spawn(process.execPath,[path.join(temp,'node_modules/expo/bin/cli'),'start',temp,'--web','--localhost','--port','18083','--clear'],{cwd:temp,detached:true,stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'1',NODE_ENV:'development',EXPO_PUBLIC_LAYOUT_NATIVE_URL:'',EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN:'',EXPO_PUBLIC_LAYOUT_SCENARIO:'consumer'}});
+      metro=spawn(process.execPath,[path.join(temp,'node_modules/expo/bin/cli'),'start',temp,'--web','--localhost','--port','18083','--clear'],{cwd:temp,detached:true,stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'',NODE_ENV:'development',EXPO_PUBLIC_LAYOUT_NATIVE_URL:'',EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN:'',EXPO_PUBLIC_LAYOUT_SCENARIO:'consumer'}});
       metro.stdout?.on('data',data=>{logs+=String(data);});metro.stderr?.on('data',data=>{logs+=String(data);});
       const deadline=Date.now()+60000;while(true){try{const response=await fetch('http://localhost:18083/status');if((await response.text()).includes('packager-status:running'))break;}catch{ /* The readiness deadline and process exit check handle transient startup failures. */ }if(Date.now()>deadline||metro.exitCode!==null)throw Error('Consumer Metro failed: '+logs.slice(-4000));await new Promise(resolve=>setTimeout(resolve,200));}
-      const browser=await chromium.launch();try{const page=await browser.newPage({viewport:{width:412,height:915}});await page.goto('http://localhost:18083/',{timeout:90000});await page.waitForFunction(()=>Boolean((window as Window & {__RN_LAYOUT_BRIDGE__?:unknown}).__RN_LAYOUT_BRIDGE__),undefined,{timeout:90000});}finally{await browser.close();}
+      const browser=await chromium.launch();try{const page=await browser.newPage({viewport:{width:412,height:915}});page.on('pageerror',error=>{logs+='\nConsumer page: '+error.message;});await page.goto('http://localhost:18083/',{timeout:90000});await page.waitForFunction(()=>Boolean((window as Window & {__RN_LAYOUT_BRIDGE__?:unknown}).__RN_LAYOUT_BRIDGE__),undefined,{timeout:90000});}finally{await browser.close();}
       const profile=JSON.parse(await readFile(path.join(root,'packages/contracts/fixtures/footer.json'),'utf8')).profile;
       const opened=await client.callTool({name:'open_session',arguments:{projectRoot:temp,webUrl:'http://localhost:18083/',scenarioId:'consumer',profile,nativePort:19488,nativeToken:'nativemason-package-smoke-token'}});
       assert.ok(!opened.isError,JSON.stringify(opened.content));const sessionId=(opened.structuredContent as {sessionId:string}).sessionId;
