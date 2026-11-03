@@ -15,8 +15,8 @@ describe('native scenario driver validation',()=>{
  });
  it('rejects interpolated strings and unsupported Android Unicode before device access',async()=>{
   const port=createNativeScenarioPort(base);
-  await expect(port.run({scenarioId:'checkout',reset:[],actions:[{type:'input',elementId:'email',text:'${secret}'}]})).rejects.toMatchObject({code:'UNSUPPORTED_ACTION'});
-  await expect(port.run({scenarioId:'checkout',reset:[],actions:[{type:'input',elementId:'email',text:'café'}]})).rejects.toMatchObject({code:'UNSUPPORTED_ACTION'});
+  await expect(port.run({scenarioId:'checkout',reset:[],actions:[{type:'input',mode:'replace',elementId:'email',text:'${secret}'}]})).rejects.toMatchObject({code:'UNSUPPORTED_ACTION'});
+  await expect(port.run({scenarioId:'checkout',reset:[],actions:[{type:'input',mode:'replace',elementId:'email',text:'café'}]})).rejects.toMatchObject({code:'UNSUPPORTED_ACTION'});
  });
  it('requires an explicit hook transport',async()=>{
   const port=createNativeScenarioPort(base);

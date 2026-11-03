@@ -25,7 +25,7 @@ import { LayoutRegistry } from '../registry/index.js';
 
 const profile = { window: { width: 400, height: 800 }, root: { x: 0, y: 0, width: 400, height: 800 }, pixelRatio: 1, fontScale: 1, orientation: 'portrait' as const, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
-const createNodeMock = ({ type }: { type: string }) => ({ type });
+const createNodeMock = ({ type }: React.ReactElement) => ({ type });
 const mount = async (children: React.ReactNode, textProbes = false) => {
   let renderer!: TestRenderer.ReactTestRenderer;
   await act(async () => {
@@ -43,20 +43,20 @@ describe('layout component contracts', () => {
     const renderer=await mount(<LayoutText layoutId="copy" numberOfLines={1} style={{fontSize:16}}>Long text</LayoutText>,true);
     const host=findHost(renderer,'Text');
     await act(async()=>host.props.onLayout({nativeEvent:{layout:{width:80,height:20,x:0,y:0}}}));
-    const oldProbe=renderer.root.find(instance=>instance.type==='Text'&&instance.props.accessible===false);
+    const oldProbe=renderer.root.find(instance=>String(instance.type)==='Text'&&instance.props.accessible===false);
     const oldCallback=oldProbe.props.onTextLayout;
     await act(async()=>oldCallback({nativeEvent:{lines:[{y:0,height:20},{y:20,height:20}]}}));
     expect(updates.mock.calls.at(-1)?.[1]).toMatchObject({status:'supported',fullLineCount:2});
     await act(async()=>host.props.onLayout({nativeEvent:{layout:{width:160,height:20,x:0,y:0}}}));
     await act(async()=>oldCallback({nativeEvent:{lines:[{y:0,height:20}]}}));
     expect(updates.mock.calls.at(-1)?.[1]).toMatchObject({status:'unavailable'});
-    const currentProbe=renderer.root.find(instance=>instance.type==='Text'&&instance.props.accessible===false);
+    const currentProbe=renderer.root.find(instance=>String(instance.type)==='Text'&&instance.props.accessible===false);
     await act(async()=>currentProbe.props.onTextLayout({nativeEvent:{lines:[{y:0,height:20}]}}));
     expect(updates.mock.calls.at(-1)?.[1]).toMatchObject({status:'supported',fullLineCount:1});
     await act(async()=>renderer.unmount());
   });
   it('composes text callbacks without changing their event and preserves object refs through cleanup', async () => {
-    const forwarded = createRef<{ type: string }>();
+    const forwarded = createRef<React.ComponentRef<typeof LayoutText>>();
     const onLayout = vi.fn();
     const onTextLayout = vi.fn();
     const renderer = await mount(<LayoutText layoutId="copy" ref={forwarded} onLayout={onLayout} onTextLayout={onTextLayout}>Hello</LayoutText>);
@@ -98,16 +98,16 @@ describe('layout component contracts', () => {
     const registrations = vi.spyOn(LayoutRegistry.prototype, 'register');
     const disabled = await mount(<LayoutText layoutId="off" style={{ fontSize: 16 }}>A line</LayoutText>);
     expect(updates).toHaveBeenCalledWith('off', expect.objectContaining({ status: 'unavailable' }));
-    expect(disabled.root.findAll(instance => instance.type === 'Text')).toHaveLength(1);
+    expect(disabled.root.findAll(instance => String(instance.type) === 'Text')).toHaveLength(1);
     await act(async () => disabled.unmount());
 
     updates.mockClear();
     registrations.mockClear();
     const enabled = await mount(<LayoutText layoutId="on" style={{ fontSize: 16 }}>A line</LayoutText>, true);
-    expect(enabled.root.findAll(instance => instance.type === 'Text')).toHaveLength(1);
+    expect(enabled.root.findAll(instance => String(instance.type) === 'Text')).toHaveLength(1);
     const rendered = findHost(enabled, 'Text');
     await act(async () => rendered.props.onLayout({ nativeEvent: { layout: { x: 0, y: 0, width: 80, height: 20 } } }));
-    const texts = enabled.root.findAll(instance => instance.type === 'Text');
+    const texts = enabled.root.findAll(instance => String(instance.type) === 'Text');
     expect(texts).toHaveLength(2);
     const probe = texts.find(instance => instance !== rendered)!;
     expect(probe.props.accessible).toBe(false);
@@ -128,7 +128,7 @@ describe('layout component contracts', () => {
     const updates = vi.spyOn(LayoutRegistry.prototype, 'updateTextFit');
     const renderer = await mount(<LayoutText layoutId="prod" style={{ fontSize: 16 }} onTextLayout={vi.fn()}>A line</LayoutText>, true);
     const host = findHost(renderer, 'Text');
-    expect(renderer.root.findAll(instance => instance.type === 'Text')).toHaveLength(1);
+    expect(renderer.root.findAll(instance => String(instance.type) === 'Text')).toHaveLength(1);
     expect(host.props.onTextLayout).toBeDefined();
     expect(updates).not.toHaveBeenCalled();
     await act(async () => renderer.unmount());

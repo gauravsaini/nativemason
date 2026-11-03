@@ -63,7 +63,7 @@ it('sends named native actions only to clients that advertise scenario action su
     const request = JSON.parse(raw.toString());
     if (request.type === 'action') socket.send(JSON.stringify({ type: 'action_result', requestId: request.requestId }));
   });
-  await expect(bridge.runHook('open-settings', { enabled: true })).resolves.toBeUndefined();
+  await expect(bridge.runHook!('open-settings', { enabled: true })).resolves.toBeUndefined();
 });
 
 it('rejects an authenticated mixed-source snapshot as stale without dropping the connection', async () => {
