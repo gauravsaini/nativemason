@@ -20,7 +20,7 @@ selected package exists, reverses the Metro and bridge ports, launches the
 link, and requires matching source revisions and passing Android constraints.
 The development app and Metro must share `EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN`.
 
-For a consumer app such as the fixture app, instrument its development bundle and use
-the MCP `verify_native_layout` workflow with the app's own scenario, source
-revisions, and constraints. An installed release or preview build without the
-development runtime cannot provide native measurements.
+For a consumer app, instrument its development bundle and use the MCP
+`verify_native_layout` workflow with the app's own scenario, source revisions,
+and constraints. An installed release or preview build without the development
+runtime cannot provide native measurements.

@@ -9,11 +9,25 @@
 
 The repository uses the **Vision Acrylic** mark as its sole logo. Its source SVG is [assets/app-logos/08-vision-acrylic.svg](assets/app-logos/08-vision-acrylic.svg).
 
-NativeMason gives an MCP coding agent a measured React Native layout loop: inspect an Expo web mirror, test React Native style props in Chromium, preview or apply a small source edit, and verify the committed result on Android.
+NativeMason gives an MCP coding agent a measured React Native layout loop: inspect an Expo web mirror, test React Native style props in Chromium, preview or apply a source edit, and verify the committed result on Android.
 
 The web mirror is a trial environment. A source write remains **native verification pending** until matching Android source revisions and layout constraints pass. NativeMason does not call a model API or interpret design images.
 
-Private repository: [gauravsaini/nativemason](https://github.com/gauravsaini/nativemason). The local folder remains `rn-layout-bridge`; public workspace imports retain `@rn-layout/*`.
+NativeMason is an early development release. The public repository is [gauravsaini/nativemason](https://github.com/gauravsaini/nativemason). The workspace packages are not yet published to npm; install them into another app using the local tarball workflow below.
+
+## Current scope and roadmap
+
+The current workflow uses explicit `LayoutView`, `LayoutText`, and `LayoutPressable` instrumentation, JSON constraints, Chromium trials, restricted static-style source edits, and Android development-runtime verification. It supports a single active trial and one source file per commit. Browser diagnostics are evidence for trial review; Android measurements remain the acceptance evidence.
+
+NativeMason is not yet a general-purpose production release. The next phases are:
+
+| Priority | Planned work |
+| --- | --- |
+| **P1** | Expand style editing to arrays, conditional styles, imported styles with blast-radius previews, theme tokens, and NativeWind; add atomic multi-element and multi-file transactions with `revert_commit`; add zero-touch instrumentation through Metro/Babel transforms; add iOS simulator verification over the existing WebSocket protocol and officially support Android emulators. |
+| **P2** | Add ranked `suggest_fix` candidates for alignment and gap failures; infer constraints from known-good snapshots and provide default touch-target, clipping, safe-area, and overlap rules; add native `textFits` checks and device font-scale runs; add scenario scripts and profile-matrix reports. |
+| **P3** | Improve MCP structured results, workflow prompts, and element search; add `npx nativemason init` for Babel and MCP configuration; publish npm packages with a license, package allowlists, and CI. |
+
+The current integration limits are described in the [compatibility matrix](docs/compatibility.md). Roadmap items are planned work, not capabilities of this release.
 
 ## Setup and checks
 
@@ -67,7 +81,7 @@ For Android, pass `nativeUrl` and `nativeToken` to `LayoutProvider`, and use the
 
 ## Instrument an Expo screen
 
-The packages are private and are not published to npm. A separate Expo app can install all three locally built tarballs; see [installation into a separate project](docs/local-packages.md) for the exact commands and peer-version requirements. the fixture app currently uses React Native 0.88.0, while the runtime declares 0.88.1; compatibility with the fixture app remains to be validated.
+The packages are not published to npm. A separate Expo app can install all three locally built tarballs; see [installation into a separate project](docs/local-packages.md) for the exact commands and peer-version requirements. Check the [compatibility matrix](docs/compatibility.md) and validate the dependency versions used by your app.
 
 Use the runtime components for the elements an agent should measure. Every `layoutId` must be unique within the screen. `rootId` identifies the mounted, full app-root `LayoutView`; the runtime does not infer the root from registration order.
 
@@ -197,11 +211,11 @@ Add a minimum layout-box constraint to a wireframe specification when size matte
 
 The constraint measures the registered box in logical units; it does not prove the element can receive a touch. Constraints default to a tolerance of 2 logical units. Add `"pixelAware": true` to opt into a minimum tolerance of `2 / pixelRatio`; otherwise an explicit tolerance, including zero, is preserved.
 
-## Physical Android acceptance
+## Android fixture acceptance
 
-The earlier footer workflow passed on an explicitly selected physical Samsung device running Android API 37. The latest V1.1 Android acceptance attempt was incomplete because that device was absent from ADB, so the new runtime measurements still need device verification. Evidence is generated at `artifacts/android-acceptance/acceptance.json` on a successful run. This helper tests the included fixture; use the MCP workflow above to verify a consumer app.
+Evidence is generated at `artifacts/android-acceptance/acceptance.json` on a successful run. This helper tests the included fixture; use the MCP workflow above to verify a consumer app. The supported and validated Android target is a connected device running a compatible development client; Android emulator support is on the roadmap.
 
-Use a connected, authorized physical Android device with ADB and either **Expo Go supporting SDK 58** or a compatible development client for the fixture. No local Mac emulator is required or started by the test. See [Android fixture acceptance](docs/android-acceptance.md) for development-client launch options. That launch path still needs validation on a device.
+Use a connected, authorized Android device with ADB and either **Expo Go supporting SDK 58** or a compatible development client for the fixture. See [Android fixture acceptance](docs/android-acceptance.md) for development-client launch options.
 
 In the terminal that starts Metro, generate a development connection token and enable the native runtime connection:
 

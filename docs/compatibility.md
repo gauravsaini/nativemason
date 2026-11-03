@@ -14,7 +14,7 @@ NativeMason v0.1 targets one Expo Android/web dependency matrix. Install from th
 | `@expo/metro-runtime` | 58.0.16 |
 | Playwright | Resolved by the lockfile; install its matching Chromium with `pnpm exec playwright install chromium` |
 
-Public package names remain `@rn-layout/contracts`, `@rn-layout/runtime`, and `@rn-layout/bridge`. Both `nativemason` and `rn-layout-bridge` invoke the same MCP stdio executable. The private GitHub repository is [gauravsaini/nativemason](https://github.com/gauravsaini/nativemason); the agreed local checkout is `/Users/Shared/rn-layout-bridge`.
+Workspace package names are `@rn-layout/contracts`, `@rn-layout/runtime`, and `@rn-layout/bridge`. Both `nativemason` and `rn-layout-bridge` invoke the same MCP stdio executable. Packages are not yet published to npm; use the documented local tarball workflow to install them into another project.
 
 ## Verification evidence
 
@@ -24,7 +24,7 @@ Public package names remain `@rn-layout/contracts`, `@rn-layout/runtime`, and `@
 
 The observed device profile was 384 × 832 logical units, pixel ratio 3.75, font scale 1, portrait. The test calibrates actual safe-area insets and root coordinates rather than assuming the example JSON's 412 × 915 profile. Generated calibration, receipt, source-hash, web, and native evidence lives under ignored `artifacts/android-acceptance/`; browser integration timings live under `artifacts/integration/`.
 
-These checks establish the fixture workflow on the tested configuration. Other devices, font scales, navigation arrangements, and app screens need their own matching scenarios and native evidence. The Android helper requires an explicit target and never creates or starts a Mac emulator. Its current preflight requires Android API 24+ and an installed Expo Go package; Expo Go's own version/device requirements also apply.
+These checks establish the fixture workflow on the tested configuration. Other devices, font scales, navigation arrangements, and app screens need their own matching scenarios and native evidence. The Android helper requires an explicitly selected target, Android API 24+, and either a compatible Expo Go installation or development client. Android emulator support is not yet part of the validated support matrix.
 
 ## Supported integration
 

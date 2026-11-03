@@ -4,8 +4,9 @@ NativeMason's packages are not published to npm. A separate app can install
 built local tarballs; copying or vendoring the runtime source is not required.
 Use the compatibility matrix before choosing the app's Expo dependencies. The
 runtime declares React Native 0.88.1; an app using another version needs its own
-compatibility validation. In particular, the fixture app currently uses 0.88.0 and has
-not yet been validated with this package.
+compatibility validation. The workspace fixture is pinned to React Native
+0.88.1; apps using another version should validate their own dependency matrix
+before integration.
 
 From the NativeMason checkout (set `NATIVEMASON_ROOT` to its absolute path):
 
