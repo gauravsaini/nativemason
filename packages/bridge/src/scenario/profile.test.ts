@@ -7,7 +7,7 @@ const {execFileMock,homeMock}=vi.hoisted(()=>({execFileMock:vi.fn(),homeMock:{va
 vi.mock('node:child_process',()=>({execFile:execFileMock}));
 vi.mock('node:os',async()=>({...await vi.importActual<typeof import('node:os')>('node:os'),homedir:()=>homeMock.value}));
 
-import {BridgeFault,type NativeScenarioOptions} from '@nativemason/contracts';
+import {type NativeScenarioOptions} from '@nativemason/contracts';
 import {createNativeProfilePort} from './index.js';
 
 const base:NativeScenarioOptions={appId:'com.example.app',projectRoot:'/tmp/example',target:{targetId:'profile-test-device',platform:'android',kind:'physical'}};

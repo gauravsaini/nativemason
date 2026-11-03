@@ -2,7 +2,7 @@ import {createNativeScenarioPort,createNativeProfilePort} from '../scenario/inde
 import { randomUUID } from 'node:crypto';
 import { mkdir,writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { BridgeFault, ToolSchemas, ToolOutputSchemas, type ToolOutput, type ToolName, type ToolInput, type BrowserPort, type NativePort, type SourcePort, type SpatialSnapshot, type Trial, type WireframeSpec, type CommitReceipt, type EditPlan, type DeviceProfile, type ScenarioPort,type NativeProfilePort,type TransactionSourcePort, type CommitReceipt as Receipt, type NativeConnectionOptions } from '@nativemason/contracts';
+import { BridgeFault, ToolSchemas, ToolOutputSchemas, type ToolOutput, type ToolName, type ToolInput, type BrowserPort, type NativePort, type SourcePort, type SpatialSnapshot, type Trial, type WireframeSpec, type CommitReceipt, type EditPlan,type TransactionPlan, type DeviceProfile, type ScenarioPort,type NativeProfilePort,type TransactionSourcePort, type CommitReceipt as Receipt, type NativeConnectionOptions } from '@nativemason/contracts';
 import { evaluateConstraints,diffSnapshots,buildOverlayScene,profilesMatch,generateFixCandidates,inferConstraints,evaluateDefaultRules } from '../core/index.js';
 import { createBrowserBridge } from '../browser/index.js';
 import { createNativeBridge } from '../native/index.js';
@@ -19,7 +19,7 @@ interface Dependencies {
 interface Session {
   id:string;browser:BrowserPort;native:ClosableNative;source:SourcePort;scenarioId:string;profile:DeviceProfile;
   spec?:WireframeSpec;baseline?:SpatialSnapshot;baselineSpec?:WireframeSpec;baselineOverrideKey?:string;baselineOverrides?:ToolInput<'inspect_ui_spatial_graph'>['profileOverrides'];trial?:Trial;
-  snapshots:Map<string,SpatialSnapshot>;commits:Map<string,{receipt:CommitReceipt;web:SpatialSnapshot|null;plan:EditPlan;trialId:string;spec:WireframeSpec}>;
+  snapshots:Map<string,SpatialSnapshot>;commits:Map<string,{receipt:CommitReceipt;web:SpatialSnapshot|null;plan:EditPlan;transactionPlan?:TransactionPlan;trialId:string;spec:WireframeSpec}>;
   nativeScenario?:ScenarioPort;nativeProfiles?:NativeProfilePort;busy:boolean;nativeTarget?:ToolInput<'open_session'>['nativeTarget'];
 }
 function allPass(results:ReturnType<typeof evaluateConstraints>):boolean {return results.every(r=>r.status==='pass');}
@@ -80,6 +80,7 @@ export class BridgeApplication {
           if(!baseline||baseline.snapshotId!==baselineSnapshotId)throw new BridgeFault('STALE_SNAPSHOT','Inspect the UI before starting a trial');
           if(overrideKey(profileOverrides)!==s.baselineOverrideKey)throw new BridgeFault('STALE_SNAPSHOT','Profile overrides differ from the inspected baseline; inspect again for each profile');
           await this.assertRevisions(s,baseline);
+          if(mutations&&patch===null)throw new BridgeFault('INVALID_INPUT','Reset cannot include mutations');
           if(patch===null){await s.browser.resetTrial();s.trial=undefined;const snapshot=await this.capture(s,profileOverrides);s.baseline=snapshot;return {snapshot,results:s.baselineSpec?evaluateConstraints(snapshot,s.baselineSpec):[],webDiagnostics:snapshot.webDiagnostics};}
           if(mutations&&(elementId!==undefined||patch!==undefined))throw new BridgeFault('INVALID_INPUT','Supply either mutations or the single-element shorthand');
           const batch=mutations??(elementId&&patch?[{elementId,patch}]:[]);
@@ -94,10 +95,23 @@ export class BridgeApplication {
         }
         case 'find_elements': {const {query}=ToolSchemas.find_elements.parse(input);const snapshot=await this.capture(s);return {nodes:snapshot.nodes.filter(n=>[n.id,n.role,n.kind,n.source?.path].some(v=>v?.toLowerCase().includes(query.toLowerCase()))) };}
         case 'infer_constraints': {const {snapshotId,options}=ToolSchemas.infer_constraints.parse(input);const snapshot=s.snapshots.get(snapshotId);if(!snapshot)throw new BridgeFault('STALE_SNAPSHOT','Snapshot expired');return {spec:inferConstraints(snapshot,options),findings:evaluateDefaultRules(snapshot)};}
-        case 'suggest_fix': {const {baselineSnapshotId,limit}=ToolSchemas.suggest_fix.parse(input);const baseline=s.baseline;if(!baseline||baseline.snapshotId!==baselineSnapshotId)throw new BridgeFault('STALE_SNAPSHOT','Inspect again');await this.assertRevisions(s,baseline);const candidates=[];s.trial=undefined;try{for(const candidate of generateFixCandidates(baseline,s.baselineSpec??this.spec(s),limit)){const snapshot=s.browser.trialBatch?await s.browser.trialBatch(candidate.mutations,s.baselineOverrides):await s.browser.trial(candidate.mutations[0].elementId,candidate.mutations[0].patch,s.baselineOverrides);const results=[...evaluateConstraints(snapshot,s.baselineSpec??this.spec(s))];const warnings=snapshot.webDiagnostics?.warnings.filter(w=>w.severity==='confirmed').length??0;candidates.push({...candidate,results,warnings,score:results.filter(r=>r.status!=='pass').length*1000+warnings*100+candidate.mutations.reduce((n,m)=>n+Object.keys(m.patch).length,0)});}}finally{await s.browser.resetTrial();}return {candidates:candidates.sort((a,b)=>a.score-b.score),baselineSnapshotId};}
+        case 'suggest_fix': return this.suggest(s,ToolSchemas.suggest_fix.parse(input));
         case 'run_scenario': {const {script,target}=ToolSchemas.run_scenario.parse(input);if(script.scenarioId!==s.scenarioId)throw new BridgeFault('INVALID_INPUT','Script scenario differs from session');await s.browser.resetTrial();s.trial=undefined;s.baseline=undefined;if(target==='native'){if(!s.nativeScenario)throw new BridgeFault('UNSUPPORTED_ACTION','Configure nativeTarget and nativeScenario on open_session');await s.nativeScenario.run(script);}else{if(!s.browser.runScenario)throw new BridgeFault('UNSUPPORTED_ACTION','Browser scenario driver unavailable');await s.browser.runScenario(script);}const snapshot=target==='native'?await s.native.capture((await this.capture(s)).revisions):await this.capture(s);return {snapshot,results:s.spec?evaluateConstraints(snapshot,s.spec):[]};}
         case 'run_profile_matrix': {const {script,profiles,target}=ToolSchemas.run_profile_matrix.parse(input);const cells=[];s.trial=undefined;s.baseline=undefined;for(const profile of profiles){try{if(script.scenarioId!==s.scenarioId)throw new BridgeFault('INVALID_INPUT','Script scenario differs from session');await s.browser.resetTrial();const run=async()=>{if(target==='native'){if(!s.nativeScenario)throw new BridgeFault('UNSUPPORTED_ACTION','Native scenario driver not configured');await s.nativeScenario.run(script);return s.native.capture((await this.capture(s)).revisions);}if(!s.browser.runScenario)throw new BridgeFault('UNSUPPORTED_ACTION','Browser scenario driver unavailable');await this.capture(s,profile);await s.browser.runScenario(script);return this.capture(s,profile);};if(target==='native'&&!s.nativeProfiles)throw new BridgeFault('UNSUPPORTED_ACTION','Native profile driver not configured');const snapshot=target==='native'?await s.nativeProfiles!.withProfile(profile,run):await run();if(snapshot.status!=='stable')throw new BridgeFault('UNSTABLE_LAYOUT','Matrix layout did not settle');if((profile.fontScale!==undefined&&Math.abs(snapshot.profile.fontScale-profile.fontScale)>0.01)||(profile.orientation&&snapshot.profile.orientation!==profile.orientation))throw new BridgeFault('UNSUPPORTED_PROFILE','Measured native profile differs');const results=s.spec?evaluateConstraints(snapshot,specForProfile(s.spec,snapshot)):[];cells.push({targetId:target==='native'?(s.nativeTarget?.targetId??'native'):'web',scenarioId:script.scenarioId,orientation:snapshot.profile.orientation,fontScale:snapshot.profile.fontScale,status:results.length&&allPass(results)?'passed':'failed',snapshotId:snapshot.snapshotId});}catch(error){cells.push({targetId:target,scenarioId:script.scenarioId,orientation:profile.orientation??s.profile.orientation,fontScale:profile.fontScale??s.profile.fontScale,status:error instanceof BridgeFault&&['UNSUPPORTED_PROFILE','UNSUPPORTED_ACTION'].includes(error.code)?'unsupported':'unavailable',message:error instanceof Error?error.message:String(error)});}}await s.browser.resetTrial();await this.artifact(s.id,'matrix.json',JSON.stringify(cells,null,2));return {cells};}
-        case 'revert_commit': {const {commitId}=ToolSchemas.revert_commit.parse(input);const source=s.source as TransactionSourcePort;if(!source.revert)throw new BridgeFault('UNSUPPORTED_EDIT','Source adapter cannot revert');if(!s.commits.has(commitId))throw new BridgeFault('INVALID_INPUT','Unknown commit');const tx=await source.revert(commitId);const first=tx.files[0];const receipt:Receipt={...tx,...first,diff:tx.files.map(f=>f.diff).join('\n')};s.baseline=undefined;s.trial=undefined;const old=s.commits.get(commitId);if(!old)throw new BridgeFault('INVALID_INPUT','Unknown commit');const entry={...old,receipt,web:null as SpatialSnapshot|null,trialId:'revert:'+commitId};s.commits.set(receipt.commitId,entry);entry.web=await this.captureCommitted(s,receipt);return {receipt,snapshot:entry.web,nativeStatus:'pending'};}
+        case 'revert_commit': {
+          const {commitId}=ToolSchemas.revert_commit.parse(input);const source=s.source as TransactionSourcePort;
+          if(!source.revert)throw new BridgeFault('UNSUPPORTED_EDIT','Source adapter cannot revert');
+          const original=s.commits.get(commitId),spec=structuredClone(original?.spec??this.spec(s));
+          const tx=await source.revert(commitId),first=tx.files[0];
+          const receipt:Receipt={...tx,...first,diff:tx.files.map(f=>f.diff).join('\n')};
+          s.baseline=undefined;s.trial=undefined;
+          const file=await source.read(first.path);
+          const plan:EditPlan={source:{path:first.path,hash:first.newHash,start:0,end:1,line:1,column:0},expectedHash:first.oldHash,updatedText:file.text,diff:first.diff};
+          const entry={receipt,web:null as SpatialSnapshot|null,plan,trialId:'revert:'+commitId,spec};
+          s.commits.set(receipt.commitId,entry);
+          entry.web=await this.captureCommitted(s,receipt);
+          return {receipt,snapshot:entry.web,nativeStatus:'pending'};
+        }
         case 'commit_rn_ast_patch': return await this.commit(s,ToolSchemas.commit_rn_ast_patch.parse(input));
         case 'verify_native_layout': return await this.verify(s,ToolSchemas.verify_native_layout.parse(input).commitId);
         case 'close_session': {
@@ -107,6 +121,29 @@ export class BridgeApplication {
         }
       }
     } finally {s.busy=false;}
+  }
+  private async suggest(s:Session,input:ToolInput<'suggest_fix'>) {
+    const baseline=s.baseline;
+    if(!baseline||baseline.snapshotId!==input.baselineSnapshotId)throw new BridgeFault('STALE_SNAPSHOT','Inspect again');
+    await this.assertRevisions(s,baseline);
+    const candidates=[];
+    s.trial=undefined;
+    try {
+      for(const candidate of generateFixCandidates(baseline,s.baselineSpec??this.spec(s),input.limit)) {
+        try {
+          const snapshot=s.browser.trialBatch?await s.browser.trialBatch(candidate.mutations,s.baselineOverrides):await s.browser.trial(candidate.mutations[0].elementId,candidate.mutations[0].patch,s.baselineOverrides);
+          const results=[...evaluateConstraints(snapshot,s.baselineSpec??this.spec(s))];
+          const warnings=snapshot.webDiagnostics?.warnings.filter(w=>w.severity==='confirmed').length??0;
+          candidates.push({...candidate,results,warnings,score:results.filter(r=>r.status!=='pass').length*1000+warnings*100+candidate.mutations.reduce((n,m)=>n+Object.keys(m.patch).length,0)});
+        } catch(error) {
+          if(error instanceof BridgeFault&&['STALE_SOURCE','STALE_SNAPSHOT','SESSION_NOT_FOUND'].includes(error.code))throw error;
+          candidates.push({...candidate,results:[],warnings:0,score:100000,error:{code:error instanceof BridgeFault?error.code:'INTERNAL_ERROR' as const,message:error instanceof Error?error.message:String(error)}});
+        }
+      }
+    } finally { await s.browser.resetTrial(); }
+    const restored=await this.capture(s,s.baselineOverrides);
+    if(fingerprint(restored)!==fingerprint(baseline)||JSON.stringify(restored.nodes.map(n=>n.rect))!==JSON.stringify(baseline.nodes.map(n=>n.rect))){s.baseline=undefined;throw new BridgeFault('STALE_SNAPSHOT','Candidate reset changed the baseline');}
+    return {candidates:candidates.sort((a,b)=>a.score-b.score),baselineSnapshotId:input.baselineSnapshotId};
   }
   private async open(input:ToolInput<'open_session'>) {
     if((input.nativePort===undefined)!==(input.nativeToken===undefined))throw new BridgeFault('INVALID_INPUT','nativePort and nativeToken must be supplied together');
@@ -140,7 +177,17 @@ export class BridgeApplication {
   }
   private async commit(s:Session,input:ToolInput<'commit_rn_ast_patch'>) {
     const replay=[...s.commits.values()].find(c=>c.trialId===input.trialId);
-    if(replay){if(input.expectedSourceHash!==replay.receipt.oldHash)throw new BridgeFault('STALE_SOURCE','Replay source hash differs');if((await s.source.read(replay.receipt.path)).hash!==replay.receipt.newHash)throw new BridgeFault('STALE_SOURCE','Committed source changed');if(!replay.web)replay.web=await this.captureCommitted(s,replay.receipt);return {receipt:replay.receipt,snapshot:replay.web};}
+    if(replay){
+      const files=replay.receipt.files??[replay.receipt];
+      for(const file of files){
+        const expected=input.expectedRevisions?.[file.path]??(files.length===1?input.expectedSourceHash:undefined);
+        if(expected!==file.oldHash)throw new BridgeFault('STALE_SOURCE','Replay source hash differs',{path:file.path});
+        if((await s.source.read(file.path)).hash!==file.newHash)throw new BridgeFault('STALE_SOURCE','Committed source changed',{path:file.path});
+      }
+      if(input.mode==='preview')return {plan:replay.plan,transactionPlan:replay.transactionPlan};
+      if(!replay.web)replay.web=await this.captureCommitted(s,replay.receipt);
+      return {receipt:replay.receipt,snapshot:replay.web};
+    }
     const trial=s.trial;
     if(!trial||trial.trialId!==input.trialId||!s.baseline)throw new BridgeFault('TRIAL_NOT_FOUND','Trial is no longer active');
     if(!allPass(trial.results))throw new BridgeFault('VERIFICATION_FAILED','Trial must pass every required constraint before committing');
@@ -157,13 +204,14 @@ export class BridgeApplication {
     const planned=planTransaction(files,sourceMutations);
     if(!planned.ok)throw new BridgeFault(planned.error.code,planned.error.message,planned.error.details);
     planned.value.intentId=trial.trialId;
-    for(const consumer of planned.value.blastRadius.consumers){consumer.mountedIds=trial.snapshot.nodes.filter(n=>n.source?.path===consumer.source.path&&n.source.start===consumer.source.start).map(n=>n.id);consumer.requiredScenarios=[s.scenarioId];}
+    for(const consumer of planned.value.blastRadius.consumers){consumer.mountedIds=trial.snapshot.nodes.filter(n=>n.source?.path===consumer.source.path&&n.source.start===consumer.source.start).map(n=>n.id);consumer.requiredScenarios=consumer.mountedIds.length?[s.scenarioId]:[];}
     if(input.mode==='preview')return {plan:planned.value.files[0],transactionPlan:planned.value};
+    if(input.scope?.kind==='shared'&&planned.value.blastRadius.consumers.some(consumer=>consumer.mountedIds.length===0))throw new BridgeFault('VERIFICATION_FAILED','Shared edits require measured coverage for every discovered consumer',{blastRadius:planned.value.blastRadius});
     for(const file of planned.value.files)if((input.expectedRevisions?.[file.source.path]??(planned.value.files.length===1?input.expectedSourceHash:undefined))!==file.expectedHash)throw new BridgeFault('STALE_SOURCE','Apply requires expected hashes for every changed file',{path:file.source.path});
     if(!source.applyTransaction)throw new BridgeFault('UNSUPPORTED_EDIT','Source adapter lacks transaction support');
     const tx=await source.applyTransaction(planned.value);
     const receipt:Receipt={...tx,...tx.files[0],diff:tx.files.map(f=>f.diff).join('\n')};
-    const entry={receipt,web:null as SpatialSnapshot|null,plan:planned.value.files[0],trialId:trial.trialId,spec:structuredClone(s.baselineSpec??this.spec(s))};s.commits.set(receipt.commitId,entry);
+    const entry={receipt,web:null as SpatialSnapshot|null,plan:planned.value.files[0],transactionPlan:planned.value,trialId:trial.trialId,spec:structuredClone(s.baselineSpec??this.spec(s))};s.commits.set(receipt.commitId,entry);
     s.trial=undefined;s.baseline=undefined;
     // A source write can succeed even when HMR fails. Preserve and return its receipt.
     try {
@@ -191,14 +239,24 @@ export class BridgeApplication {
     await this.artifact(s.id,`${commitId}.native.json`,JSON.stringify(result,null,2));return result;
   }
   private async captureCommitted(s:Session,receipt:CommitReceipt):Promise<SpatialSnapshot|null> {
-    for(const file of receipt.files??[receipt])if((await s.source.read(file.path)).hash!==file.newHash)throw new BridgeFault('STALE_SOURCE','Committed source changed before reload verification');
+    const files=receipt.files??[receipt];
+    const assertFiles=async()=>{for(const file of files)if((await s.source.read(file.path)).hash!==file.newHash)throw new BridgeFault('STALE_SOURCE','Committed source changed before reload verification');};
+    await assertFiles();
     await s.browser.resetTrial();
     const deadline=Date.now()+20_000;
+    let lastError:unknown;
     do {
-      const snapshot=await this.capture(s);
-      if((receipt.files??[receipt]).every(f=>snapshot.revisions[f.path]===f.newHash))return snapshot;
+      await assertFiles();
+      try {
+        const snapshot=await this.capture(s);
+        if(files.every(file=>snapshot.revisions[file.path]===file.newHash))return snapshot;
+      } catch(error) {
+        if(!(error instanceof BridgeFault)||!['STALE_SOURCE','STALE_SNAPSHOT','MISSING_ELEMENT','UNSTABLE_LAYOUT','TIMEOUT'].includes(error.code))throw error;
+        lastError=error;
+      }
       await new Promise(resolve=>setTimeout(resolve,100));
     }while(Date.now()<deadline);
+    await this.artifact(s.id,receipt.commitId+'.reload-timeout.json',JSON.stringify({receipt,error:lastError instanceof Error?lastError.message:'Committed revisions did not arrive'},null,2));
     return null;
   }
   private async artifact(sessionId:string,name:string,data:string|Uint8Array):Promise<string> {

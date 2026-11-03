@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, open, readFile, writeFile, rename, unlink, readdir, realpath, lstat } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, unlink, readdir, realpath, lstat } from 'node:fs/promises';
 import path from 'node:path';
 import { createTwoFilesPatch } from 'diff';
 import { BridgeFault,TransactionPlanSchema,TransactionReceiptSchema,type TransactionPlan,type TransactionReceipt,type TransactionSourcePort } from '@nativemason/contracts';
@@ -37,7 +37,7 @@ export function createTransactionSourcePort(projectRoot:string):TransactionSourc
         if(path.dirname(item.temporary)!==path.dirname(file)||!path.basename(item.temporary).startsWith(path.basename(file)+'.')||!item.temporary.endsWith('.stage'))throw new BridgeFault('INVALID_INPUT','Invalid recovery staging path');
         if(hashSource(current)===hashSource(item.before)){await remove(item.temporary);continue;}
         if(hashSource(current)!==hashSource(item.after))throw new BridgeFault('STALE_SOURCE','Transaction recovery conflicts with external edits',{transactionId:journal.id,path:item.path});
-        const temp=file+'.'+randomUUID()+'.rollback';await writeFile(temp,item.before,{mode:item.mode,flag:'wx'});await rename(temp,file);await syncDirectory(path.dirname(file));await remove(item.temporary);
+        const temp=file+'.'+randomUUID()+'.rollback';const rollback=await open(temp,'wx',item.mode);try{await rollback.writeFile(item.before);await rollback.chmod(item.mode);await rollback.sync();}finally{await rollback.close();}await rename(temp,file);await syncDirectory(path.dirname(file));await remove(item.temporary);
       }
       await remove(journalPath);
     }

@@ -4,7 +4,7 @@ import { DeviceProfileSchema,RectSchema } from './geometry.js';
 import { WireframeSpecSchema,ConstraintResultSchema } from './constraints.js';
 import { RnStylePatchSchema } from './styles.js';
 import { SpatialSnapshotSchema,SpatialDeltaSchema,ProfileOverridesSchema,WebDiagnosticsSchema } from './graph.js';
-import { CommitReceiptSchema,EditPlanSchema } from './source.js';
+import { CommitReceiptSchema,EditPlanSchema,BridgeErrorSchema } from './source.js';
 const session={sessionId:z.string().min(1)};
 export const ToolSchemas={
 open_session:z.object({projectRoot:z.string().min(1),webUrl:z.string().url(),scenarioId:z.string().min(1),profile:DeviceProfileSchema,nativeTarget:NativeTargetSchema.optional(),nativeScenario:z.object({appId:z.string().min(1),adbSerial:z.string().optional(),maestroPath:z.string().optional(),ssh:z.object({destination:z.string(),identityFile:z.string().optional()}).strict().optional()}).strict().optional(),nativePort:z.number().int().min(1024).max(65535).optional(),nativeToken:z.string().min(16).optional()}).strict(),
@@ -41,7 +41,7 @@ export const ToolOutputSchemas={
  revert_commit:z.object({receipt:CommitReceiptSchema,snapshot:SpatialSnapshotSchema.nullable(),nativeStatus:z.literal('pending')}).strict(),
  find_elements:z.object({nodes:z.array(SpatialSnapshotSchema.innerType().shape.nodes.element)}).strict(),
  infer_constraints:z.object({spec:WireframeSpecSchema,findings:z.array(RuleFindingSchema)}).strict(),
- suggest_fix:z.object({candidates:z.array(z.object({mutations:z.array(LayoutMutationSchema),reason:z.string(),constraintIds:z.array(z.string()),results:z.array(ConstraintResultSchema),score:z.number(),warnings:z.number()})),baselineSnapshotId:z.string()}).strict(),
+ suggest_fix:z.object({candidates:z.array(z.object({mutations:z.array(LayoutMutationSchema),reason:z.string(),constraintIds:z.array(z.string()),results:z.array(ConstraintResultSchema),score:z.number(),warnings:z.number(),error:BridgeErrorSchema.optional()})),baselineSnapshotId:z.string()}).strict(),
  run_scenario:z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema)}).strict(),
  run_profile_matrix:z.object({cells:z.array(MatrixCellSchema)}).strict(),
  close_session:z.object({closed:z.literal(true)}).strict(),
@@ -49,4 +49,4 @@ export const ToolOutputSchemas={
 export type ToolOutput<K extends ToolName>=z.infer<(typeof ToolOutputSchemas)[K]>;
 /** MCP's object-root output schema describes both existing trial and reset wire shapes.
  * ToolOutputSchemas still enforces the complete union before any response is sent. */
-export const ToolMcpOutputSchemas={...ToolOutputSchemas,simulate_layout_mutation:TrialSchema.partial().extend({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),webDiagnostics:WebDiagnosticsSchema.optional()}).strict()} as const;
+export const ToolMcpOutputSchemas={...ToolOutputSchemas,commit_rn_ast_patch:ToolOutputSchemas.commit_rn_ast_patch.innerType(),simulate_layout_mutation:TrialSchema.partial().extend({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),webDiagnostics:WebDiagnosticsSchema.optional()}).strict()} as const;
