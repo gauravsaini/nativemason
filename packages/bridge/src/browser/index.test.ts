@@ -44,13 +44,13 @@ const open = (path = '/', timeoutMs = 2000) => createBrowserBridge({ webUrl: ori
 
 describe('Chromium browser adapter', () => {
   it('emulates CSS safe-area environment for nested providers and rotates it with the profile',async()=>{
-    const safeProfile={...profile,insets:{top:12,right:0,bottom:8,left:0}};
+    const safeProfile={...profile,insets:{top:12.25,right:0,bottom:8.25,left:0}};
     const browser=await createBrowserBridge({webUrl:origin+'/safe-area',sessionId:'test-session',scenarioId:'harness',profile:safeProfile});
     try{
       expect((await browser.capture()).nodes[0].rect).toMatchObject({x:0,y:12});
       const rotated=await browser.capture({orientation:'portrait'});
       expect(rotated.nodes[0].rect).toMatchObject({x:12,y:0});
-      expect(rotated.profile.insets).toEqual({top:0,right:8,bottom:0,left:12});
+      expect(rotated.profile.insets).toEqual({top:0,right:8.25,bottom:0,left:12.25});
     }finally{await browser.close();}
   });
   it('recognizes user-agent shadow content and leaves ancestor hit evidence uncertain',async()=>{

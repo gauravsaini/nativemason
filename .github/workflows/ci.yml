@@ -82,7 +82,7 @@ jobs:
           script: |
             mkdir -p artifacts/android-emulator-acceptance
             adb -s "$ADB_SERIAL" install -r examples/expo-fixture/android/app/build/outputs/apk/debug/app-debug.apk
-            CI= yarn workspace @nativemason/expo-fixture web > artifacts/android-emulator-acceptance/metro.log 2>&1 &
+            CI=false yarn workspace @nativemason/expo-fixture web > artifacts/android-emulator-acceptance/metro.log 2>&1 &
             node scripts/wait-for-metro.mjs
             yarn test:e2e:android:emulator
       - uses: actions/upload-artifact@v4
@@ -125,7 +125,7 @@ jobs:
           mkdir -p artifacts/ios-simulator-acceptance
           xcodebuild -version > artifacts/ios-simulator-acceptance/xcode.txt
           xcrun simctl list devices booted --json > artifacts/ios-simulator-acceptance/simulator.json
-          CI= yarn workspace @nativemason/expo-fixture web > artifacts/ios-simulator-acceptance/metro.log 2>&1 &
+          CI=false yarn workspace @nativemason/expo-fixture web > artifacts/ios-simulator-acceptance/metro.log 2>&1 &
           node scripts/wait-for-metro.mjs
           yarn test:e2e:ios
       - uses: actions/upload-artifact@v4
