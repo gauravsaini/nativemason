@@ -13,6 +13,22 @@ Four abstract geometric SVG design options for NativeMason:
   <img src="assets/logos/options-preview.png" alt="NativeMason Abstract Logo Options Preview" width="800" />
 </p>
 
+## App icon & logo options
+
+Eight mobile and desktop application icons under `assets/app-logos/`, formatted as 512×512 squircle masters (iOS, macOS, and desktop) along with Android Adaptive Icon assets:
+
+| Cyber Keystone (Pro Dark) | Neon Blueprint (Spatial) | Solar Monolith (Artisan) | Kinetic Apex (Violet) |
+| :---: | :---: | :---: | :---: |
+| ![Cyber Keystone](assets/app-logos/01-cyber-keystone.svg) | ![Neon Blueprint](assets/app-logos/02-neon-blueprint.svg) | ![Solar Monolith](assets/app-logos/03-solar-monolith.svg) | ![Kinetic Apex](assets/app-logos/04-kinetic-apex.svg) |
+| **Stealth Mono (Minimal Dark)** | **Studio Snow (Ceramic Light)** | **Terminal Amber (Phosphor)** | **Vision Acrylic (Glassmorphic)** |
+| ![Stealth Mono](assets/app-logos/05-stealth-mono.svg) | ![Studio Snow](assets/app-logos/06-snow-mono.svg) | ![Terminal Amber](assets/app-logos/07-terminal-amber.svg) | ![Vision Acrylic](assets/app-logos/08-vision-acrylic.svg) |
+
+<p align="center">
+  <img src="assets/app-logos/preview.png" alt="NativeMason App Logo Suite Preview" width="800" />
+</p>
+
+Also includes Android adaptive icons in [`assets/app-logos/adaptive-icon/`](assets/app-logos/adaptive-icon/) (`foreground.svg` and `background.svg`) adhering to Android's 108dp safe-zone specifications.
+
 NativeMason gives an MCP coding agent a measured React Native layout loop: inspect an Expo web mirror, test React Native style props in Chromium, preview or apply a small source edit, and verify the committed result on Android.
 
 The web mirror is a trial environment. A source write remains **native verification pending** until matching Android source revisions and layout constraints pass. NativeMason does not call a model API or interpret design images.

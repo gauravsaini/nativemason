@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Squircle Clip Path -->
+    <clipPath id="squircleClip3">
+      <rect x="0" y="0" width="512" height="512" rx="115" />
+    </clipPath>
+
+    <!-- App Background -->
+    <radialGradient id="appBg3" cx="50%" cy="35%" r="80%">
+      <stop offset="0%" stop-color="#241914" />
+      <stop offset="55%" stop-color="#140E0A" />
+      <stop offset="100%" stop-color="#060403" />
+    </radialGradient>
+
+    <!-- Ambient Core Glow -->
+    <radialGradient id="appGlow3" cx="50%" cy="46%" r="50%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.35" />
+      <stop offset="60%" stop-color="#EA580C" stop-opacity="0.14" />
+      <stop offset="100%" stop-color="#140E0A" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Specular Sheen -->
+    <linearGradient id="topSheen3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.18" />
+      <stop offset="45%" stop-color="#FFFFFF" stop-opacity="0.03" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Prismatic Facet Gradients -->
+    <linearGradient id="solarTop3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF3C7" />
+      <stop offset="50%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+
+    <linearGradient id="terracottaLeft3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FB923C" />
+      <stop offset="50%" stop-color="#EA580C" />
+      <stop offset="100%" stop-color="#9A3412" />
+    </linearGradient>
+
+    <linearGradient id="umberRight3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C2410C" />
+      <stop offset="50%" stop-color="#7C2D12" />
+      <stop offset="100%" stop-color="#431407" />
+    </linearGradient>
+
+    <linearGradient id="keystoneAmber3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB" />
+      <stop offset="40%" stop-color="#FDE68A" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+
+    <!-- Glow & Shadow Filters -->
+    <filter id="appGlowFilter3" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="appDropShadow3" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#000000" flood-opacity="0.85" />
+    </filter>
+  </defs>
+
+  <!-- Base Icon Plate -->
+  <g clip-path="url(#squircleClip3)">
+    <rect width="512" height="512" fill="url(#appBg3)" />
+
+    <!-- Ambient Core Glow -->
+    <circle cx="256" cy="240" r="210" fill="url(#appGlow3)" />
+
+    <!-- Hexagonal Matrix Guidelines -->
+    <g opacity="0.18" stroke="#F59E0B" stroke-width="1">
+      <line x1="256" y1="50" x2="256" y2="440" stroke-dasharray="4 8" />
+      <line x1="80" y1="240" x2="432" y2="240" stroke-dasharray="4 8" />
+      <circle cx="256" cy="240" r="145" fill="none" stroke-dasharray="4 8" />
+      <line x1="126" y1="165" x2="386" y2="315" stroke-dasharray="3 6" />
+      <line x1="126" y1="315" x2="386" y2="165" stroke-dasharray="3 6" />
+    </g>
+
+    <!-- Corner Target Ticks -->
+    <g stroke="#F59E0B" stroke-width="1.5" opacity="0.4">
+      <path d="M 60 84 L 60 60 L 84 60" fill="none" />
+      <path d="M 452 84 L 452 60 L 428 60" fill="none" />
+      <path d="M 60 428 L 60 452 L 84 452" fill="none" />
+      <path d="M 452 428 L 452 452 L 428 452" fill="none" />
+    </g>
+
+    <!-- MAIN EMBLEM (The Mason Monolith: 3 Interlocking Prisms forming 'M' / Keystone) -->
+    <g filter="url(#appDropShadow3)">
+      <!-- Left Pillar Prism -->
+      <polygon points="136,180 200,144 251,172 187,208" fill="url(#solarTop3)" />
+      <polygon points="136,180 187,208 187,344 136,316" fill="url(#terracottaLeft3)" />
+      <polygon points="187,208 251,172 251,308 187,344" fill="url(#umberRight3)" />
+      <line x1="187" y1="208" x2="187" y2="344" stroke="#FED7AA" stroke-width="2" stroke-linecap="round" />
+      <line x1="136" y1="180" x2="187" y2="208" stroke="#FFFBEB" stroke-width="2.5" stroke-linecap="round" />
+
+      <!-- Right Pillar Prism -->
+      <polygon points="261,172 312,144 376,180 325,208" fill="url(#solarTop3)" />
+      <polygon points="261,172 325,208 325,344 261,308" fill="url(#terracottaLeft3)" opacity="0.85" />
+      <polygon points="325,208 376,180 376,316 325,344" fill="url(#umberRight3)" />
+      <line x1="325" y1="208" x2="325" y2="344" stroke="#EA580C" stroke-width="2" stroke-linecap="round" />
+      <line x1="376" y1="180" x2="325" y2="208" stroke="#FFFBEB" stroke-width="2.5" stroke-linecap="round" />
+
+      <!-- Central Floating Keystone Prism -->
+      <g filter="url(#appGlowFilter3)">
+        <polygon points="256,100 305,126 256,152 207,126" fill="url(#keystoneAmber3)" />
+        <polygon points="207,126 256,152 256,242 207,216" fill="url(#terracottaLeft3)" />
+        <polygon points="256,152 305,126 305,216 256,242" fill="url(#umberRight3)" />
+        <polygon points="207,216 256,242 305,216 256,254" fill="#F97316" />
+
+        <!-- Apex Crease Highlights -->
+        <line x1="256" y1="100" x2="256" y2="242" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" />
+        <line x1="207" y1="126" x2="256" y2="152" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" />
+        <line x1="256" y1="152" x2="305" y2="126" stroke="#FEF3C7" stroke-width="2.5" stroke-linecap="round" />
+      </g>
+
+      <!-- Foundation Plinths -->
+      <polygon points="136,316 187,344 187,356 136,328" fill="#7C2D12" />
+      <polygon points="325,344 376,316 376,328 325,356" fill="#431407" />
+
+      <!-- Optical Archway Guide -->
+      <path d="M 213 338 Q 256 278 299 338" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-dasharray="4 4" opacity="0.85" />
+      <circle cx="256" cy="303" r="4.5" fill="#FDE68A" />
+
+      <!-- Structural Vertices -->
+      <circle cx="256" cy="100" r="4.5" fill="#FFFBEB" />
+      <circle cx="136" cy="180" r="4" fill="#FDE68A" />
+      <circle cx="376" cy="180" r="4" fill="#FDE68A" />
+      <circle cx="187" cy="344" r="4" fill="#FB923C" />
+      <circle cx="325" cy="344" r="4" fill="#FB923C" />
+    </g>
+
+    <!-- Top Specular Sheen -->
+    <rect width="512" height="230" fill="url(#topSheen3)" />
+  </g>
+
+  <!-- Squircle Border Stroke (Bezel Rim Light) -->
+  <rect x="1" y="1" width="510" height="510" rx="114" fill="none" stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="2" />
+  <rect x="2" y="2" width="508" height="508" rx="113" fill="none" stroke="#F59E0B" stroke-opacity="0.3" stroke-width="1" />
+</svg>
