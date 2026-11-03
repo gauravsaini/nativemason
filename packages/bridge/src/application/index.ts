@@ -17,7 +17,7 @@ interface Dependencies {
 }
 interface Session {
   id:string;browser:BrowserPort;native:ClosableNative;source:SourcePort;scenarioId:string;profile:DeviceProfile;
-  spec?:WireframeSpec;baseline?:SpatialSnapshot;baselineSpec?:WireframeSpec;baselineOverrideKey?:string;trial?:Trial;
+  spec?:WireframeSpec;baseline?:SpatialSnapshot;baselineSpec?:WireframeSpec;baselineOverrideKey?:string;baselineOverrides?:ToolInput<'inspect_ui_spatial_graph'>['profileOverrides'];trial?:Trial;
   snapshots:Map<string,SpatialSnapshot>;commits:Map<string,{receipt:CommitReceipt;web:SpatialSnapshot|null;plan:EditPlan;trialId:string;spec:WireframeSpec}>;
   busy:boolean;
 }
@@ -49,13 +49,13 @@ export class BridgeApplication {
         case 'load_wireframe_spec': {
           const {spec}=ToolSchemas.load_wireframe_spec.parse(input);
           if(spec.scenarioId!==s.scenarioId||!profilesMatch(spec.profile,s.profile))throw new BridgeFault('INVALID_INPUT','Spec scenario and profile must match the session');
-          s.spec=spec;s.trial=undefined;s.baseline=undefined;s.baselineSpec=undefined;s.baselineOverrideKey=undefined;
+          s.spec=spec;s.trial=undefined;s.baseline=undefined;s.baselineSpec=undefined;s.baselineOverrideKey=undefined;s.baselineOverrides=undefined;
           return {specId:randomUUID()};
         }
         case 'inspect_ui_spatial_graph': {
           const {profileOverrides}=ToolSchemas.inspect_ui_spatial_graph.parse(input);
           await s.browser.resetTrial();s.trial=undefined;
-          const snapshot=await this.capture(s,profileOverrides);s.baseline=snapshot;s.baselineOverrideKey=overrideKey(profileOverrides);
+          const snapshot=await this.capture(s,profileOverrides);s.baseline=snapshot;s.baselineOverrideKey=overrideKey(profileOverrides);s.baselineOverrides=profileOverrides?structuredClone(profileOverrides):undefined;
           s.baselineSpec=s.spec?specForProfile(s.spec,snapshot):undefined;
           return {snapshot,results:s.baselineSpec?evaluateConstraints(snapshot,s.baselineSpec):[],webDiagnostics:snapshot.webDiagnostics};
         }
@@ -134,7 +134,7 @@ export class BridgeApplication {
     if(!allPass(trial.results))throw new BridgeFault('VERIFICATION_FAILED','Trial must pass every required constraint before committing');
     if(input.mode==='apply'&&s.baseline&&!profilesMatch(s.baseline.profile,s.profile))throw new BridgeFault('UNSUPPORTED_PROFILE','Trials captured with profile overrides can be previewed but not committed for Android acceptance');
     if(input.mode==='apply'&&trial.snapshot.webDiagnostics?.warnings.some(w=>w.severity==='confirmed'))throw new BridgeFault('VERIFICATION_FAILED','Confirmed Chromium diagnostics must be resolved before applying this trial');
-    const current=await s.browser.capture();
+    const current=await s.browser.capture(s.baselineOverrides);
     if(fingerprint(current)!==fingerprint(trial.snapshot)||JSON.stringify(current.nodes.map(n=>n.rect))!==JSON.stringify(trial.snapshot.nodes.map(n=>n.rect)))throw new BridgeFault('STALE_SNAPSHOT','Trial layout changed before commit');
     await this.assertRevisions(s,s.baseline);
     const node=trial.snapshot.nodes.find(n=>n.id===trial.elementId)!;
