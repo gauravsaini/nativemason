@@ -27,6 +27,6 @@ async function main(){
  new URL(url);
  if(Number((await adb(['shell','getprop','ro.build.version.sdk'])).trim())<24)throw Error('Android API24+ required');
  const packages=await adb(['shell','pm','list','packages','--user','current',appId]);if(!packages.split(/\r?\n/).includes('package:'+appId))throw Error('Install a compatible Expo Go or fixture development build');
- await runNativeAcceptance({target:{targetId:serial,platform:'android',kind:'physical'},webUrl:process.env.NM_ANDROID_WEB_URL??`http://127.0.0.1:${metroPort}/?scenario=broken-footer`,launch:async()=>{await adb(['reverse',`tcp:${metroPort}`,`tcp:${metroPort}`]);await adb(['reverse','tcp:19482','tcp:19482']);await adb(['shell','am','start','--user','current','-a','android.intent.action.VIEW','-d',url,appId]);}});
+ await runNativeAcceptance({appId,target:{targetId:serial,platform:'android',kind:'physical'},webUrl:process.env.NM_ANDROID_WEB_URL??`http://127.0.0.1:${metroPort}/?scenario=broken-footer`,launch:async()=>{await adb(['reverse',`tcp:${metroPort}`,`tcp:${metroPort}`]);await adb(['reverse','tcp:19482','tcp:19482']);await adb(['shell','am','start','--user','current','-a','android.intent.action.VIEW','-d',url,appId]);}});
 }
 main().catch(error=>{console.error('ANDROID_ACCEPTANCE_INCOMPLETE',error);process.exitCode=1;});

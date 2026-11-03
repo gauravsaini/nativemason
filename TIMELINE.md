@@ -23,3 +23,7 @@
 3. **Files changed**: `assets/app-logos/*`, `README.md`
 
 
+
+## NativeMason 0.2
+
+Migrated to Yarn and NativeMason package names, froze workflow contracts, and integrated parallel editor/runtime/browser work. Added journaled transactions and revert, automatic instrumentation, native target protocol, text probes, scenario profiles, MCP adoption tools, and release packaging. Unit and live workflow validation is in progress; native platform evidence and clean-checkout acceptance remain release gates. Physical target identity is retained only in ignored local artifacts.

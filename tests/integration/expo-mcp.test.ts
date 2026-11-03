@@ -71,6 +71,24 @@ describe('real Expo + Chromium + MCP',()=>{
    } finally {await call('close_session',{sessionId:opened.sessionId});}
   }
  },120000);
+ it('runs stateful checkout and applies/reverts a two-file transaction',async()=>{
+  const scenarioId='keyboard-form';const opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario='+scenarioId,scenarioId,profile:spec.profile,nativePort:19486,nativeToken:'nativemason-integration-token'});const sessionId=opened.sessionId;
+  const paths=['ComplexFlows.tsx','OrderSummary.tsx'];const originals=await Promise.all(paths.map(file=>readFile(path.join(project,file),'utf8')));
+  try{
+   await call('load_wireframe_spec',{sessionId,spec:{...spec,scenarioId,requiredElementIds:['checkout-submit'],constraints:[{id:'button-size',type:'minTouchTarget',elementId:'checkout-submit',width:48,height:48,tolerance:0}]}});
+   const state=await call('run_scenario',{sessionId,target:'web',script:{scenarioId,reset:[{type:'hook',name:'resetCheckout'}],actions:[{type:'input',elementId:'checkout-email',text:'person@example.com'},{type:'tap',elementId:'checkout-toggle'},{type:'wait',elementId:'checkout-details',timeoutMs:5000}]}});expect(state.snapshot.nodes.some((node:any)=>node.id==='checkout-details')).toBe(true);
+   const inspected=await call('inspect_ui_spatial_graph',{sessionId});
+   const trial=await call('simulate_layout_mutation',{sessionId,baselineSnapshotId:inspected.snapshot.snapshotId,mutations:[{elementId:'checkout-toggle',patch:{marginTop:20}},{elementId:'checkout-summary',patch:{fontSize:18}}]});
+   const input={sessionId,trialId:trial.trialId,expectedRevisions:trial.snapshot.revisions};const preview=await call('commit_rn_ast_patch',{...input,mode:'preview'});expect(preview.transactionPlan.files).toHaveLength(2);
+   const committed=await call('commit_rn_ast_patch',{...input,mode:'apply'});expect(committed.webStatus).toBe('passed');expect(committed.receipt.files).toHaveLength(2);
+   const reverted=await call('revert_commit',{sessionId,commitId:committed.receipt.commitId});expect(reverted.receipt.nativeStatus).toBe('pending');expect(reverted.snapshot).not.toBeNull();
+   for(let i=0;i<paths.length;i++)expect(await readFile(path.join(project,paths[i]),'utf8')).toBe(originals[i]);
+  }finally{for(let i=0;i<paths.length;i++)await writeFile(path.join(project,paths[i]),originals[i]);await call('close_session',{sessionId});}
+ },120000);
+ it('renders NativeWind theme utilities and previews a conditional class edit',async()=>{
+  const scenarioId='nativewind';const {sessionId}=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario='+scenarioId,scenarioId,profile:spec.profile,nativePort:19487,nativeToken:'nativemason-integration-token'});
+  try{await call('load_wireframe_spec',{sessionId,spec:{...spec,scenarioId,requiredElementIds:['utility-cancel'],constraints:[{id:'utility-size',type:'minTouchTarget',elementId:'utility-cancel',width:48,height:48,tolerance:0}]}});const before=await call('inspect_ui_spatial_graph',{sessionId});expect(before.snapshot.nodes.find((node:any)=>node.id==='utility-cancel').rect.height).toBe(48);const trial=await call('simulate_layout_mutation',{sessionId,baselineSnapshotId:before.snapshot.snapshotId,elementId:'utility-footer',patch:{flexDirection:'row',gap:12}});const preview=await call('commit_rn_ast_patch',{sessionId,trialId:trial.trialId,expectedRevisions:trial.snapshot.revisions,mode:'preview',scope:{kind:'nativewind',branch:'alternate'}});expect(preview.plan.diff).toContain('flex-row');expect(preview.plan.diff).toContain('gap-');}finally{await call('close_session',{sessionId});}
+ },60000);
  it('sweeps orientation with a profile-bound baseline and reports browser-only hazards',async()=>{
   const overlap=WireframeSpecSchema.parse(JSON.parse(await readFile(path.join(root,'packages/contracts/fixtures/overlap.json'),'utf8')));
   const opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario=intentional-overlap',scenarioId:overlap.scenarioId,profile:overlap.profile,nativePort:19485,nativeToken:'nativemason-integration-token'});

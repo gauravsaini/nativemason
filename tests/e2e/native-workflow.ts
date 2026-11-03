@@ -3,14 +3,16 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { BridgeApplication } from '../../packages/bridge/src/application/index.js';
+import {createNativeProfilePort} from '../../packages/bridge/src/scenario/index.js';
+import {evaluateConstraints} from '../../packages/bridge/src/core/index.js';
 import { createNativeBridge } from '../../packages/bridge/src/native/index.js';
-import { WireframeSpecSchema, type NativeTarget, type SpatialSnapshot, type ToolOutput } from '@nativemason/contracts';
+import { WireframeSpecSchema, type NativePort,type NativeTarget, type SpatialSnapshot, type ToolOutput } from '@nativemason/contracts';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const pause=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 
 /** Uses actual runtime measurements. Missing hardware, stale builds, and failed constraints fail the command. */
-export async function runNativeAcceptance(options:{target:NativeTarget;launch():Promise<void>;nativePort?:number;webUrl?:string}):Promise<void>{
+export async function runNativeAcceptance(options:{target:NativeTarget;appId?:string;launch():Promise<void>;nativePort?:number;webUrl?:string}):Promise<void>{
   const {target}=options,projectRoot=path.join(root,'examples/expo-fixture'),sourcePath=path.join(projectRoot,'App.tsx');
   const nativePort=options.nativePort??19482,token=process.env.EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN;
   if(!token||token.length<16)throw Error('Set EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN to the same pairing token used by Metro (at least 16 characters)');
@@ -25,7 +27,8 @@ export async function runNativeAcceptance(options:{target:NativeTarget;launch():
     assert.equal(calibrated.platform,target.platform);assert.equal(calibrated.nativeTarget?.targetId,target.targetId);
     await writeFile(path.join(artifactRoot,'calibration.json'),JSON.stringify(calibrated,null,2));
   }finally{await calibration.close();}
-  const app=new BridgeApplication({artifactsRoot:artifactRoot});
+  let liveNative:NativePort|undefined;
+  const app=new BridgeApplication({artifactsRoot:artifactRoot,native:async options=>{const port=await createNativeBridge(options);liveNative=port;return port;}});
   try{
     const {sessionId}=await app.execute('open_session',{projectRoot,webUrl:options.webUrl??'http://127.0.0.1:8081/?scenario=broken-footer',scenarioId:'broken-footer',profile:calibrated.profile,nativePort,nativeToken:token,nativeTarget:target});
     const sourceSpec=JSON.parse(await readFile(path.join(root,'packages/contracts/fixtures/footer.json'),'utf8'));
@@ -46,6 +49,21 @@ export async function runNativeAcceptance(options:{target:NativeTarget;launch():
     };
     const verified=await verify(applied.receipt.commitId);assert.equal(verified.passed,true,JSON.stringify(verified.results));assert.equal(verified.snapshot.platform,target.platform);assert.equal(verified.receipt.nativeStatus,'passed');
     await writeFile(path.join(artifactRoot,'acceptance.json'),JSON.stringify({target,preview,applied,verified},null,2));
+    const textRule={id:'description-fits',type:'textFits' as const,elementId:'description',tolerance:2};
+    const textResults=evaluateConstraints(verified.snapshot,{...spec,constraints:[textRule]});
+    assert.ok(textResults.every(result=>result.status==='pass'),'Settled native text probe must establish fit: '+JSON.stringify(textResults));
+    const profiles=createNativeProfilePort({target,appId:options.appId??(target.platform==='ios'?'dev.nativemason.fixture':'dev.rnlayout.fixture'),projectRoot,readProfile:async()=>(await liveNative!.capture(verified.snapshot.revisions)).profile});
+    const requestedScale=target.platform==='android'?1.3:1.353;
+    const scaled=await profiles.withProfile({fontScale:requestedScale},async()=>{
+      const snapshot=await liveNative!.capture(verified.snapshot.revisions);
+      const results=evaluateConstraints(snapshot,{...spec,profile:snapshot.profile,constraints:[...spec.constraints,textRule]});
+      assert.ok(results.every(result=>result.status==='pass'),'Native font-scale constraints must pass: '+JSON.stringify(results));
+      return {snapshot,results};
+    });
+    const restored=await liveNative!.capture(verified.snapshot.revisions);
+    assert.ok(Math.abs(restored.profile.fontScale-verified.snapshot.profile.fontScale)<0.01,'Original font scale must be restored');
+    await writeFile(path.join(artifactRoot,'font-scale.json'),JSON.stringify({requestedScale,scaled,restored},null,2));
+
     const reverted=await app.execute('revert_commit',{sessionId,commitId:applied.receipt.commitId});assert.equal(reverted.receipt.nativeStatus,'pending');assert.equal(await readFile(sourcePath,'utf8'),original,'Revert must restore original source');
     const revertEvidence=await verify(reverted.receipt.commitId);assert.equal(revertEvidence.passed,false,'Reverting the deliberate fix must expose the original regression');assert.ok(revertEvidence.results.some(result=>result.status==='fail'));
     await writeFile(path.join(artifactRoot,'revert.json'),JSON.stringify({reverted,verification:revertEvidence},null,2));

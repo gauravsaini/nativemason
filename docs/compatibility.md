@@ -1,47 +1,36 @@
-# NativeMason compatibility
+# Compatibility and verification
 
-NativeMason v0.1 targets one Expo Android/web dependency matrix. Install from the committed `yarn-lock.yaml` with `yarn install --frozen-lockfile`; dependency ranges elsewhere do not expand the tested app matrix.
+NativeMason 0.2 uses a pinned Expo development fixture. Install `yarn.lock` with `yarn install --immutable`; package dependency ranges do not broaden the verified matrix.
 
-| Component | Pinned fixture / validated toolchain |
+| Component | Fixture/toolchain |
 | --- | --- |
-| Node.js | 24; implementation verified with 24.18.0 |
-| yarn | 10.28.2 |
+| Node.js | 24 |
+| Yarn | 4.18.1, `nodeLinker: node-modules` |
 | Expo | 58.0.22 |
 | React / React DOM | 19.3.0 |
 | React Native | 0.88.1 |
 | React Native Web | 0.21.4 |
-| `react-native-safe-area-context` | 5.10.1 |
-| `@expo/metro-runtime` | 58.0.16 |
-| Playwright | Resolved by the lockfile; install its matching Chromium with `yarn exec playwright install chromium` |
+| Safe-area context | 5.10.1 |
+| NativeWind / Tailwind | 4.2.7 / 3.4.17 |
+| Reanimated / Worklets | 4.7.1 / 0.13.0, from Expo's bundled-module matrix |
+| Playwright | Locked version and its matching Chromium |
 
-Workspace package names are `@nativemason/contracts`, `@nativemason/runtime`, and `nativemason`. Both `nativemason` and `rn-layout-bridge` invoke the same MCP stdio executable. Packages are not yet published to npm; use the documented local tarball workflow to install them into another project.
+Public package names are `nativemason`, `@nativemason/runtime`, and `@nativemason/contracts`. They are prepared as local tarballs until npm release approval. The root workspace is private.
 
-## Verification evidence
+## What the checks establish
 
-- `yarn lint`, `yarn typecheck`, and `yarn test` cover contracts, pure geometry, registry behavior, native transport, source editing, and Chromium/overlay behavior.
-- `yarn test:integration` runs the actual Expo web fixture, Chromium, MCP tools, source preview/apply/reload, executable stdio discovery, and honest native-disconnection reporting.
-- `ADB_SERIAL='<device-serial>' yarn test:e2e:android` has passed on an authorized physical Samsung API 37 device with Expo Go for SDK 58. It verifies the complete broken-footer correction and restores the fixture afterward.
+- Unit tests cover schemas, deterministic geometry, style planning, transaction recovery/revert, callbacks/refs, native protocol, and scenario-setting restoration.
+- Browser integration runs real Expo/Chromium/MCP workflows, including source changes and reloads. Browser-only findings do not establish native correctness.
+- Physical Android acceptance records matching committed web/native revisions and constraints, then verifies an explicit revert. Profiles and identities remain in ignored local evidence; compatibility claims are platform-level.
+- CI defines Android emulator acceptance on Linux and iOS simulator acceptance on macOS. A configured job is not passing evidence: inspect its artifacts and conclusion before release.
+- Additional app versions, devices, scenarios, font scales, and third-party integrations need their own measurements.
 
-The observed device profile was 384 × 832 logical units, pixel ratio 3.75, font scale 1, portrait. The test calibrates actual safe-area insets and root coordinates rather than assuming the example JSON's 412 × 915 profile. Generated calibration, receipt, source-hash, web, and native evidence lives under ignored `artifacts/android-acceptance/`; browser integration timings live under `artifacts/integration/`.
+## Supported boundaries
 
-These checks establish the fixture workflow on the tested configuration. Other devices, font scales, navigation arrangements, and app screens need their own matching scenarios and native evidence. The Android helper requires an explicitly selected target, Android API 24+, and either a compatible Expo Go installation or development client. Android emulator support is not yet part of the validated support matrix.
+Development instrumentation covers imported RN View, Text, Pressable, TextInput, ScrollView, and Image hosts in project JS/TS modules. Standard Expo App and Expo Router roots can be configured by `init`. Explicit runtime components remain supported. Production and dependency modules are excluded.
 
-## Supported integration
+Styles support scoped local overrides of arrays/conditionals/imports/theme expressions, statically discoverable shared definitions, and a bounded NativeWind v4 literal-utility vocabulary. Callback styles, dynamic class construction, unresolved shared consumers, transforms, animations, and arbitrary evaluation are rejected. Shared apply requires measured coverage for discovered consumers. Unknown scenario coverage is not inferred.
 
-- One development `LayoutProvider` per web page; `rootId` must name its mounted, full app-root instrumented `LayoutView`.
-- Opt-in `LayoutView`, `LayoutText`, and `LayoutPressable` with screen-unique `layoutId` values and the development Babel plugin.
-- App-root-relative logical geometry; screenshot scaling follows pixel ratio. Safe-area checks intersect the root and window once.
-- Explicit, matching scenario IDs and JSON device profiles across web, constraints, and Android.
-- One active browser trial per session, applied through React Native style props. Each candidate replaces the prior trial against the captured baseline.
-- Static inline styles and literal, unshared local `StyleSheet.create` entries for source edits. One file is changed per commit, with original hash/range checks and an atomic replacement.
-- Local MCP stdio. Native measurements use an opt-in development WebSocket connection through ADB reverse.
+Native text fitting requires an enabled equivalent probe, explicit supported typography, settled measurements, and a current text/style/width/font-scale signature. Nested/rich or otherwise unproven cases remain unavailable. Chromium font scaling remains unsupported. Native font-scale runs restore settings through a recovery journal; iOS numeric scales are limited to supported Dynamic Type mappings.
 
-Snapshots must have coherent source revisions. A source write remains native-pending until matching Android revisions and every requested constraint pass. A native regression retains the edit and returns failure evidence; it does not silently roll back.
-
-## Current limits
-
-The full Android source-to-verification acceptance remains `broken-footer`. The managed Chromium fixture also exercises `text-wrapping`, `safe-area`, `intentional-overlap`, and `repeated-elements`, including orientation profile sweeps, CDP diagnostics, and confirmed warning gates. These additional scenarios have browser evidence only until they receive native app routes and device profiles.
-
-V1 does not include NativeWind editing, arbitrary CSS translation, design-image/Figma ingestion, bare React Native/Vite support, iOS verification, WebView/Expo DOM rendering, a custom Metro CDP domain, or automatic instrumentation of an unmodified application. Dynamic style functions, JSX spreads, imported/shared styles, and repeated source sites are not automatically editable. Fonts and text rendering may differ between Chromium and Android, so browser success alone never establishes native correctness.
-
-Production builds disable runtime collection, connections, trial overrides, and injected source metadata. NativeMason is a development inspection/editing tool; instrumented components render their corresponding React Native primitive without adding a host layout wrapper. Browser clipping, hit testing, paint order, line boxes, and font usage are diagnostics only; Android acceptance uses measured shared geometry and any available native line counts.
+Native scenarios use Maestro for device UI interactions and explicitly registered runtime hooks for app state. Native exact scroll offsets and unsupported keyboard operations report errors; use explicit swipe gestures and input taps. External Chrome attachment, design-image/Figma interpretation, bare RN integration, WebViews/Expo DOM, and custom native modules are outside this release.

@@ -1,42 +1,26 @@
 # Install into a separate Expo project
 
-NativeMason's packages are not published to npm. A separate app can install
-built local tarballs; copying or vendoring the runtime source is not required.
-Use the compatibility matrix before choosing the app's Expo dependencies. The
-runtime declares React Native 0.88.1; an app using another version needs its own
-compatibility validation. The workspace fixture is pinned to React Native
-0.88.1; apps using another version should validate their own dependency matrix
-before integration.
-
-From the NativeMason checkout (set `NATIVEMASON_ROOT` to its absolute path):
+The three public packages are not yet published. Build and pack from the checkout using Node 24 and Yarn 4.18.1:
 
 ```sh
-export NATIVEMASON_ROOT=/absolute/path/to/rn-layout-bridge
-cd "$NATIVEMASON_ROOT"
-yarn install --frozen-lockfile
+yarn install --immutable
 yarn build
 mkdir -p artifacts/packs
-yarn --filter @nativemason/contracts --filter @nativemason/runtime --filter nativemason pack --pack-destination artifacts/packs
+yarn workspace @nativemason/contracts pack --out ../../artifacts/packs/nativemason-contracts-0.2.0.tgz
+yarn workspace @nativemason/runtime pack --out ../../artifacts/packs/nativemason-runtime-0.2.0.tgz
+yarn workspace nativemason pack --out ../../artifacts/packs/nativemason-0.2.0.tgz
 ```
 
-From the Expo app's package directory, install all three tarballs together so
-npm can resolve the internal contracts dependency locally:
+Install all three tarballs together in the consumer, using absolute paths:
 
 ```sh
-npm install \
-  "$NATIVEMASON_ROOT/artifacts/packs/rn-layout-contracts-0.1.0.tgz" \
-  "$NATIVEMASON_ROOT/artifacts/packs/rn-layout-runtime-0.1.0.tgz" \
-  "$NATIVEMASON_ROOT/artifacts/packs/rn-layout-bridge-0.1.0.tgz"
+npm install /checkout/artifacts/packs/nativemason-contracts-0.2.0.tgz /checkout/artifacts/packs/nativemason-runtime-0.2.0.tgz /checkout/artifacts/packs/nativemason-0.2.0.tgz
+npx --no-install nativemason init --dry-run
+npx --no-install nativemason init
 ```
 
-The app needs its own compatible React, React Native, and
-`react-native-safe-area-context` dependencies. Tarball paths in its lockfile
-must remain accessible to other developers and CI; alternatively distribute
-the three packages through a private registry and install matching versions.
-After NativeMason changes, rebuild, repack, and reinstall the tarballs. The
-`nativemason/babel` export supplies the Babel plugin. The MCP server can
-also be launched directly from the built NativeMason checkout.
+Replace `/checkout` with the real checkout path. Keep tarballs accessible to other developers and CI, or use an authorized internal registry. Rebuild, repack, and reinstall after changes. Do not vendor runtime source.
 
-The workspace executable is present before the build so first installation does
-not warn about a missing binary. Invoking it before `yarn build` reports the
-required build step on stderr.
+Match the [compatibility matrix](compatibility.md). NativeWind is optional; its v4 interop requires the consuming app's NativeWind/Metro/Tailwind configuration. `init` preserves existing configuration and enables the bridge adapter when NativeWind is detected.
+
+`yarn test:packages` validates package allowlists, Apache licensing, separate npm installation, initialization idempotency, public exports, and MCP discovery. The executable points to built output and reports `yarn build` if invoked before building a checkout.

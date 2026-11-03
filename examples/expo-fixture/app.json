@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "RN Layout Bridge Fixture",
+    "name": "NativeMason Fixture",
     "slug": "rn-layout-bridge-fixture",
     "version": "0.1.0",
     "orientation": "default",
@@ -13,6 +13,7 @@
     "ios": {
       "bundleIdentifier": "dev.nativemason.fixture"
     },
-    "scheme": "nativemason-fixture"
+    "scheme": "nativemason-fixture",
+    "userInterfaceStyle": "automatic"
   }
 }

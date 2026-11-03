@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, ScrollView, Pressable, Keyboard } from 'react-native';
 import { registerScenarioHook } from '@nativemason/runtime';
 import { checkoutStyles, spacing } from './theme';
+import {OrderSummary} from './OrderSummary';
 
 /** Uses unmodified RN host components; Babel instruments this development source. */
 export function ComplexFlow({ scenarioId }: { scenarioId: string }) {
@@ -17,7 +18,7 @@ export function ComplexFlow({ scenarioId }: { scenarioId: string }) {
         <Text testID="checkout-toggle-label" style={checkoutStyles.text}>{expanded ? 'Hide details' : 'Show details'}</Text>
       </Pressable>
       {expanded ? <Text testID="checkout-details" style={checkoutStyles.text}>Your order includes shipping and local taxes.</Text> : null}
-      <Text testID="checkout-summary" numberOfLines={scenarioId === 'text-truncation' ? 1 : undefined} style={[checkoutStyles.text, { width: 160 }]}>A deliberately long product description needs enough room to display completely without truncation.</Text>
+      <OrderSummary truncated={scenarioId === 'text-truncation'} />
       {scenarioId === 'scroll-checkout' ? Array.from({ length: 12 }, (_, index) => <Text key={index} testID={'checkout-row-' + index} style={[checkoutStyles.text, { marginTop: 16 }]}>Order item {index + 1}</Text>) : null}
       <Pressable testID="checkout-submit" accessibilityRole="button" onPress={() => { Keyboard.dismiss(); setSubmitted(true); }} style={checkoutStyles.action}>
         <Text testID="checkout-submit-label" style={checkoutStyles.text}>Confirm order</Text>
