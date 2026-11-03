@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 280" role="img" aria-labelledby="title desc">
+<title id="title">NativeMason logo option 2: Blueprint</title><desc id="desc">An indigo outline brick wall with a tall window and a trowel peeking above the top.</desc>
+<defs><pattern id="brick" width="72" height="50" patternUnits="userSpaceOnUse"><rect width="72" height="50" fill="#f5f6ff"/><path d="M0 25h72M36 0v25M0 25v25M72 25v25" fill="none" stroke="#373d87" stroke-width="4"/></pattern></defs>
+<path d="m189 57 45-24 15 22-31 16Z" fill="#c2c9fb" stroke="#373d87" stroke-width="6" stroke-linejoin="round"/><path d="m242 40 23-15" stroke="#373d87" stroke-width="10" stroke-linecap="round"/>
+<path d="M36 74h248v158H36z" fill="url(#brick)" stroke="#373d87" stroke-width="8"/><path d="M28 73h264" fill="none" stroke="#373d87" stroke-width="12" stroke-linecap="round"/>
+<rect x="105" y="108" width="110" height="113" rx="16" fill="#f5f6ff" stroke="#373d87" stroke-width="9"/><path d="M160 112v104m-51-52h102" fill="none" stroke="#8b98ef" stroke-width="7"/><path d="M96 223h128" fill="none" stroke="#373d87" stroke-width="10" stroke-linecap="round"/>
+</svg>

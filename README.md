@@ -1,5 +1,13 @@
 # NativeMason
 
+## Logo options
+
+Four SVG directions are ready for review. Each pairs a brick wall and window with a trowel tucked behind the top edge.
+
+| 1. Keystone | 2. Blueprint | 3. Courtyard | 4. Mason Mark |
+| --- | --- | --- | --- |
+| ![Keystone logo: teal brick wall and arched window](assets/logos/01-keystone.svg) | ![Blueprint logo: indigo outlined wall and window](assets/logos/02-blueprint.svg) | ![Courtyard logo: terracotta wall and blue window](assets/logos/03-courtyard.svg) | ![Mason Mark logo: charcoal wall and rounded window](assets/logos/04-mason-mark.svg) |
+
 NativeMason gives an MCP coding agent a measured React Native layout loop: inspect an Expo web mirror, test React Native style props in Chromium, preview or apply a small source edit, and verify the committed result on Android.
 
 The web mirror is a trial environment. A source write remains **native verification pending** until matching Android source revisions and layout constraints pass. NativeMason does not call a model API or interpret design images.

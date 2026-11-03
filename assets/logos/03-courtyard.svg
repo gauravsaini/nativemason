@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 280" role="img" aria-labelledby="title desc">
+<title id="title">NativeMason logo option 3: Courtyard</title><desc id="desc">A warm brick arch with a sky-blue window and a small golden trowel on the roof.</desc>
+<defs><pattern id="brick" width="84" height="48" patternUnits="userSpaceOnUse"><rect width="84" height="48" fill="#c2553b"/><path d="M0 24h84M42 0v24M0 24v24M84 24v24" fill="none" stroke="#fce4cc" stroke-width="5"/></pattern></defs>
+<circle cx="160" cy="143" r="124" fill="#fff1dc"/><path d="m178 59 38-22 18 18-26 16Z" fill="#e5a83e"/><path d="m230 45 25-14" stroke="#693c32" stroke-width="10" stroke-linecap="round"/>
+<rect x="38" y="74" width="244" height="166" rx="11" fill="url(#brick)"/><path d="M33 74h254" stroke="#873f31" stroke-width="14" stroke-linecap="round"/>
+<path d="M112 217v-54a48 48 0 0 1 96 0v54Z" fill="#bce1db" stroke="#713d32" stroke-width="9"/><path d="M160 115v102M116 163h88" stroke="#713d32" stroke-width="7"/><path d="M104 221h112" stroke="#713d32" stroke-width="10" stroke-linecap="round"/>
+</svg>

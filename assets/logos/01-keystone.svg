@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 280" role="img" aria-labelledby="title desc">
+<title id="title">NativeMason logo option 1: Keystone</title><desc id="desc">A teal brick wall and arched window with a terracotta trowel tucked behind the roof.</desc>
+<defs><pattern id="brick" width="80" height="48" patternUnits="userSpaceOnUse"><rect width="80" height="48" fill="#0d514d"/><path d="M0 24h80M40 0v24M0 24v24M80 24v24" fill="none" stroke="#dcf2ea" stroke-width="5"/></pattern></defs>
+<path d="M177 54 225 30 244 50 207 69Z" fill="#df704d"/><path d="m238 42 20-14" stroke="#173f3c" stroke-width="9" stroke-linecap="round"/><path d="m254 31 18-10" stroke="#173f3c" stroke-width="13" stroke-linecap="round"/>
+<rect x="32" y="72" width="256" height="171" rx="9" fill="url(#brick)"/><path d="M28 72h264" stroke="#103f3d" stroke-width="16" stroke-linecap="round"/>
+<path d="M105 215v-56a55 55 0 0 1 110 0v56Z" fill="#eaf7f1" stroke="#0a3d3a" stroke-width="9"/><path d="M160 106v109M109 163h102" stroke="#0a3d3a" stroke-width="7"/><path d="M96 218h128" stroke="#0a3d3a" stroke-width="12" stroke-linecap="round"/>
+</svg>
