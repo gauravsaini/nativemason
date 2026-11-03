@@ -4,8 +4,11 @@ import {
   BridgeFault,
   DeviceProfileSchema,
   ErrorCodeSchema,
-  RnStylePatchSchema,
   SpatialSnapshotSchema,
+  LayoutMutationSchema,
+  ScenarioScriptSchema,
+  type LayoutMutation,
+  type ScenarioScript,
   type BrowserPort,
   type BrowserRuntime,
   type DeviceProfile,
@@ -13,7 +16,7 @@ import {
   type RnStylePatch,
   type SpatialSnapshot,
   type WebDiagnostics,
-} from '@rn-layout/contracts';
+} from '@nativemason/contracts';
 
 export interface BrowserBridgeOptions {
   webUrl: string;
@@ -104,10 +107,11 @@ async function waitForAssets(page: Page, timeoutMs: number): Promise<void> {
 async function collectDiagnostics(cdp: any): Promise<WebDiagnostics> {
   const root = await cdp.send('Runtime.evaluate', {
     expression: 'Object.fromEntries(window.__RN_LAYOUT_BRIDGE__.getDiagnosticTargets().map(target => [target.id, target.element]))',
-    returnByValue: false,
+    returnByValue: false, objectGroup: 'nativemason-diagnostics',
   });
   const objectId = root.result.objectId;
   if (!objectId) throw new BridgeFault('STALE_SNAPSHOT', 'Runtime did not expose registered DOM targets');
+  try {
   const properties = await cdp.send('Runtime.getProperties', { objectId, ownProperties: true });
   const nodes: WebDiagnostics['nodes'] = {};
   const warnings: WebDiagnostics['warnings'] = [];
@@ -155,7 +159,7 @@ async function collectDiagnostics(cdp: any): Promise<WebDiagnostics> {
     let centerHitTest: 'confirmed'|'clear'|'unknown' = 'unknown';
     try {
       const hit = await cdp.send('DOM.getNodeForLocation', { x: Math.round(value.cx), y: Math.round(value.cy), includeUserAgentShadowDOM: true, ignorePointerEventsNone: false });
-      const hitObject = await cdp.send('DOM.resolveNode', { backendNodeId: hit.backendNodeId });
+      const hitObject = await cdp.send('DOM.resolveNode', { backendNodeId: hit.backendNodeId, objectGroup: 'nativemason-diagnostics' });
       if (hitObject.object.objectId) {
         const contains = await cdp.send('Runtime.callFunctionOn', {
           objectId: elementObjectId,
@@ -190,8 +194,8 @@ async function collectDiagnostics(cdp: any): Promise<WebDiagnostics> {
     }
     if (clipping === 'unknown' || centerHitTest === 'unknown') warnings.push({ elementId: property.name, code: 'EVIDENCE_UNAVAILABLE', severity: 'uncertain', message: 'One or more browser diagnostics could not be established' });
   }
-  await cdp.send('Runtime.releaseObject', { objectId }).catch(() => undefined);
   return { nodes, warnings };
+  } finally { await cdp.send('Runtime.releaseObjectGroup', { objectGroup: 'nativemason-diagnostics' }).catch(() => undefined); }
 }
 
 /** Owns one Chromium context. Runtime changes travel through React Native props, never CSS. */
@@ -232,7 +236,7 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
     let baselineNavigation = 0;
     page.on('framenavigated', frame => { if (frame === page.mainFrame()) navigation++; });
 
-    async function callRuntime(operation: 'capture' | 'resetTrial' | 'applyTrial', id?: string, patch?: RnStylePatch): Promise<unknown> {
+    async function callRuntime(operation: 'capture' | 'resetTrial' | 'applyTrial' | 'applyTrialBatch', id?: string, patch?: RnStylePatch, mutations?: readonly LayoutMutation[]): Promise<unknown> {
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         const result = await Promise.race([
@@ -242,13 +246,14 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
               if (!runtime) return { ok: false as const, code: 'STALE_SNAPSHOT', message: 'Screen runtime is no longer mounted' };
               const value = input.operation === 'capture' ? await runtime.capture()
                 : input.operation === 'resetTrial' ? await runtime.resetTrial()
+                : input.operation === 'applyTrialBatch' ? runtime.applyTrialBatch ? await runtime.applyTrialBatch(input.mutations!) : input.mutations!.length === 1 ? await runtime.applyTrial(input.mutations![0].elementId,input.mutations![0].patch) : (() => { throw new Error('Runtime does not support batch mutations; update its development bundle'); })()
                 : await runtime.applyTrial(input.id!, input.patch!);
               return { ok: true as const, value };
             } catch (error) {
               const failure = error as { code?: unknown; message?: unknown };
               return { ok: false as const, code: failure?.code, message: String(failure?.message ?? error) };
             }
-          }, { operation, id, patch }),
+          }, { operation, id, patch, mutations }),
           new Promise<never>((_resolve, reject) => {
             timer = setTimeout(() => reject(new BridgeFault('TIMEOUT', `Browser runtime ${operation} timed out`)), timeoutMs);
           }),
@@ -298,6 +303,42 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
       await page.evaluate(input => (window as RuntimeWindow).__RN_LAYOUT_BRIDGE__!.configure(input), { sessionId: options.sessionId, scenarioId: options.scenarioId, profile: activeProfile });
     }
 
+    async function trialBatch(mutations: readonly LayoutMutation[], overrides?: ProfileOverrides): Promise<SpatialSnapshot> {
+        const started = performance.now();
+        ensureOpen();
+        if (!mutations.length) throw new BridgeFault('INVALID_INPUT','A trial needs at least one mutation');
+        const parsed = mutations.map(mutation=>LayoutMutationSchema.parse(mutation));
+        if(new Set(parsed.map(m=>m.elementId)).size!==parsed.length)throw new BridgeFault('INVALID_INPUT','A batch must contain each element only once');
+        if (!baseline) throw new BridgeFault('STALE_SNAPSHOT', 'Capture a baseline before trying a layout mutation');
+        try {
+          await setProfile(overrides);
+          if (!baseline) throw new BridgeFault('STALE_SNAPSHOT','Profile changed; capture a fresh profile-bound baseline');
+          const before = await readStable();
+          if (navigation !== baselineNavigation || identity(before) !== identity(baseline)) {
+            throw new BridgeFault('STALE_SNAPSHOT', 'Source, profile, navigation, or mounted elements changed since the baseline');
+          }
+          for(const mutation of parsed) if (!before.nodes.some(node => node.id === mutation.elementId)) throw new BridgeFault('MISSING_ELEMENT', `Unknown element ${mutation.elementId}`);
+          await callRuntime('resetTrial');
+          activeTrial = false;
+          const reset = await readStable();
+          if (identity(reset) !== identity(baseline) || geometry(reset) !== geometry(baseline)) {
+            throw new BridgeFault('STALE_SNAPSHOT', 'Reset layout no longer matches the captured baseline');
+          }
+          await callRuntime('applyTrialBatch',undefined,undefined,parsed);
+          activeTrial = true;
+          const snapshot = await readStable();
+          if (identity(snapshot) !== identity(baseline)) throw new BridgeFault('STALE_SNAPSHOT', 'The mounted screen changed while applying the trial');
+          return snapshot;
+        } catch (error) {
+          // A failed candidate must never leave a partially applied trial behind.
+          await callRuntime('resetTrial').catch(() => undefined);
+          activeTrial = false;
+          throw fault(error, 'Could not trial browser layout');
+        } finally {
+          trialMs.push(performance.now() - started);
+        }
+    }
+
     return {
       async capture(overrides?: ProfileOverrides) {
         const started = performance.now();
@@ -315,39 +356,8 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
           captureMs.push(performance.now() - started);
         }
       },
-      async trial(elementId: string, patch: RnStylePatch, overrides?: ProfileOverrides) {
-        const started = performance.now();
-        ensureOpen();
-        const parsed = RnStylePatchSchema.safeParse(patch);
-        if (!parsed.success) throw new BridgeFault('INVALID_INPUT', 'Unsupported React Native style patch', parsed.error.flatten());
-        if (!baseline) throw new BridgeFault('STALE_SNAPSHOT', 'Capture a baseline before trying a layout mutation');
-        try {
-          await setProfile(overrides);
-          const before = await readStable();
-          if (navigation !== baselineNavigation || identity(before) !== identity(baseline)) {
-            throw new BridgeFault('STALE_SNAPSHOT', 'Source, profile, navigation, or mounted elements changed since the baseline');
-          }
-          if (!before.nodes.some(node => node.id === elementId)) throw new BridgeFault('MISSING_ELEMENT', `Unknown element ${elementId}`);
-          await callRuntime('resetTrial');
-          activeTrial = false;
-          const reset = await readStable();
-          if (identity(reset) !== identity(baseline) || geometry(reset) !== geometry(baseline)) {
-            throw new BridgeFault('STALE_SNAPSHOT', 'Reset layout no longer matches the captured baseline');
-          }
-          await callRuntime('applyTrial', elementId, parsed.data);
-          activeTrial = true;
-          const snapshot = await readStable();
-          if (identity(snapshot) !== identity(baseline)) throw new BridgeFault('STALE_SNAPSHOT', 'The mounted screen changed while applying the trial');
-          return snapshot;
-        } catch (error) {
-          // A failed candidate must never leave a partially applied trial behind.
-          await callRuntime('resetTrial').catch(() => undefined);
-          activeTrial = false;
-          throw fault(error, 'Could not trial browser layout');
-        } finally {
-          trialMs.push(performance.now() - started);
-        }
-      },
+      trial(elementId: string, patch: RnStylePatch, overrides?: ProfileOverrides) { return trialBatch([{elementId,patch}],overrides); },
+      trialBatch,
       async resetTrial() {
         ensureOpen();
         try {
@@ -356,6 +366,55 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
         } catch (error) {
           throw fault(error, 'Could not reset browser trial');
         }
+      },
+      async runScenario(script: ScenarioScript) {
+        ensureOpen();
+        const parsed=ScenarioScriptSchema.parse(script);
+        if(parsed.scenarioId!==options.scenarioId)throw new BridgeFault('INVALID_INPUT','Scenario script must match the session scenario');
+        await callRuntime('resetTrial'); activeTrial=false; baseline=undefined;
+        for(const action of [...parsed.reset,...parsed.actions]){
+          if(action.type==='navigate'){
+            const url=new URL(action.url,options.webUrl);
+            if(url.origin!==new URL(options.webUrl).origin)throw new BridgeFault('INVALID_INPUT','Scenario navigation must remain on the application origin');
+            await page.goto(url.href,{waitUntil:'domcontentloaded',timeout:timeoutMs});
+            await page.waitForFunction(()=>!!(window as RuntimeWindow).__RN_LAYOUT_BRIDGE__,undefined,{timeout:timeoutMs});
+            await page.evaluate(input=>(window as RuntimeWindow).__RN_LAYOUT_BRIDGE__!.configure(input),{sessionId:options.sessionId,scenarioId:options.scenarioId,profile:activeProfile});
+            continue;
+          }
+          if(action.type==='hook'){
+            await page.evaluate(async input=>{
+              const runtime=(window as RuntimeWindow).__RN_LAYOUT_BRIDGE__;
+              if(runtime?.runHook){await runtime.runHook(input.name,input.value);return;}
+              const hooks=(window as Window & {__NATIVEMASON_SCENARIO_HOOKS__?:Record<string,(value:unknown)=>unknown>}).__NATIVEMASON_SCENARIO_HOOKS__;
+              if(!hooks?.[input.name])throw new Error(`Unknown scenario hook ${input.name}`);
+              await hooks[input.name](input.value);
+            },action);
+            continue;
+          }
+          if(action.type==='keyboard'){
+            if(action.visible)throw new BridgeFault('UNSUPPORTED_PROFILE','Chromium cannot establish native software keyboard visibility');
+            await page.keyboard.press('Escape');
+            await page.evaluate(()=>{const focused=document.activeElement;if(focused instanceof HTMLElement)focused.blur();});
+            continue;
+          }
+          if(action.type==='wait'){
+            await page.waitForFunction(id=>{
+              const target=(window as RuntimeWindow).__RN_LAYOUT_BRIDGE__?.getDiagnosticTargets().find(item=>item.id===id)?.element;
+              if(!(target instanceof Element))return false;
+              const box=target.getBoundingClientRect();return box.width>0&&box.height>0&&getComputedStyle(target).visibility!=='hidden';
+            },action.elementId,{timeout:action.timeoutMs});continue;
+          }
+          const handle=await page.evaluateHandle(id=>{const target=(window as RuntimeWindow).__RN_LAYOUT_BRIDGE__?.getDiagnosticTargets().find(item=>item.id===id)?.element;return target instanceof Element?target:null;},action.elementId);
+          try{
+            const element=handle.asElement();
+            if(!element)throw new BridgeFault('MISSING_ELEMENT',`Scenario target ${action.elementId} is unavailable`);
+            if(action.type==='tap')await element.click();
+            else if(action.type==='input'){if(action.mode==='append'){await element.focus();await element.press('ControlOrMeta+End');await page.keyboard.insertText(action.text);}else await element.fill(action.text);}
+            else if(action.type==='swipe')await element.evaluate((node,direction)=>{if(!(node instanceof Element))throw new Error('Swipe target is not an element');node.scrollBy(direction==='LEFT'?node.clientWidth:direction==='RIGHT'?-node.clientWidth:0,direction==='UP'?node.clientHeight:direction==='DOWN'?-node.clientHeight:0);},action.direction);
+            else if(action.type==='scroll')await element.evaluate((node,delta)=>{if(!(node instanceof Element))throw new Error('Scroll target is not an element');node.scrollBy(delta.x,delta.y);},action);
+          }finally{await handle.dispose();}
+        }
+        await readStable();
       },
       async screenshot() {
         ensureOpen();

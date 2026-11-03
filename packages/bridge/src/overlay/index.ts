@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { BridgeFault, OverlaySceneSchema, type OverlayScene } from '@rn-layout/contracts';
+import { BridgeFault, OverlaySceneSchema, type OverlayScene } from '@nativemason/contracts';
 
 function xml(value: string): string {
   return value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[char]!);

@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import sharp from 'sharp';
-import type { DeviceProfile } from '@rn-layout/contracts';
+import type { DeviceProfile } from '@nativemason/contracts';
 import { createBrowserBridge } from './index.js';
 
 const profile: DeviceProfile = {

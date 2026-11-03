@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest';
-import { WireframeSpecSchema, type SpatialSnapshot } from '@rn-layout/contracts';
+import { WireframeSpecSchema, type SpatialSnapshot } from '@nativemason/contracts';
 import fixture from '../../../contracts/fixtures/footer.json';
 import {safeAreaRect,normalizeRect,normalizePatch,evaluateConstraints,diffSnapshots,buildOverlayScene} from './index.js';
 const spec=WireframeSpecSchema.parse(fixture);

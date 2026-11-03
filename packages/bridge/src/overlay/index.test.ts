@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import sharp from 'sharp';
-import type { OverlayScene } from '@rn-layout/contracts';
+import type { OverlayScene } from '@nativemason/contracts';
 import { renderOverlay } from './index.js';
 
 const scene: OverlayScene = { width: 100, height: 80, marks: [{ id: '<button&"unsafe">', label: 1, rect: { x: 20, y: 20, width: 40, height: 30 } }], targets: [{ id: 'target', rect: { x: 20, y: 20, width: 40, height: 30 } }] };
