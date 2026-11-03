@@ -31,7 +31,7 @@ export type NativeVerification=z.infer<typeof NativeVerificationSchema>;
 
 /** Every JSON tool result is validated here before reaching an MCP client. */
 export const ToolOutputSchemas={
- open_session:z.object({sessionId:z.string(),native:z.object({port:z.number().int(),token:z.string()}).strict(),capabilities:z.object({trial:z.literal('rn-style-props'),sourceEdits:z.literal('static-local-styles'),nativeVerification:z.literal('required')}).strict()}).strict(),
+ open_session:z.object({sessionId:z.string(),native:z.object({port:z.number().int(),token:z.string()}).strict(),capabilities:z.object({trial:z.literal('rn-style-props'),sourceEdits:z.enum(['static-local-styles','scoped-transactions']),batchTrials:z.boolean().optional(),nativePlatforms:z.array(z.enum(['android','ios'])).optional(),nativeScenario:z.boolean().optional(),nativeVerification:z.literal('required')}).strict()}).strict(),
  load_wireframe_spec:z.object({specId:z.string()}).strict(),
  inspect_ui_spatial_graph:z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),webDiagnostics:WebDiagnosticsSchema.optional()}).strict(),
  capture_annotated_overlay:z.object({image:z.string(),mimeType:z.literal('image/png'),artifact:z.string(),marks:z.array(z.object({label:z.number(),id:z.string(),rect:RectSchema}).strict())}).strict(),

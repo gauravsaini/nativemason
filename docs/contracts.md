@@ -4,7 +4,7 @@
 
 ## Measurements and identity
 
-Coordinates are floating-point app-root-relative logical units. Screenshot scaling is separate. Native roots normalize registered host measurements against the safe-area/window frame; safe-area intersection applies insets once. Explicit providers identify their root. Automatic providers require exactly one parentless instrumented host and reject ambiguous roots.
+Coordinates are floating-point app-root-relative logical units. Screenshot scaling is separate. Native roots normalize registered host measurements against the safe-area/window frame; safe-area intersection applies insets once. Explicit providers identify their root. Automatic providers measure the existing SafeAreaProvider host as the app root and preserve ancestry across retained route hosts. Legacy parentless-root inference still rejects ambiguous roots.
 
 Source hashes are SHA-256 of original UTF-8 source; offsets use UTF-16 indices. Node source references identify JSX ranges; shared-style edit plans identify the changed declaration range in the edited file. Development transforms register loaded project-module revisions so edits to imported style/token files can be checked after reload. Mounted metadata must agree with those revisions. Synthetic bundler polyfills, dependencies, and production builds receive no injected imports or collection.
 
