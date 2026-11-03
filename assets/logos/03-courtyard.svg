@@ -1,133 +1,146 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%" role="img" aria-labelledby="title-3 desc-3">
-  <title id="title-3">NativeMason Logo Option 3: Courtyard Modern</title>
-  <desc id="desc-3">Porcelain card, warm terracotta clay bricks, six-pane sage mint courtyard window, golden brass trowel peeking at top left.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
   <defs>
-    <!-- Warm Porcelain Card Background -->
-    <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FCF9F5" />
-      <stop offset="100%" stop-color="#F3ECE1" />
+    <!-- Background Gradient -->
+    <radialGradient id="bgGrad3" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#1A1513" />
+      <stop offset="60%" stop-color="#0E0B09" />
+      <stop offset="100%" stop-color="#050403" />
+    </radialGradient>
+
+    <!-- Warm Radiant Ambient Glow -->
+    <radialGradient id="coreGlow3" cx="50%" cy="46%" r="50%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.28" />
+      <stop offset="50%" stop-color="#EA580C" stop-opacity="0.10" />
+      <stop offset="100%" stop-color="#0E0B09" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Top Solar Faces (Illuminated) -->
+    <linearGradient id="solarTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF3C7" />
+      <stop offset="50%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#F59E0B" />
     </linearGradient>
 
-    <!-- Warm Artisan Terracotta -->
-    <linearGradient id="clayBrickA" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#EA580C" />
-      <stop offset="100%" stop-color="#C2410C" />
-    </linearGradient>
-    <linearGradient id="clayBrickB" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#F97316" />
-      <stop offset="100%" stop-color="#D97706" />
+    <!-- Left Terracotta Faces (Midtone) -->
+    <linearGradient id="terracottaLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FB923C" />
+      <stop offset="50%" stop-color="#EA580C" />
+      <stop offset="100%" stop-color="#9A3412" />
     </linearGradient>
 
-    <!-- Sage Mint Courtyard Window -->
-    <linearGradient id="sageSky" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#6EE7B7" />
-      <stop offset="60%" stop-color="#34D399" />
-      <stop offset="100%" stop-color="#059669" />
+    <!-- Right Shadowed Faces (Deep Ambient) -->
+    <linearGradient id="umberRight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C2410C" />
+      <stop offset="50%" stop-color="#7C2D12" />
+      <stop offset="100%" stop-color="#431407" />
     </linearGradient>
 
-    <!-- Golden Artisan Trowel -->
-    <linearGradient id="goldBlade3" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FEF08A" />
-      <stop offset="40%" stop-color="#FBBF24" />
-      <stop offset="80%" stop-color="#F59E0B" />
-      <stop offset="100%" stop-color="#B45309" />
+    <!-- Central Keystone Prism Special Gradient -->
+    <linearGradient id="keystoneAmber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB" />
+      <stop offset="40%" stop-color="#FDE68A" />
+      <stop offset="100%" stop-color="#F59E0B" />
     </linearGradient>
 
-    <filter id="softShadow3" x="-10%" y="-10%" width="125%" height="125%">
-      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#8C533A" flood-opacity="0.22" />
+    <!-- Glow Filter -->
+    <filter id="glowFilter3" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="shadowPlate3" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.8" />
     </filter>
   </defs>
 
-  <!-- Clean Container Card -->
-  <rect width="400" height="400" rx="44" fill="url(#bg3)" stroke="#EBE0D2" stroke-width="2" />
+  <!-- Container Plate -->
+  <rect width="400" height="400" rx="64" fill="url(#bgGrad3)" />
+  <rect width="398" height="398" x="1" y="1" rx="63" fill="none" stroke="#78350F" stroke-opacity="0.35" stroke-width="1.5" />
 
-  <g filter="url(#softShadow3)">
-    <!-- TROWEL: Peeking gracefully top left -->
-    <g transform="translate(154, 52) rotate(-24)">
-      <!-- Gooseneck Shank -->
-      <path d="M0,38 C2,26 -6,18 -8,6 C-9,-2 -7,-10 -7,-18" fill="none" stroke="#57534E" stroke-width="6" stroke-linecap="round" />
-      <rect x="-13" y="-22" width="12" height="7" rx="2" fill="#D97706" />
+  <!-- Ambient Light Center Glow -->
+  <circle cx="200" cy="186" r="160" fill="url(#coreGlow3)" />
 
-      <!-- Beechwood Handle -->
-      <path d="M-4,-22 C-2,-32 1,-48 -4,-62 C-7,-72 -13,-72 -16,-62 C-21,-48 -18,-32 -16,-22 Z" fill="#78350F" stroke="#451A03" stroke-width="1.2" />
-      <path d="M-7,-26 C-5,-38 -4,-50 -8,-60" fill="none" stroke="#FDE68A" stroke-width="2" stroke-linecap="round" opacity="0.75" />
-
-      <!-- Golden Polished Trowel Blade -->
-      <path d="M0,-2 L28,42 C30,56 22,74 4,74 L-4,74 C-22,74 -30,56 -28,42 Z" fill="url(#goldBlade3)" stroke="#B45309" stroke-width="1.2" />
-      <line x1="0" y1="0" x2="0" y2="72" stroke="#FFFBEB" stroke-width="2" />
-      <polygon points="0,-2 -28,42 -20,74 0,74" fill="#78350F" opacity="0.12" />
-
-      <!-- Star Glint -->
-      <polygon points="0,-6 2,-2 6,0 2,2 0,6 -2,2 -6,0 -2,-2" fill="#FFFFFF" />
-    </g>
-
-    <!-- BRICK MASONRY WALL -->
-    <rect x="42" y="98" width="316" height="248" rx="14" fill="#F4EDE4" stroke="#E3D7C8" stroke-width="2" />
-
-    <!-- Top Lintel Coping Bar -->
-    <rect x="36" y="92" width="328" height="18" rx="6" fill="#D97706" />
-    <line x1="38" y1="94" x2="362" y2="94" stroke="#FDE68A" stroke-width="2" />
-
-    <!-- Terracotta Bricks -->
-    <!-- Row 1 -->
-    <rect x="46" y="116" width="76" height="34" rx="6" fill="url(#clayBrickA)" />
-    <rect x="126" y="116" width="80" height="34" rx="6" fill="url(#clayBrickB)" />
-    <rect x="210" y="116" width="80" height="34" rx="6" fill="url(#clayBrickA)" />
-    <rect x="294" y="116" width="60" height="34" rx="6" fill="url(#clayBrickB)" />
-
-    <!-- Row 2 -->
-    <rect x="46" y="154" width="56" height="34" rx="6" fill="url(#clayBrickB)" />
-    <rect x="106" y="154" width="26" height="34" rx="6" fill="url(#clayBrickA)" />
-    <rect x="268" y="154" width="26" height="34" rx="6" fill="url(#clayBrickA)" />
-    <rect x="298" y="154" width="56" height="34" rx="6" fill="url(#clayBrickB)" />
-
-    <!-- Row 3 -->
-    <rect x="46" y="192" width="40" height="34" rx="6" fill="url(#clayBrickA)" />
-    <rect x="90" y="192" width="42" height="34" rx="6" fill="url(#clayBrickB)" />
-    <rect x="268" y="192" width="42" height="34" rx="6" fill="url(#clayBrickB)" />
-    <rect x="314" y="192" width="40" height="34" rx="6" fill="url(#clayBrickA)" />
-
-    <!-- Row 4 -->
-    <rect x="46" y="230" width="56" height="34" rx="6" fill="url(#clayBrickB)" />
-    <rect x="106" y="230" width="26" height="34" rx="6" fill="url(#clayBrickA)" />
-    <rect x="268" y="230" width="26" height="34" rx="6" fill="url(#clayBrickA)" />
-    <rect x="298" y="230" width="56" height="34" rx="6" fill="url(#clayBrickB)" />
-
-    <!-- Row 5 -->
-    <rect x="46" y="268" width="80" height="34" rx="6" fill="url(#clayBrickA)" />
-    <rect x="130" y="268" width="78" height="34" rx="6" fill="url(#clayBrickB)" />
-    <rect x="212" y="268" width="70" height="34" rx="6" fill="url(#clayBrickA)" />
-    <rect x="286" y="268" width="68" height="34" rx="6" fill="url(#clayBrickB)" />
-
-    <!-- Row 6 -->
-    <rect x="46" y="306" width="50" height="34" rx="6" fill="url(#clayBrickB)" />
-    <rect x="100" y="306" width="96" height="34" rx="6" fill="url(#clayBrickA)" />
-    <rect x="200" y="306" width="96" height="34" rx="6" fill="url(#clayBrickB)" />
-    <rect x="300" y="306" width="54" height="34" rx="6" fill="url(#clayBrickA)" />
-
-    <!-- Brick Top Highlights -->
-    <g stroke="#FED7AA" stroke-width="1.8" stroke-linecap="round" opacity="0.6">
-      <line x1="48" y1="118" x2="118" y2="118" />
-      <line x1="128" y1="118" x2="202" y2="118" />
-      <line x1="212" y1="118" x2="286" y2="118" />
-      <line x1="296" y1="118" x2="350" y2="118" />
-    </g>
-
-    <!-- ARCHED COURTYARD WINDOW -->
-    <path d="M136,256 L136,190 A64,64 0 0,1 264,190 L264,256 Z" fill="#292524" />
-    <path d="M142,254 L142,192 A58,58 0 0,1 258,192 L258,254 Z" fill="url(#sageSky)" />
-
-    <!-- Window Muntin Grid (6 Panes) -->
-    <line x1="200" y1="134" x2="200" y2="254" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" />
-    <line x1="142" y1="192" x2="258" y2="192" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
-    <line x1="142" y1="226" x2="258" y2="226" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
-
-    <!-- Translucent Diagonal Shine -->
-    <polygon points="148,244 176,156 192,156 164,244" fill="#FFFFFF" opacity="0.4" />
-    <polygon points="208,244 230,170 240,170 218,244" fill="#FFFFFF" opacity="0.4" />
-
-    <!-- Marble Sill -->
-    <rect x="124" y="254" width="152" height="14" rx="4" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1.5" />
-    <rect x="130" y="268" width="140" height="4" fill="#000000" opacity="0.12" />
+  <!-- Geometric Coordinate Grid -->
+  <g opacity="0.15" stroke="#F59E0B" stroke-width="0.75">
+    <line x1="200" y1="50" x2="200" y2="330" stroke-dasharray="3 5" />
+    <line x1="70" y1="186" x2="330" y2="186" stroke-dasharray="3 5" />
+    <circle cx="200" cy="186" r="114" fill="none" stroke-dasharray="3 6" />
+    <!-- 60 degree radial guidelines -->
+    <line x1="101" y1="129" x2="299" y2="243" stroke-dasharray="2 4" />
+    <line x1="101" y1="243" x2="299" y2="129" stroke-dasharray="2 4" />
   </g>
+
+  <!-- Corner Precision Accents -->
+  <g stroke="#F59E0B" stroke-width="1" opacity="0.4">
+    <path d="M 64 80 L 64 64 L 80 64" fill="none" />
+    <path d="M 336 80 L 336 64 L 320 64" fill="none" />
+    <path d="M 64 320 L 64 336 L 80 336" fill="none" />
+    <path d="M 336 320 L 336 336 L 320 336" fill="none" />
+  </g>
+
+  <!-- MAIN ABSTRACT EMBLEM: THE MASON MONOLITH (3 Interlocking Prisms forming 'M' / Arch) -->
+  <g filter="url(#shadowPlate3)">
+    <!-- LEFT PILLAR PRISM -->
+    <!-- Top Face -->
+    <polygon points="106,140 156,112 196,134 146,162" fill="url(#solarTop)" />
+    <!-- Left Face -->
+    <polygon points="106,140 146,162 146,268 106,246" fill="url(#terracottaLeft)" />
+    <!-- Right / Inner Face -->
+    <polygon points="146,162 196,134 196,240 146,268" fill="url(#umberRight)" />
+    <!-- Highlighted Crease Line -->
+    <line x1="146" y1="162" x2="146" y2="268" stroke="#FED7AA" stroke-width="1.5" stroke-linecap="round" />
+    <line x1="106" y1="140" x2="146" y2="162" stroke="#FFFBEB" stroke-width="2" stroke-linecap="round" />
+
+    <!-- RIGHT PILLAR PRISM -->
+    <!-- Top Face -->
+    <polygon points="204,134 244,112 294,140 254,162" fill="url(#solarTop)" />
+    <!-- Left / Inner Face -->
+    <polygon points="204,134 254,162 254,268 204,240" fill="url(#terracottaLeft)" opacity="0.8" />
+    <!-- Right Face -->
+    <polygon points="254,162 294,140 294,246 254,268" fill="url(#umberRight)" />
+    <!-- Highlighted Crease Line -->
+    <line x1="254" y1="162" x2="254" y2="268" stroke="#EA580C" stroke-width="1.5" stroke-linecap="round" />
+    <line x1="294" y1="140" x2="254" y2="162" stroke="#FFFBEB" stroke-width="2" stroke-linecap="round" />
+
+    <!-- FLOATING CENTRAL KEYSTONE PRISM (Locks the two pillars into an 'M') -->
+    <g filter="url(#glowFilter3)">
+      <!-- Top Diamond Facet -->
+      <polygon points="200,78 238,98 200,118 162,98" fill="url(#keystoneAmber)" />
+
+      <!-- Left Chamfer Facet -->
+      <polygon points="162,98 200,118 200,188 162,168" fill="url(#terracottaLeft)" />
+
+      <!-- Right Chamfer Facet -->
+      <polygon points="200,118 238,98 238,168 200,188" fill="url(#umberRight)" />
+
+      <!-- Keystone Bottom Bevel -->
+      <polygon points="162,168 200,188 238,168 200,198" fill="#F97316" />
+
+      <!-- Apex Razor Highlights -->
+      <line x1="200" y1="78" x2="200" y2="188" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+      <line x1="162" y1="98" x2="200" y2="118" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+      <line x1="200" y1="118" x2="238" y2="98" stroke="#FEF3C7" stroke-width="2" stroke-linecap="round" />
+    </g>
+
+    <!-- ARCH FOUNDATION / TIE BASE (Negative space creates Romanesque portal) -->
+    <!-- Foundation Step Left -->
+    <polygon points="106,246 146,268 146,278 106,256" fill="#7C2D12" />
+    <!-- Foundation Step Right -->
+    <polygon points="254,268 294,246 294,256 254,278" fill="#431407" />
+
+    <!-- Central Optical Archway Cutout Guideline -->
+    <path d="M 166 264 Q 200 216 234 264" fill="none" stroke="#F59E0B" stroke-width="2" stroke-dasharray="3 3" opacity="0.8" />
+    <circle cx="200" cy="236" r="3.5" fill="#FDE68A" />
+
+    <!-- Corner Structural Vertices -->
+    <circle cx="200" cy="78" r="3.5" fill="#FFFBEB" />
+    <circle cx="106" cy="140" r="3" fill="#FDE68A" />
+    <circle cx="294" cy="140" r="3" fill="#FDE68A" />
+    <circle cx="146" cy="268" r="3" fill="#FB923C" />
+    <circle cx="254" cy="268" r="3" fill="#FB923C" />
+  </g>
+
+  <!-- Typography: Modern Geometric Wordmark Sub-label -->
+  <text x="200" y="348" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif" font-size="12" font-weight="700" letter-spacing="4" fill="#FED7AA">NATIVEMASON</text>
+  <text x="200" y="364" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', sans-serif" font-size="9" font-weight="500" letter-spacing="2.5" fill="#F59E0B" opacity="0.8">MASON MONOLITH</text>
 </svg>
