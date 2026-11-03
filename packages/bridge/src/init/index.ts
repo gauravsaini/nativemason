@@ -1,0 +1,32 @@
+import {readFile,writeFile,access} from 'node:fs/promises';
+import path from 'node:path';
+import {Project,Node,SyntaxKind} from 'ts-morph';
+import {BridgeFault} from '@nativemason/contracts';
+const exists=async(p:string)=>access(p).then(()=>true,()=>false);
+export async function initialize(projectRoot:string,dryRun=false,settings:{textProbes?:boolean}={}){
+ const root=path.resolve(projectRoot);
+ const app=JSON.parse(await readFile(path.join(root,'package.json'),'utf8')) as {dependencies?:Record<string,string>};
+ if(!app.dependencies?.expo)throw new BridgeFault('INVALID_INPUT','Initialization requires an Expo project');
+ const roots=['app/_layout.tsx','src/app/_layout.tsx','App.tsx','App.jsx','App.js','src/App.tsx'];
+ const candidates=[];for(const file of roots)if(await exists(path.join(root,file)))candidates.push(file);
+ if(candidates.length!==1)throw new BridgeFault('INVALID_INPUT','Expected one Expo app root',{candidates});
+ const configs=['babel.config.js','babel.config.cjs'];const present=[];for(const file of configs)if(await exists(path.join(root,file)))present.push(file);
+ if(present.length>1)throw new BridgeFault('UNSUPPORTED_EDIT','Multiple Babel configurations require manual selection');
+ const file=present[0]??'babel.config.cjs';
+ const old=present.length?await readFile(path.join(root,file),'utf8'):"module.exports = function(api) { api.cache(true); return { presets: ['babel-preset-expo'], plugins: [] }; };\n";
+ const project=new Project({useInMemoryFileSystem:true,skipAddingFilesFromTsConfig:true});const source=project.createSourceFile('/babel.js',old);
+ const config=source.getDescendantsOfKind(SyntaxKind.ObjectLiteralExpression).filter(o=>o.getProperty('presets')||o.getProperty('plugins'));
+ const options={projectRoot:root,autoInstrument:true,textProbes:settings.textProbes??false,nativewind:Boolean(app.dependencies?.nativewind),rootComponent:candidates[0]};
+ let updated=old;
+ if(!old.includes('nativemason/babel')){
+  if(config.length!==1)throw new BridgeFault('UNSUPPORTED_EDIT','Babel configuration cannot be safely edited',{suggestedPlugin:["nativemason/babel",options]});
+  const plugins=config[0].getProperty('plugins');const text=`[require.resolve('nativemason/babel'), ${JSON.stringify(options)}]`;
+  if(!plugins)config[0].addPropertyAssignment({name:'plugins',initializer:`[${text}]`});
+  else if(Node.isPropertyAssignment(plugins)&&Node.isArrayLiteralExpression(plugins.getInitializer()))plugins.getInitializerIfKindOrThrow(SyntaxKind.ArrayLiteralExpression).insertElement(0,text);
+  else throw new BridgeFault('UNSUPPORTED_EDIT','Computed Babel plugins cannot be safely edited',{suggestedPlugin:["nativemason/babel",options]});
+  updated=source.getFullText();
+ }
+ if(!dryRun&&updated!==old)await writeFile(path.join(root,file),updated,'utf8');
+ const mcp={mcpServers:{nativemason:{command:'npx',args:['--yes','nativemason@0.2.0'],cwd:root}}};
+ return {projectRoot:root,rootComponent:candidates[0],dryRun,changed:updated!==old,file,before:old,after:updated,install:'Install matching nativemason, @nativemason/runtime and @nativemason/contracts packages before starting Expo.',mcp};
+}

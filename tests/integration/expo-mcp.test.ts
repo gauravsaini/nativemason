@@ -5,7 +5,7 @@ import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { WireframeSpecSchema,type ToolName } from '@rn-layout/contracts';
+import { WireframeSpecSchema,ToolSchemas,type ToolName } from '@nativemason/contracts';
 import { BridgeApplication } from '../../packages/bridge/src/application/index.js';
 import { createMcpServer } from '../../packages/bridge/src/mcp/index.js';
 import { createBrowserBridge,type BrowserBridge } from '../../packages/bridge/src/browser/index.js';
@@ -18,9 +18,9 @@ const spec=WireframeSpecSchema.parse(fixture);
 async function call(name:ToolName,args:unknown):Promise<any>{const r=await client.callTool({name,arguments:args as Record<string,unknown>});const content=r.content as {type:string;text?:string}[];const text=content.find(c=>c.type==='text')?.text;if(r.isError)throw Object.assign(new Error(text),{data:text?JSON.parse(text):null});return text?JSON.parse(text):r;}
 beforeAll(async()=>{
  await mkdir(path.join(root,'artifacts'),{recursive:true});project=await mkdtemp(path.join(root,'artifacts/expo-integration-'));
- for(const file of ['App.tsx','index.ts','app.json','babel.config.cjs','metro.config.cjs','package.json'])await cp(path.join(root,'examples/expo-fixture',file),path.join(project,file));
- await symlink(path.join(root,'examples/expo-fixture/node_modules'),path.join(project,'node_modules'),'dir');
- metro=spawn(process.execPath,[path.join(root,'examples/expo-fixture/node_modules/expo/bin/cli'),'start',project,'--web','--localhost','--port','18081'],{cwd:project,detached:true,stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'false',NODE_ENV:'development',EXPO_PUBLIC_LAYOUT_NATIVE_URL:'',EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN:''}});
+ await cp(path.join(root,'examples/expo-fixture'),project,{recursive:true,filter:source=>!source.split(path.sep).some(part=>['node_modules','.expo','android','ios'].includes(part))});
+ await symlink(path.join(root,'node_modules'),path.join(project,'node_modules'),'dir');
+ metro=spawn(process.execPath,[path.join(root,'node_modules/expo/bin/cli'),'start',project,'--web','--localhost','--port','18081'],{cwd:project,detached:true,stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'false',NODE_ENV:'development',EXPO_PUBLIC_LAYOUT_NATIVE_URL:'',EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN:''}});
  metro.stdout!.on('data',b=>{logs+=String(b);});metro.stderr!.on('data',b=>{logs+=String(b);});
  const deadline=Date.now()+60000;let ready=false;
  while(Date.now()<deadline){if(metro.exitCode!==null)throw new Error(`Metro exited: ${logs}`);try{const r=await fetch('http://localhost:18081/status');if((await r.text()).includes('packager-status:running')){ready=true;break;}}catch{ /* Retry until Metro is ready or deadline expires. */ }await new Promise(r=>setTimeout(r,200));}
@@ -31,7 +31,7 @@ beforeAll(async()=>{
 afterAll(async()=>{await client?.close();await server?.close();await app?.close();if(metro?.pid){try{process.kill(-metro.pid,'SIGTERM');}catch{ /* Retry until Metro is ready or deadline expires. */ }}if(project)await rm(project,{recursive:true,force:true});},30000);
 describe('real Expo + Chromium + MCP',()=>{
  it('inspects, trials, previews, commits, reloads and exposes native-disconnect honestly',async()=>{
-  expect((await client.listTools()).tools).toHaveLength(8);
+  expect((await client.listTools()).tools).toHaveLength(Object.keys(ToolSchemas).length);
   const opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario=broken-footer',scenarioId:spec.scenarioId,profile:spec.profile,nativePort:19483,nativeToken:'nativemason-integration-token'});const sessionId=opened.sessionId;
   try{
    await call('load_wireframe_spec',{sessionId,spec});
