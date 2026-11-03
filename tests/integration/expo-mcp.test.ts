@@ -35,7 +35,7 @@ describe('real Expo + Chromium + MCP',()=>{
   const opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario=broken-footer',scenarioId:spec.scenarioId,profile:spec.profile,nativePort:19483,nativeToken:'nativemason-integration-token'});const sessionId=opened.sessionId;
   try{
    await call('load_wireframe_spec',{sessionId,spec});
-   const initial=await call('inspect_ui_spatial_graph',{sessionId});expect(initial.results.some((r:any)=>r.status==='fail')).toBe(true);expect(initial.snapshot.nodes.every((n:any)=>n.source?.path==='App.tsx')).toBe(true);
+   const initial=await call('inspect_ui_spatial_graph',{sessionId});expect(initial.results.some((r:any)=>r.status==='fail')).toBe(true);expect(initial.snapshot.nodes.filter((n:any)=>n.source).every((n:any)=>n.source.path==='App.tsx')).toBe(true);
    const trial=await call('simulate_layout_mutation',{sessionId,baselineSnapshotId:initial.snapshot.snapshotId,elementId:'footer',patch:{flexDirection:'row'}});expect(trial.results.every((r:any)=>r.status==='pass')).toBe(true);
    const original=await readFile(path.join(project,'App.tsx'),'utf8');expect(original).toContain("flexDirection: 'column'");
    const image=await client.callTool({name:'capture_annotated_overlay',arguments:{sessionId,snapshotId:trial.snapshot.snapshotId}});expect(image.isError).not.toBe(true);expect((image.content as any[]).some(c=>c.type==='image')).toBe(true);

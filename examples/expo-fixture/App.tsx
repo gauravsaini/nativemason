@@ -2,8 +2,8 @@ import React from 'react';
 import { NativeWindFlow } from './NativeWindFlow';
 import { ComplexFlow } from './ComplexFlows';
 import { StyleSheet } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LayoutProvider, LayoutView, LayoutText, LayoutPressable } from '@nativemason/runtime';
+import { SafeAreaProvider,useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LayoutView, LayoutText, LayoutPressable } from '@nativemason/runtime';
 
 function FooterScenario() {
   const insets = useSafeAreaInsets();
@@ -55,7 +55,7 @@ export function ScenarioContent({ scenarioId }: { scenarioId: string }) {
 
 export default function App() {
   const scenarioId = typeof window !== 'undefined' && window.location ? new URLSearchParams(window.location.search).get('scenario') ?? 'broken-footer' : process.env.EXPO_PUBLIC_LAYOUT_SCENARIO ?? 'broken-footer';
-  return <SafeAreaProvider><LayoutProvider textProbes rootId="screen" scenarioId={scenarioId} nativeUrl={process.env.EXPO_PUBLIC_LAYOUT_NATIVE_URL} nativeToken={process.env.EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN}><ScenarioContent scenarioId={scenarioId} /></LayoutProvider></SafeAreaProvider>;
+  return <SafeAreaProvider><ScenarioContent scenarioId={scenarioId} /></SafeAreaProvider>;
 }
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingTop: 48 },

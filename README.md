@@ -128,6 +128,8 @@ Preview with `trialId`, `expectedRevisions` from the snapshot, and `mode: "previ
 
 ## Source editing and acceptance
 
+Suggestion scores are ranks within one response; they do not establish native acceptance.
+
 Local overrides preserve existing array, conditional, imported-style, and theme-token expressions. Explicit branch edits select a conditional arm. Shared-definition edits require `scope: { "kind": "shared" }`, static consumer discovery, and measured coverage; unresolved/escaping consumers are rejected. Repeated source instances require `acknowledgeInstances: true` and passing constraints for affected instances.
 
 NativeWind source edits use `scope: { "kind": "nativewind", "branch": "alternate" }` for a selected literal conditional arm. Supported literal layout/typography utilities preserve unrelated classes. Dynamic class construction, arbitrary custom plugins, style callbacks, transforms, animations, and arbitrary code evaluation are outside automatic editing.
