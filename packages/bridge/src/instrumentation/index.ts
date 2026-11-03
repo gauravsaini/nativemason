@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { relative, resolve, sep } from 'node:path';
 
 interface Options { projectRoot?: string; autoInstrument?: boolean; rootComponent?: string; textProbes?: boolean; nativewind?: boolean }
-type State = PluginPass & { opts: Options; bridgeHosts?: Map<string, t.Identifier>; bridgeRoot?: t.Identifier; bridgeRevision?: t.Identifier; bridgeOrdinal?: number };
+type State = PluginPass & { opts: Options; bridgeHosts?: Map<string, t.Identifier>; bridgeRoot?: t.Identifier; bridgeRevision?: t.Identifier; bridgeBindings?:Map<string,unknown>;bridgeOrdinal?: number };
 const hosts = new Set(['View', 'Text', 'Pressable', 'TextInput', 'ScrollView', 'Image']);
 function development(state: State) { const filename=state.filename??state.file.opts.filename??''; if(filename.includes('\0')||! /\.[cm]?[jt]sx?$/.test(filename))return false; return process.env.NODE_ENV !== 'production' && state.file.opts.envName !== 'production' && !state.filename?.split(/[\\/]/).includes('node_modules'); }
 function filePath(state: State) {
@@ -23,7 +23,7 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
           if (!projectPath || projectPath.startsWith('../')) return;
           state.bridgeRevision = path.scope.generateUidIdentifier("registerSourceRevision");
           state.bridgeOrdinal = 0;
-          state.bridgeHosts = new Map();
+          state.bridgeHosts = new Map();state.bridgeBindings=new Map();
           const imports: t.ImportSpecifier[] = [t.importSpecifier(state.bridgeRevision, t.identifier("registerSourceRevision"))];
           if (state.opts.nativewind) path.unshiftContainer("body", t.importDeclaration([], t.stringLiteral("@nativemason/runtime/nativewind")));
           if (state.opts.autoInstrument) for (const statement of path.node.body) {
@@ -32,7 +32,7 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
               if (t.isImportNamespaceSpecifier(specifier)) {
                 for (const host of hosts) {
                   const alias = path.scope.generateUidIdentifier('NativeMason' + host);
-                  state.bridgeHosts.set(specifier.local.name + '.' + host, alias);
+                  state.bridgeHosts.set(specifier.local.name + '.' + host, alias);state.bridgeBindings.set(specifier.local.name+'.'+host,path.scope.getBinding(specifier.local.name));
                   imports.push(t.importSpecifier(alias, t.identifier('Layout' + host)));
                 }
                 continue;
@@ -41,7 +41,7 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
               const name = t.isIdentifier(specifier.imported) ? specifier.imported.name : specifier.imported.value;
               if (!hosts.has(name)) continue;
               const alias = path.scope.generateUidIdentifier(`NativeMason${name}`);
-              state.bridgeHosts.set(specifier.local.name, alias);
+              state.bridgeHosts.set(specifier.local.name, alias);state.bridgeBindings.set(specifier.local.name,path.scope.getBinding(specifier.local.name));
               imports.push(t.importSpecifier(alias, t.identifier(`Layout${name}`)));
             }
           }
@@ -76,17 +76,18 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
         const member = t.isJSXMemberExpression(name) && t.isJSXIdentifier(name.object) && t.isJSXIdentifier(name.property) ? name : null;
         const localName = t.isJSXIdentifier(name) ? name.name : member && t.isJSXIdentifier(member.object) ? member.object.name : null;
         if (!localName) return;
-        const binding = path.scope.getBinding(localName);
-        if (!binding || (!binding.path.isImportSpecifier() && !binding.path.isImportNamespaceSpecifier())) return;
-        const imported = binding.path.isImportSpecifier() ? binding.path.node.imported : null;
-        const originalName = imported ? t.isIdentifier(imported) ? imported.name : imported.value : member?.property.name;
-        if (!originalName) return;
-        const lookupName = member ? localName + '.' + member.property.name : localName;
-        const declaration = binding.path.parentPath;
-        if (!declaration?.isImportDeclaration()) return;
-        const automatic = declaration.node.source.value === 'react-native' && hosts.has(originalName) && state.opts.autoInstrument;
-        const explicit = declaration.node.source.value === '@nativemason/runtime' && originalName.startsWith('Layout') && hosts.has(originalName.slice(6));
-        if (!automatic && !explicit) return;
+        const binding=path.scope.getBinding(localName);
+        const lookupName=member?localName+'.'+member.property.name:localName;
+        const automatic=Boolean(binding&&state.opts.autoInstrument&&state.bridgeHosts?.has(lookupName)&&state.bridgeBindings?.get(lookupName)===binding);
+        let explicit=false;
+        if(!automatic){
+          if(!binding?.path.isImportSpecifier())return;
+          const imported=binding.path.node.imported;
+          const originalName=t.isIdentifier(imported)?imported.name:imported.value;
+          const declaration=binding.path.parentPath;
+          explicit=Boolean(declaration?.isImportDeclaration()&&declaration.node.source.value==='@nativemason/runtime'&&originalName.startsWith('Layout')&&hosts.has(originalName.slice(6)));
+        }
+        if(!automatic&&!explicit)return;
         if (path.node.attributes.some(attribute => t.isJSXAttribute(attribute) && ['__bridgeSource', '__bridgeId'].includes(String(attribute.name.name)))) throw path.buildCodeFrameError('__bridgeSource is reserved for source instrumentation');
         const element = path.parentPath.node;
         if (!t.isJSXElement(element) || element.start == null || element.end == null || !element.loc) return;

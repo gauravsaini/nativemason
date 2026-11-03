@@ -145,21 +145,21 @@ export const LayoutText = forwardRef<Text, TextProps & LayoutElementProps>(funct
   const { ref, id, override, registry } = useRegistration({ ...props, layoutId, __bridgeSource, __bridgeId }, 'Text', forwarded, authoredTextProps, JSON.stringify([typeof children === 'string' || typeof children === 'number' ? children : 'unsupported', flattened, authoredTextProps]));
   const effectiveTextStyle = StyleSheet.flatten([props.style, override]) ?? {};
   const [box, setBox] = useState({ width: 0, height: 0 });
-  const [full, setFull] = useState<{ lineCount: number; height: number } | null>(null);
+  const [full, setFull] = useState<{ signature:string;lineCount: number; height: number } | null>(null);
   const [limited, setLimited] = useState<number | undefined>();
   const plain = typeof children === 'string' || typeof children === 'number';
   const comparableText = !props.adjustsFontSizeToFit && props.minimumFontScale === undefined;
-  const signature = JSON.stringify([plain ? children : null, flattened, box.width, props.numberOfLines, props.allowFontScaling, props.maxFontSizeMultiplier, props.textBreakStrategy, props.android_hyphenationFrequency, props.lineBreakStrategyIOS, props.dynamicTypeRamp, comparableText, override]);
+  const signature = JSON.stringify([plain ? children : null, flattened, box.width, props.numberOfLines, props.allowFontScaling, props.maxFontSizeMultiplier, props.textBreakStrategy, props.android_hyphenationFrequency, props.lineBreakStrategyIOS, props.dynamicTypeRamp, comparableText, override,registry?.profile.fontScale]);
   const previousSignature = useRef(signature);
   useLayoutEffect(() => {
     if (previousSignature.current !== signature) { previousSignature.current = signature; setFull(null); setLimited(undefined); }
   }, [signature]);
   useLayoutEffect(() => {
-    if (!registry?.textProbes || Platform.OS === 'web' || nestedText || !plain || !comparableText || typeof effectiveTextStyle.fontSize !== 'number' || !box.width || !full || limited === undefined) {
+    if (!registry?.textProbes || Platform.OS === 'web' || nestedText || !plain || !comparableText || typeof effectiveTextStyle.fontSize !== 'number' || !box.width || !full || full.signature !== signature) {
       registry?.updateTextFit(id, { status: 'unavailable', reason: 'Requires an enabled probe, plain non-nested text, explicit fontSize, supported sizing props, and settled native measurements' });
       return;
     }
-    registry.updateTextFit(id, { status: 'supported', fullLineCount: full.lineCount, limitedLineCount: limited, fullHeight: full.height, availableHeight: Math.max(0, box.height - (typeof effectiveTextStyle.paddingBottom === "number" ? effectiveTextStyle.paddingBottom : typeof effectiveTextStyle.paddingVertical === "number" ? effectiveTextStyle.paddingVertical : typeof effectiveTextStyle.padding === "number" ? effectiveTextStyle.padding : 0)) });
+    registry.updateTextFit(id, { status: 'supported', fullLineCount: full.lineCount, ...(limited===undefined?{}:{limitedLineCount:limited}), fullHeight: full.height, availableHeight: Math.max(0, box.height - (typeof effectiveTextStyle.paddingBottom === "number" ? effectiveTextStyle.paddingBottom : typeof effectiveTextStyle.paddingVertical === "number" ? effectiveTextStyle.paddingVertical : typeof effectiveTextStyle.padding === "number" ? effectiveTextStyle.padding : 0)) });
   }, [registry, id, plain, comparableText, nestedText, effectiveTextStyle.fontSize, box.width, box.height, full, limited, signature]);
   const onTextLayout: TextProps['onTextLayout'] = event => {
     registry?.updateTextMetrics(id, event.nativeEvent.lines.length);
@@ -172,7 +172,7 @@ export const LayoutText = forwardRef<Text, TextProps & LayoutElementProps>(funct
     props.onLayout?.(event);
   };
   const probe = isDevelopment() && Platform.OS !== 'web' && registry?.textProbes && !nestedText && plain && comparableText && typeof effectiveTextStyle.fontSize === 'number' && box.width > 0;
-  return <ParentContext.Provider value={id}><TextNestingContext.Provider value={true}><Text {...props} onLayout={isDevelopment() ? onLayout : props.onLayout} onTextLayout={isDevelopment() ? onTextLayout : props.onTextLayout} ref={ref} style={override ? [props.style, override] : props.style}>{children}</Text>{probe ? <Text key={signature} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" allowFontScaling={props.allowFontScaling} maxFontSizeMultiplier={props.maxFontSizeMultiplier} textBreakStrategy={props.textBreakStrategy} android_hyphenationFrequency={props.android_hyphenationFrequency} lineBreakStrategyIOS={props.lineBreakStrategyIOS} dynamicTypeRamp={props.dynamicTypeRamp} style={[props.style, override, { position: 'absolute', opacity: 0, width: box.width, height: undefined, minHeight: undefined, maxHeight: undefined, flex: 0 }]} onTextLayout={event => { const lines = event.nativeEvent.lines; const height = lines.reduce((max, line) => Math.max(max, line.y + line.height), 0); setFull({ lineCount: lines.length, height }); }}>{children}</Text> : null}</TextNestingContext.Provider></ParentContext.Provider>;
+  return <ParentContext.Provider value={id}><TextNestingContext.Provider value={true}><Text {...props} onLayout={isDevelopment() ? onLayout : props.onLayout} onTextLayout={isDevelopment() ? onTextLayout : props.onTextLayout} ref={ref} style={override ? [props.style, override] : props.style}>{children}</Text>{probe ? <Text key={signature} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" allowFontScaling={props.allowFontScaling} maxFontSizeMultiplier={props.maxFontSizeMultiplier} textBreakStrategy={props.textBreakStrategy} android_hyphenationFrequency={props.android_hyphenationFrequency} lineBreakStrategyIOS={props.lineBreakStrategyIOS} dynamicTypeRamp={props.dynamicTypeRamp} style={[props.style, override, { position: 'absolute', opacity: 0, width: box.width, height: undefined, minHeight: undefined, maxHeight: undefined, flex: 0 }]} onTextLayout={event => { const lines = event.nativeEvent.lines; const height = lines.reduce((max, line) => Math.max(max, line.y + line.height), 0); setFull({ signature,lineCount: lines.length, height }); }}>{children}</Text> : null}</TextNestingContext.Provider></ParentContext.Provider>;
 });
 export const LayoutPressable = forwardRef<View, PressableProps & LayoutElementProps>(function LayoutPressable({ layoutId, __bridgeSource, __bridgeId, children, ...props }, forwarded) {
   const { ref, id, override } = useRegistration({ ...props, layoutId, __bridgeSource, __bridgeId }, 'Pressable', forwarded);

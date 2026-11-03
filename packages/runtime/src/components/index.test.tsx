@@ -1,4 +1,4 @@
-import React, { createRef, forwardRef } from 'react';
+import React, { createRef } from 'react';
 import TestRenderer, { act, type ReactTestInstance } from 'react-test-renderer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,6 +24,7 @@ import { LayoutProvider, LayoutText, LayoutView, LayoutPressable } from './index
 import { LayoutRegistry } from '../registry/index.js';
 
 const profile = { window: { width: 400, height: 800 }, root: { x: 0, y: 0, width: 400, height: 800 }, pixelRatio: 1, fontScale: 1, orientation: 'portrait' as const, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
+Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const createNodeMock = ({ type }: { type: string }) => ({ type });
 const mount = async (children: React.ReactNode, textProbes = false) => {
   let renderer!: TestRenderer.ReactTestRenderer;
@@ -37,6 +38,23 @@ const findHost = (renderer: TestRenderer.ReactTestRenderer, type: string): React
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe('layout component contracts', () => {
+  it('uses current probe evidence without requiring another limited callback and rejects a stale width probe',async()=>{
+    const updates=vi.spyOn(LayoutRegistry.prototype,'updateTextFit');
+    const renderer=await mount(<LayoutText layoutId="copy" numberOfLines={1} style={{fontSize:16}}>Long text</LayoutText>,true);
+    const host=findHost(renderer,'Text');
+    await act(async()=>host.props.onLayout({nativeEvent:{layout:{width:80,height:20,x:0,y:0}}}));
+    const oldProbe=renderer.root.find(instance=>instance.type==='Text'&&instance.props.accessible===false);
+    const oldCallback=oldProbe.props.onTextLayout;
+    await act(async()=>oldCallback({nativeEvent:{lines:[{y:0,height:20},{y:20,height:20}]}}));
+    expect(updates.mock.calls.at(-1)?.[1]).toMatchObject({status:'supported',fullLineCount:2});
+    await act(async()=>host.props.onLayout({nativeEvent:{layout:{width:160,height:20,x:0,y:0}}}));
+    await act(async()=>oldCallback({nativeEvent:{lines:[{y:0,height:20}]}}));
+    expect(updates.mock.calls.at(-1)?.[1]).toMatchObject({status:'unavailable'});
+    const currentProbe=renderer.root.find(instance=>instance.type==='Text'&&instance.props.accessible===false);
+    await act(async()=>currentProbe.props.onTextLayout({nativeEvent:{lines:[{y:0,height:20}]}}));
+    expect(updates.mock.calls.at(-1)?.[1]).toMatchObject({status:'supported',fullLineCount:1});
+    await act(async()=>renderer.unmount());
+  });
   it('composes text callbacks without changing their event and preserves object refs through cleanup', async () => {
     const forwarded = createRef<{ type: string }>();
     const onLayout = vi.fn();
