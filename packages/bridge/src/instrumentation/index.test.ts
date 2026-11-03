@@ -56,3 +56,13 @@ it('disables instrumentation for Metro release callers even without a production
 });
 
 it('canonicalizes real source and project paths across symlink aliases',()=>{const root=mkdtempSync(path.join(os.tmpdir(),'nm-alias-'));try{const actual=path.join(root,'actual'),alias=path.join(root,'alias');mkdirSync(actual);symlinkSync(actual,alias,'dir');const source="import {View} from 'react-native';export default ()=> <View/>;";writeFileSync(path.join(actual,'App.tsx'),source);const result=transformSync(source,{filename:realpathSync(path.join(actual,'App.tsx')),envName:'development',configFile:false,babelrc:false,parserOpts:{plugins:['jsx']},plugins:[[plugin,{projectRoot:alias,autoInstrument:true}]]})!.code!;expect(result).toContain('__bridgeSource');expect(result).toContain('path: "App.tsx"');}finally{rmSync(root,{recursive:true,force:true});}});
+
+it('wraps roots before Expo React Refresh collects its registration bindings',()=>{
+ const result=transformSync("import {View} from 'react-native';export default function App(){return <View testID='root'/>;}",{filename:'/project/App.tsx',envName:'development',configFile:false,babelrc:false,caller:{name:'metro',...{platform:'android',dev:true,isDev:true,isHMREnabled:true}},presets:['babel-preset-expo'],plugins:[[plugin,{projectRoot:'/project',autoInstrument:true,rootComponent:'App.tsx'}]]})!;
+ expect(result.code).toContain('withLayoutRoot');
+ // Every Refresh assignment must have a declaration in this module.
+ const declared=new Set<string>(),assigned=new Set<string>();
+ const visit=(value:unknown)=>{if(!value||typeof value!=='object')return;const node=value as {type?:string;id?:{name?:string};left?:{name?:string}};if(node.type==='VariableDeclarator'&&node.id?.name)declared.add(node.id.name);if(node.type==='AssignmentExpression'&&node.left?.name?.match(/^_c\d*$/))assigned.add(node.left.name);for(const [key,child] of Object.entries(value))if(key!=='loc'&&key!=='extra'){if(Array.isArray(child))child.forEach(visit);else visit(child);}};
+ const ast=transformSync(result.code!,{configFile:false,babelrc:false,ast:true})!.ast;visit(ast);
+ expect(assigned.size).toBeGreaterThan(0);for(const binding of assigned)expect(declared.has(binding),binding).toBe(true);
+});

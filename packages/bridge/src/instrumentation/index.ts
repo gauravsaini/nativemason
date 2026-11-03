@@ -68,11 +68,6 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
             imports.push(t.importSpecifier(state.bridgeRoot, t.identifier('withLayoutRoot')));
           }
           if (imports.length) path.unshiftContainer('body', t.importDeclaration(imports, t.stringLiteral('@nativemason/runtime')));
-        },
-        exit(path, state) {
-          if (!development(state)) return;
-          const projectPath = filePath(state);
-          if (state.bridgeRevision && projectPath && !projectPath.startsWith('../')) path.pushContainer('body', t.expressionStatement(t.callExpression(state.bridgeRevision, [t.stringLiteral(projectPath), t.stringLiteral(createHash('sha256').update(state.file.code).digest('hex'))])));
           if (!state.bridgeRoot) return;
           for (const child of path.get('body')) {
             if (!child.isExportDefaultDeclaration()) continue;
@@ -86,6 +81,12 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
               child.node.declaration = t.callExpression(state.bridgeRoot, [expression, options]);
             }
           }
+        },
+        exit(path, state) {
+          if (!development(state)) return;
+          const projectPath = filePath(state);
+          if (state.bridgeRevision && projectPath && !projectPath.startsWith('../')) path.pushContainer('body', t.expressionStatement(t.callExpression(state.bridgeRevision, [t.stringLiteral(projectPath), t.stringLiteral(createHash('sha256').update(state.file.code).digest('hex'))])));
+
         },
       },
       JSXOpeningElement(path, state) {
