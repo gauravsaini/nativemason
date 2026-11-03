@@ -17,6 +17,9 @@ export interface Registration {
   measuredLineCount?: number;
   textFit?: TextFitEvidence;
   measurementSignature?: string;
+  authoredSignature?:string;
+  autoIdBase?:string;
+  autoIdInstance?:string;
   host: HostNode;
 }
 export class LayoutRegistry {
@@ -60,16 +63,19 @@ export class LayoutRegistry {
     this.listeners.forEach(listener => listener());
   }
   register(entry: Registration) {
+    if(entry.autoIdBase&&entry.autoIdInstance){let claims=this.autoIds.get(entry.autoIdBase);if(!claims){claims=new Map();this.autoIds.set(entry.autoIdBase,claims);}claims.set(entry.autoIdInstance,entry.id); }
     const old = this.entries.get(entry.id);
     if (this.autoRoot && entry.parentId === null && !this.entries.has(this.rootId)) this.rootId = entry.id;
     if (old && old.host !== entry.host) throw new BridgeFault('DUPLICATE_ELEMENT', `Duplicate layoutId: ${entry.id}`);
-    const comparable = (value: Registration) => ({ ...value, host: null, measuredLineCount: undefined, textFit: undefined });
+    const comparable = (value: Registration) => ({ ...value, host: null, measuredLineCount: undefined, textFit: undefined,measurementSignature:undefined });
     if (!old || JSON.stringify(comparable(old)) !== JSON.stringify(comparable(entry))) this.generation++;
     const preserve = old?.measurementSignature === entry.measurementSignature;
     this.entries.set(entry.id, { ...entry, ...(preserve && old?.measuredLineCount !== undefined ? { measuredLineCount: old.measuredLineCount } : {}), ...(preserve && old?.textFit ? { textFit: old.textFit } : {}) });
   }
   unregister(id: string, host: HostNode) {
     if (this.entries.get(id)?.host === host) {
+      const entry=this.entries.get(id)!;
+      if(entry.autoIdBase&&entry.autoIdInstance){const claims=this.autoIds.get(entry.autoIdBase);claims?.delete(entry.autoIdInstance);if(!claims?.size)this.autoIds.delete(entry.autoIdBase);}
       this.entries.delete(id);
       this.generation++;
     }
@@ -78,14 +84,12 @@ export class LayoutRegistry {
     const entry = this.entries.get(id);
     if (!entry || entry.measuredLineCount === measuredLineCount) return;
     this.entries.set(id, { ...entry, measuredLineCount });
-    this.generation++;
     this.notify();
   }
   updateTextFit(id: string, textFit: TextFitEvidence) {
     const entry = this.entries.get(id);
     if (!entry || JSON.stringify(entry.textFit) === JSON.stringify(textFit)) return;
     this.entries.set(id, { ...entry, textFit });
-    this.generation++;
     this.notify();
   }
   setTrialBatch(mutations: readonly LayoutMutation[]) {

@@ -21,6 +21,7 @@ export type SpatialNode=z.infer<typeof SpatialNodeSchema>;
 export const SpatialSnapshotSchema=z.object({schemaVersion:z.literal(1),sessionId:z.string(),snapshotId:z.string(),platform:z.enum(['web','android','ios']),scenarioId:z.string(),profile:DeviceProfileSchema,revisions:SourceRevisionsSchema,nodes:z.array(SpatialNodeSchema),status:z.enum(['stable','unstable']),generation:z.number().int().nonnegative(),nativeTarget:NativeTargetSchema.optional(),webDiagnostics:WebDiagnosticsSchema.optional()}).strict().superRefine((snapshot,ctx)=>{
   if(snapshot.platform!=='web'&&snapshot.webDiagnostics)ctx.addIssue({code:'custom',message:'Web diagnostics cannot appear in Android snapshots',path:['webDiagnostics']});
   snapshot.nodes.forEach((node,i)=>{
+    for(const dependency of node.source?.dependencies??[])if(!snapshot.revisions[dependency])ctx.addIssue({code:'custom',message:'Required style dependency revision is missing',path:['nodes',i,'source','dependencies'],params:{bridgeCode:'STALE_SOURCE'}});
     if(node.source && snapshot.revisions[node.source.path]!==node.source.hash)ctx.addIssue({code:'custom',message:'Node source hash disagrees with snapshot revisions',path:['nodes',i,'source','hash'],params:{bridgeCode:'STALE_SOURCE'}});
   });
 });

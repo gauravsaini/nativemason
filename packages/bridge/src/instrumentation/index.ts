@@ -1,16 +1,31 @@
-import type { PluginObj, PluginPass } from '@babel/core';
+import {parseSync,type PluginObj,type PluginPass,type NodePath} from '@babel/core';
+import {existsSync,readFileSync} from 'node:fs';
 import * as t from '@babel/types';
 import { createHash } from 'node:crypto';
-import { relative, resolve, sep } from 'node:path';
+import { dirname,relative, resolve, sep } from 'node:path';
 
 interface Options { projectRoot?: string; autoInstrument?: boolean; rootComponent?: string; textProbes?: boolean; nativewind?: boolean }
-type State = PluginPass & { opts: Options; bridgeHosts?: Map<string, t.Identifier>; bridgeRoot?: t.Identifier; bridgeRevision?: t.Identifier; bridgeBindings?:Map<string,unknown>;bridgeOrdinal?: number };
+type State = PluginPass & { opts: Options; bridgeHosts?: Map<string, t.Identifier>; bridgeRoot?: t.Identifier; bridgeRevision?: t.Identifier; bridgeBindings?:Map<string,unknown>;bridgeStyleImports?:Map<string,{file:string;binding:unknown}>;bridgeDependencyCache?:Map<string,string[]>;bridgeOrdinal?: number };
 const hosts = new Set(['View', 'Text', 'Pressable', 'TextInput', 'ScrollView', 'Image']);
 function development(state: State) { const filename=state.filename??state.file.opts.filename??''; if(filename.includes('\0')||! /\.[cm]?[jt]sx?$/.test(filename))return false; return process.env.NODE_ENV !== 'production' && state.file.opts.envName !== 'production' && !state.filename?.split(/[\\/]/).includes('node_modules'); }
 function filePath(state: State) {
   const filename = state.filename ?? state.file.opts.filename;
   if (!filename) return null;
   return relative(resolve(state.opts.projectRoot ?? state.file.opts.root ?? process.cwd()), filename).split(sep).join('/');
+}
+function localModule(from:string,specifier:string):string|undefined {
+  if(!specifier.startsWith('.'))return;
+  const base=resolve(dirname(from),specifier);
+  return [base,...['.ts','.tsx','.js','.jsx','.mts','.cts','.mjs','.cjs'].map(ext=>base+ext),...['index.ts','index.tsx','index.js','index.jsx'].map(file=>resolve(base,file))].find(file=>/\.[cm]?[jt]sx?$/.test(file)&&existsSync(file));
+}
+function styleModules(file:string,root:string,seen=new Set<string>()):string[] {
+  if(seen.has(file))return [];seen.add(file);
+  const relativePath=relative(root,file).split(sep).join('/');
+  if(relativePath.startsWith('../'))return [];
+  const result=[relativePath];
+  const ast=parseSync(readFileSync(file,'utf8'),{filename:file,configFile:false,babelrc:false,parserOpts:{plugins:['typescript','jsx'],sourceType:'unambiguous'}});
+  if(ast)t.traverseFast(ast,node=>{if((t.isImportDeclaration(node)||t.isExportNamedDeclaration(node)||t.isExportAllDeclaration(node))&&node.source){const dependency=localModule(file,node.source.value);if(dependency)result.push(...styleModules(dependency,root,seen));}});
+  return [...new Set(result)];
 }
 export default function bridgeSourcePlugin(): PluginObj<State> {
   return {
@@ -23,7 +38,8 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
           if (!projectPath || projectPath.startsWith('../')) return;
           state.bridgeRevision = path.scope.generateUidIdentifier("registerSourceRevision");
           state.bridgeOrdinal = 0;
-          state.bridgeHosts = new Map();state.bridgeBindings=new Map();
+          state.bridgeHosts = new Map();state.bridgeBindings=new Map();state.bridgeStyleImports=new Map();state.bridgeDependencyCache=new Map();
+          for(const statement of path.node.body){if(!t.isImportDeclaration(statement)||statement.importKind==='type')continue;const file=localModule(state.filename??state.file.opts.filename!,statement.source.value);if(file)for(const specifier of statement.specifiers)state.bridgeStyleImports.set(specifier.local.name,{file,binding:path.scope.getBinding(specifier.local.name)});}
           const imports: t.ImportSpecifier[] = [t.importSpecifier(state.bridgeRevision, t.identifier("registerSourceRevision"))];
           if (state.opts.nativewind) path.unshiftContainer("body", t.importDeclaration([], t.stringLiteral("@nativemason/runtime/nativewind")));
           if (state.opts.autoInstrument) for (const statement of path.node.body) {
@@ -93,7 +109,19 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
         if (!t.isJSXElement(element) || element.start == null || element.end == null || !element.loc) return;
         const projectPath = filePath(state);
         if (!projectPath || projectPath.startsWith('../')) throw path.buildCodeFrameError('Instrumented file must be inside projectRoot');
-        const source = { path: projectPath, hash: createHash('sha256').update(state.file.code).digest('hex'), start: element.start, end: element.end, line: element.loc.start.line, column: element.loc.start.column };
+        const dependencies=new Set<string>(),visited=new Set<t.Node>();
+        const inspectExpression=(expression:NodePath<t.Node|null|undefined>)=>{
+          if(!expression.node||visited.has(expression.node))return;visited.add(expression.node);
+          const inspectIdentifier=(identifier:NodePath<t.Identifier|t.JSXIdentifier>)=>{
+            const binding=identifier.scope.getBinding(identifier.node.name),imported=state.bridgeStyleImports?.get(identifier.node.name);
+            if(imported&&imported.binding===binding){let paths=state.bridgeDependencyCache?.get(imported.file);if(!paths){paths=styleModules(imported.file,resolve(state.opts.projectRoot??state.file.opts.root??process.cwd()));state.bridgeDependencyCache?.set(imported.file,paths);}for(const file of paths)dependencies.add(file);}
+            else if(binding?.path.isVariableDeclarator()){const initializer=binding.path.get('init');if(initializer.node)inspectExpression(initializer);}
+          };
+          if(expression.isReferencedIdentifier())inspectIdentifier(expression);
+          expression.traverse({ReferencedIdentifier:inspectIdentifier});
+        };
+        for(const attribute of path.get('attributes'))if(attribute.isJSXAttribute()&&t.isJSXIdentifier(attribute.node.name)&&['style','className'].includes(attribute.node.name.name)){const value=attribute.get('value');if(value.isJSXExpressionContainer()){const expression=value.get('expression');if(expression.node)inspectExpression(expression);}}
+        const source = { path: projectPath,...(dependencies.size?{dependencies:[...dependencies].sort()}:{}), hash: createHash('sha256').update(state.file.code).digest('hex'), start: element.start, end: element.end, line: element.loc.start.line, column: element.loc.start.column };
         if (automatic) {
           const alias = state.bridgeHosts?.get(lookupName);
           if (!alias) return;

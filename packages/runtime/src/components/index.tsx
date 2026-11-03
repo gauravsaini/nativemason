@@ -114,7 +114,7 @@ function useRegistration(props: LayoutElementProps & { style?: unknown; accessib
   const forwardedCleanup = useRef<(() => void) | undefined>(undefined);
   const registration = useRef<Omit<Registration, 'host'>>({} as Omit<Registration, 'host'>);
   const dynamicStyle = typeof props.style === 'function';
-  registration.current = { id, parentId, kind, role: typeof props.accessibilityRole === 'string' ? props.accessibilityRole : kind === 'Pressable' ? 'button' : null, styles: dynamicStyle ? {} : StyleSheet.flatten(props.style as any) ?? {}, source: props.__bridgeSource ?? null, dynamicStyle, ...(textSignature ? { measurementSignature: textSignature + JSON.stringify(registry?.overrides.get(id)) } : {}), ...(authoredTextProps ? { authoredTextProps } : {}) };
+  registration.current = { id, parentId, kind,...(props.layoutId||props.testID?{}:{autoIdBase:baseId,autoIdInstance:instanceId}), role: typeof props.accessibilityRole === 'string' ? props.accessibilityRole : kind === 'Pressable' ? 'button' : null, styles: dynamicStyle ? {} : StyleSheet.flatten(props.style as any) ?? {}, source: props.__bridgeSource ?? null, dynamicStyle, ...(textSignature ? { authoredSignature:textSignature,measurementSignature: textSignature + JSON.stringify(registry?.overrides.get(id)) } : {}), ...(authoredTextProps ? { authoredTextProps } : {}) };
   const ref = useCallback((host: HostNode | null) => {
     if (hostRef.current && registry) registry.unregister(id, hostRef.current);
     hostRef.current = host;

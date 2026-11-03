@@ -8,11 +8,13 @@ export function registerSourceRevision(path: string, hash: string): void {
 }
 export function loadedSourceRevisions(): SourceRevisions { return Object.fromEntries(revisions); }
 export function captureSourceRevisions(nodes: readonly SpatialNode[]): SourceRevisions {
-  const result = loadedSourceRevisions();
+  const loaded = loadedSourceRevisions();
+  const result:SourceRevisions={};
   for (const node of nodes) {
     if (!node.source) continue;
-    if (result[node.source.path] && result[node.source.path] !== node.source.hash) throw new BridgeFault('STALE_SOURCE', 'Mounted source metadata is stale: ' + node.source.path);
+    if (loaded[node.source.path] && loaded[node.source.path] !== node.source.hash) throw new BridgeFault('STALE_SOURCE', 'Mounted source metadata is stale: ' + node.source.path);
     result[node.source.path] = node.source.hash;
+    for(const dependency of node.source.dependencies??[]){if(!loaded[dependency])throw new BridgeFault('STALE_SOURCE','Required style module has not loaded: '+dependency);result[dependency]=loaded[dependency];}
   }
   return result;
 }

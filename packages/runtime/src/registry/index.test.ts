@@ -4,6 +4,23 @@ const profile = { window: { width: 412, height: 915 }, pixelRatio: 2.625, fontSc
 const source = { path: 'App.tsx', hash: 'a'.repeat(64), start: 10, end: 30, line: 1, column: 10 };
 function entry(id = 'footer'): Registration { return { id, parentId: null, kind: 'View', role: null, styles: { flexDirection: 'column' }, source, dynamicStyle: false, host: {} }; }
 describe('LayoutRegistry', () => {
+  it('reuses a unique generated source identity after its host unmounts',()=>{
+    const registry=new LayoutRegistry('footer',profile,'screen');
+    const id=registry.claimAutoId('App.tsx#1','instance-a');
+    const host={};registry.register({...entry(id),host,autoIdBase:'App.tsx#1',autoIdInstance:'instance-a'});
+    registry.unregister(id,host);
+    expect(registry.claimAutoId('App.tsx#1','instance-b')).toBe('App.tsx#1');
+  });
+  it('keeps measurement evidence separate from authored baseline identity',()=>{
+    const registry=new LayoutRegistry('footer',profile,'screen');
+    const first={...entry(),authoredSignature:'copy',measurementSignature:'before'};
+    registry.register(first);const generation=registry.generation;
+    registry.updateTextMetrics(first.id,2);registry.updateTextFit(first.id,{status:'unavailable'});
+    registry.register({...first,measurementSignature:'trial'});
+    expect(registry.generation).toBe(generation);
+    registry.register({...first,authoredSignature:'changed copy'});
+    expect(registry.generation).toBe(generation+1);
+  });
   it('rejects duplicate mounted IDs, permits metadata refresh and increments generation for source changes', () => {
     const registry = new LayoutRegistry('footer', profile, 'screen');
     const first = entry(); registry.register(first); const generation = registry.generation;
