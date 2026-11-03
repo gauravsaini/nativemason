@@ -16,6 +16,7 @@ function html(mode: string): string {
     const mode=${JSON.stringify(mode)};
     let target=document.getElementById('target');
     if(mode==='/input-hit'){const input=document.createElement('input');input.id='target';input.value='person@example.com';input.style.cssText='width:50px;height:30px;padding:0;border:0';target.replaceWith(input);target=input;}
+    if(mode==='/safe-area')target.style.cssText='width:50px;height:30px;margin-top:env(safe-area-inset-top);margin-left:env(safe-area-inset-left)';
     if(mode==='/ancestor-hit')target.style.pointerEvents='none';
     function draw(){target.style.width=(style.width??50)+'px';target.style.height=(style.height??30)+'px';}
     window.__RN_LAYOUT_BRIDGE__={
@@ -42,6 +43,16 @@ afterAll(async () => { await new Promise<void>((resolve, reject) => server.close
 const open = (path = '/', timeoutMs = 2000) => createBrowserBridge({ webUrl: origin + path, sessionId: 'test-session', scenarioId: 'harness', profile, timeoutMs });
 
 describe('Chromium browser adapter', () => {
+  it('emulates CSS safe-area environment for nested providers and rotates it with the profile',async()=>{
+    const safeProfile={...profile,insets:{top:12,right:0,bottom:8,left:0}};
+    const browser=await createBrowserBridge({webUrl:origin+'/safe-area',sessionId:'test-session',scenarioId:'harness',profile:safeProfile});
+    try{
+      expect((await browser.capture()).nodes[0].rect).toMatchObject({x:0,y:12});
+      const rotated=await browser.capture({orientation:'portrait'});
+      expect(rotated.nodes[0].rect).toMatchObject({x:12,y:0});
+      expect(rotated.profile.insets).toEqual({top:0,right:8,bottom:0,left:12});
+    }finally{await browser.close();}
+  });
   it('recognizes user-agent shadow content and leaves ancestor hit evidence uncertain',async()=>{
     const input=await open('/input-hit');try{expect((await input.capture()).webDiagnostics?.nodes.target.centerHitTest).toBe('clear');}finally{await input.close();}
     const ancestor=await open('/ancestor-hit');try{const snapshot=await ancestor.capture();expect(snapshot.webDiagnostics?.nodes.target.centerHitTest).toBe('unknown');expect(snapshot.webDiagnostics?.warnings.some(w=>w.code==='OCCLUDED'&&w.severity==='confirmed')).toBe(false);}finally{await ancestor.close();}

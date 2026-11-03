@@ -215,6 +215,8 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
     await cdp.send('DOM.enable');
     await cdp.send('DOMSnapshot.enable');
     await cdp.send('CSS.enable');
+    // Emulate the environment, so nested safe-area providers observe the same profile.
+    await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: profile.insets });
     page.setDefaultTimeout(timeoutMs);
     await page.goto(options.webUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
     await cdp.send('DOM.getDocument', { depth: -1, pierce: true });
@@ -296,6 +298,7 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
         activeTrial = false;
         baseline = undefined;
         await callRuntime('resetTrial');
+        await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: nextProfile.insets });
         await page.setViewportSize({ width: Math.round(nextProfile.window.width), height: Math.round(nextProfile.window.height) });
         await cdp.send('Emulation.setDeviceMetricsOverride', { width: Math.round(nextProfile.window.width), height: Math.round(nextProfile.window.height), deviceScaleFactor: nextProfile.pixelRatio, mobile: true, screenOrientation: { type: nextProfile.orientation === 'landscape' ? 'landscapePrimary' : 'portraitPrimary', angle: nextProfile.orientation === 'landscape' ? 90 : 0 } });
       }
