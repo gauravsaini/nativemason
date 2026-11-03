@@ -71,6 +71,34 @@ describe('real Expo + Chromium + MCP',()=>{
    } finally {await call('close_session',{sessionId:opened.sessionId});}
   }
  },120000);
+ it('sweeps orientation with a profile-bound baseline and reports browser-only hazards',async()=>{
+  const overlap=WireframeSpecSchema.parse(JSON.parse(await readFile(path.join(root,'packages/contracts/fixtures/overlap.json'),'utf8')));
+  const opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario=intentional-overlap',scenarioId:overlap.scenarioId,profile:overlap.profile,nativePort:19485,nativeToken:'nativemason-integration-token'});
+  const sessionId=opened.sessionId;
+  try{
+   await call('load_wireframe_spec',{sessionId,spec:{...overlap,constraints:[]}});
+   const overrides={orientation:'landscape'};
+   const inspected=await call('inspect_ui_spatial_graph',{sessionId,profileOverrides:overrides});
+   expect(inspected.snapshot.profile.orientation).toBe('landscape');
+   expect(inspected.snapshot.profile.window.width).toBe(overlap.profile.window.height);
+   expect(inspected.snapshot.webDiagnostics).toBeDefined();
+   expect(inspected.webDiagnostics.nodes['overlap-a']).toBeDefined();
+   expect(inspected.webDiagnostics.nodes['overlap-a'].centerHitTest).toBe('confirmed');
+   await expect(call('simulate_layout_mutation',{sessionId,baselineSnapshotId:inspected.snapshot.snapshotId,elementId:'overlap-a',patch:{width:110}})).rejects.toMatchObject({data:{error:{code:'STALE_SNAPSHOT'}}});
+   const trial=await call('simulate_layout_mutation',{sessionId,baselineSnapshotId:inspected.snapshot.snapshotId,elementId:'overlap-a',patch:{width:100},profileOverrides:overrides});
+   expect(trial.webDiagnostics.warnings.some((w:any)=>w.elementId==='overlap-a'&&w.code==='OCCLUDED')).toBe(true);
+   const commitInput={sessionId,trialId:trial.trialId,expectedSourceHash:inspected.snapshot.revisions['App.tsx']};
+   const preview=await call('commit_rn_ast_patch',{...commitInput,mode:'preview'});
+   expect(preview.plan.diff).toContain('100');
+   await expect(call('commit_rn_ast_patch',{...commitInput,mode:'apply'})).rejects.toMatchObject({data:{error:{code:'UNSUPPORTED_PROFILE'}}});
+   const portrait=await call('inspect_ui_spatial_graph',{sessionId});
+   const portraitTrial=await call('simulate_layout_mutation',{sessionId,baselineSnapshotId:portrait.snapshot.snapshotId,elementId:'overlap-a',patch:{width:100}});
+   const portraitCommit={sessionId,trialId:portraitTrial.trialId,expectedSourceHash:portrait.snapshot.revisions['App.tsx']};
+   await call('commit_rn_ast_patch',{...portraitCommit,mode:'preview'});
+   await expect(call('commit_rn_ast_patch',{...portraitCommit,mode:'apply'})).rejects.toMatchObject({data:{error:{code:'VERIFICATION_FAILED'}}});
+   await expect(call('inspect_ui_spatial_graph',{sessionId,profileOverrides:{fontScale:1.2}})).rejects.toMatchObject({data:{error:{code:'UNSUPPORTED_PROFILE'}}});
+  }finally{await call('close_session',{sessionId});}
+ },90000);
  it('advertises strict inputs over the actual stdio executable',async()=>{
   const cli=new Client({name:'stdio-integration',version:'1'});const transport=new StdioClientTransport({command:process.execPath,args:[path.join(root,'packages/bridge/dist/cli.js')],stderr:'pipe'});
   try{await cli.connect(transport);expect((await cli.listTools()).tools.map(t=>t.name)).toContain('verify_native_layout');const result=await cli.callTool({name:'close_session',arguments:{sessionId:'missing'}});expect(result.isError).toBe(true);expect(JSON.stringify(result.content)).toContain('SESSION_NOT_FOUND');}finally{await cli.close();}

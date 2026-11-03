@@ -40,8 +40,8 @@ Snapshots must have coherent source revisions. A source write remains native-pen
 
 ## Current limits
 
-The complete named Expo acceptance scenario is `broken-footer`. Pure and adapter tests cover further geometry and error cases; broader screen-level acceptance still requires additional fixtures.
+The full Android source-to-verification acceptance remains `broken-footer`. The managed Chromium fixture also exercises `text-wrapping`, `safe-area`, `intentional-overlap`, and `repeated-elements`, including orientation profile sweeps, CDP diagnostics, and confirmed warning gates. These additional scenarios have browser evidence only until they receive native app routes and device profiles.
 
 V1 does not include NativeWind editing, arbitrary CSS translation, design-image/Figma ingestion, bare React Native/Vite support, iOS verification, WebView/Expo DOM rendering, a custom Metro CDP domain, or automatic instrumentation of an unmodified application. Dynamic style functions, JSX spreads, imported/shared styles, and repeated source sites are not automatically editable. Fonts and text rendering may differ between Chromium and Android, so browser success alone never establishes native correctness.
 
-Production builds disable runtime collection, connections, trial overrides, and injected source metadata. NativeMason is a development inspection/editing tool; instrumented components render their corresponding React Native primitive without adding a host layout wrapper.
+Production builds disable runtime collection, connections, trial overrides, and injected source metadata. NativeMason is a development inspection/editing tool; instrumented components render their corresponding React Native primitive without adding a host layout wrapper. Browser clipping, hit testing, paint order, line boxes, and font usage are diagnostics only; Android acceptance uses measured shared geometry and any available native line counts.

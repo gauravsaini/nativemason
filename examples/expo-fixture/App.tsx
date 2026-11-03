@@ -66,7 +66,7 @@ const scenarioStyles = StyleSheet.create({
   unsafeAction: { width: 176, height: 48, marginTop: 'auto', justifyContent: 'center', alignItems: 'center', backgroundColor: '#dc2626' },
   overlapStage: { width: 240, height: 180, marginTop: 24 },
   overlapA: { position: 'absolute', left: 0, top: 0, width: 120, height: 120, backgroundColor: '#475569', padding: 8 },
-  overlapB: { position: 'absolute', left: 60, top: 40, width: 120, height: 120, backgroundColor: '#2563eb', padding: 8 },
+  overlapB: { position: 'absolute', left: 40, top: 20, width: 120, height: 120, backgroundColor: '#2563eb', padding: 8 },
   repeatedList: { marginTop: 24, gap: 8 },
   repeatedButton: { width: 240, height: 48, justifyContent: 'center', alignItems: 'center', backgroundColor: '#2563eb' },
 });

@@ -9,8 +9,10 @@ import {
   type BrowserPort,
   type BrowserRuntime,
   type DeviceProfile,
+  type ProfileOverrides,
   type RnStylePatch,
   type SpatialSnapshot,
+  type WebDiagnostics,
 } from '@rn-layout/contracts';
 
 export interface BrowserBridgeOptions {
@@ -26,6 +28,22 @@ export interface BrowserBridge extends BrowserPort {
 }
 
 type RuntimeWindow = Window & { __RN_LAYOUT_BRIDGE__?: BrowserRuntime };
+
+function applyProfileOverrides(base: DeviceProfile, overrides?: ProfileOverrides): DeviceProfile {
+  if (!overrides) return structuredClone(base);
+  if (overrides.fontScale !== undefined) throw new BridgeFault('UNSUPPORTED_PROFILE', 'Chromium font-scale simulation is not supported until rendered text changes can be verified');
+  if (!overrides.orientation || overrides.orientation === base.orientation) return structuredClone(base);
+  const { width, height } = base.window;
+  if (Math.abs(width - height) < 0.01) throw new BridgeFault('UNSUPPORTED_PROFILE', 'Cannot infer the alternate viewport dimensions from a square profile');
+  const insets = overrides.orientation === 'landscape'
+    ? { top: base.insets.left, right: base.insets.top, bottom: base.insets.right, left: base.insets.bottom }
+    : { top: base.insets.right, right: base.insets.bottom, bottom: base.insets.left, left: base.insets.top };
+  const profile: DeviceProfile = { ...base, orientation: overrides.orientation, window: { width: height, height: width }, root: { x: 0, y: 0, width: height, height: width }, insets };
+  if (insets.left + insets.right >= profile.window.width || insets.top + insets.bottom >= profile.window.height) {
+    throw new BridgeFault('UNSUPPORTED_PROFILE', 'Rotated safe-area insets do not fit the requested orientation');
+  }
+  return profile;
+}
 
 function fault(error: unknown, fallback: string): BridgeFault {
   if (error instanceof BridgeFault) return error;
@@ -83,6 +101,99 @@ async function waitForAssets(page: Page, timeoutMs: number): Promise<void> {
   if (broken.length > 0) throw new BridgeFault('INVALID_INPUT', 'One or more screen images failed to load', { images: broken });
 }
 
+async function collectDiagnostics(cdp: any): Promise<WebDiagnostics> {
+  const root = await cdp.send('Runtime.evaluate', {
+    expression: 'Object.fromEntries(window.__RN_LAYOUT_BRIDGE__.getDiagnosticTargets().map(target => [target.id, target.element]))',
+    returnByValue: false,
+  });
+  const objectId = root.result.objectId;
+  if (!objectId) throw new BridgeFault('STALE_SNAPSHOT', 'Runtime did not expose registered DOM targets');
+  const properties = await cdp.send('Runtime.getProperties', { objectId, ownProperties: true });
+  const nodes: WebDiagnostics['nodes'] = {};
+  const warnings: WebDiagnostics['warnings'] = [];
+  let domSnapshot: any;
+  try { domSnapshot = await cdp.send('DOMSnapshot.captureSnapshot', { computedStyles: [], includePaintOrder: true, includeDOMRects: true }); } catch { /* Paint order remains nullable. */ }
+  for (const property of properties.result) {
+    const elementObjectId = property.value?.objectId;
+    if (!property.name) continue;
+    if (!elementObjectId) {
+      nodes[property.name] = { clipping: 'unknown', centerHitTest: 'unknown', scrollOverflow: { horizontal: false, vertical: false }, paintOrder: null, fonts: [], lineBoxCount: null };
+      warnings.push({ elementId: property.name, code: 'EVIDENCE_UNAVAILABLE', severity: 'uncertain', message: 'The registered host did not resolve to a DOM element' });
+      continue;
+    }
+    const requested = await cdp.send('DOM.requestNode', { objectId: elementObjectId });
+    if (!requested.nodeId) {
+      nodes[property.name] = { clipping: 'unknown', centerHitTest: 'unknown', scrollOverflow: { horizontal: false, vertical: false }, paintOrder: null, fonts: [], lineBoxCount: null };
+      warnings.push({ elementId: property.name, code: 'EVIDENCE_UNAVAILABLE', severity: 'uncertain', message: 'The registered host has no CDP DOM node' });
+      continue;
+    }
+    const described = await cdp.send('DOM.describeNode', { nodeId: requested.nodeId, depth: 0 });
+    const backendNodeId = described.node.backendNodeId;
+    const diagnostic = await cdp.send('Runtime.callFunctionOn', {
+      objectId: elementObjectId,
+      functionDeclaration: `function(){
+        const r=this.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2;
+        let clipped=false, known=true, scrollX=false, scrollY=false;
+        for(let p=this;p&&p.nodeType===1;p=p.parentElement){
+          const s=getComputedStyle(p), pr=p.getBoundingClientRect();
+          if(s.overflowX==='hidden'||s.overflowX==='clip'||s.overflowX==='auto'||s.overflowX==='scroll'){
+            scrollX=scrollX||p.scrollWidth>p.clientWidth; if(p!==this&&(r.left<pr.left||r.right>pr.right))clipped=true;
+          }
+          if(s.overflowY==='hidden'||s.overflowY==='clip'||s.overflowY==='auto'||s.overflowY==='scroll'){
+            scrollY=scrollY||p.scrollHeight>p.clientHeight; if(p!==this&&(r.top<pr.top||r.bottom>pr.bottom))clipped=true;
+          }
+        }
+        const style=getComputedStyle(this); const requested=style.fontFamily.split(',').map(v=>v.trim().replace(/^['"]|['"]$/g,''));
+        let lines=null; if(this.childNodes.length){const range=document.createRange();range.selectNodeContents(this);const rects=[...range.getClientRects()];lines=new Set(rects.map(x=>Math.round(x.top*100)/100)).size;}
+        const failedFonts=[...document.fonts].filter(f=>f.status==='error').map(f=>f.family.replace(/^['"]|['"]$/g,''));
+        return {clipped,known,scrollX,scrollY,cx,cy,requested,lines,failedFonts};
+      }`, returnByValue: true,
+    });
+    const value = diagnostic.result?.value;
+    if (!value) continue;
+    const clipping: 'confirmed'|'clear'|'unknown' = value.known ? (value.clipped ? 'confirmed' : 'clear') : 'unknown';
+    let centerHitTest: 'confirmed'|'clear'|'unknown' = 'unknown';
+    try {
+      const hit = await cdp.send('DOM.getNodeForLocation', { x: Math.round(value.cx), y: Math.round(value.cy), includeUserAgentShadowDOM: true, ignorePointerEventsNone: false });
+      const hitObject = await cdp.send('DOM.resolveNode', { backendNodeId: hit.backendNodeId });
+      if (hitObject.object.objectId) {
+        const contains = await cdp.send('Runtime.callFunctionOn', {
+          objectId: elementObjectId,
+          functionDeclaration: 'function(hit){return this===hit||this.contains(hit)}',
+          arguments: [{ objectId: hitObject.object.objectId }], returnByValue: true,
+        });
+        centerHitTest = contains.result.value === true ? 'clear' : 'confirmed';
+      }
+    } catch { centerHitTest = 'unknown'; }
+    let paintOrder: number | null = null;
+    if (domSnapshot) {
+      for (const doc of domSnapshot.documents) {
+        const index = doc.nodes.backendNodeId?.indexOf(backendNodeId) ?? -1;
+        const layoutIndex = doc.layout.nodeIndex.indexOf(index);
+        if (layoutIndex >= 0) paintOrder = doc.layout.paintOrders?.[layoutIndex] ?? null;
+      }
+    }
+    let fonts: WebDiagnostics['nodes'][string]['fonts'] = [];
+    try {
+      const platformFonts = await cdp.send('CSS.getPlatformFontsForNode', { nodeId: requested.nodeId });
+      fonts = platformFonts.fonts.map((font: any) => ({ family: font.familyName, glyphCount: font.glyphCount, isCustom: font.isCustomFont ?? null }));
+    } catch { /* Font evidence can be unavailable for non-text hosts. */ }
+    const lineBoxCount = value.lines ?? null;
+    nodes[property.name] = { clipping, centerHitTest, scrollOverflow: { horizontal: value.scrollX, vertical: value.scrollY }, paintOrder, fonts, lineBoxCount };
+    if (clipping === 'confirmed') warnings.push({ elementId: property.name, code: 'CLIPPED', severity: 'confirmed', message: 'The registered element is clipped by an ancestor' });
+    if (centerHitTest === 'confirmed') warnings.push({ elementId: property.name, code: 'OCCLUDED', severity: 'confirmed', message: 'A different DOM node receives the center-point hit test' });
+    const genericFamilies = new Set(['arial','sans-serif','serif','monospace','system-ui','-apple-system','blinkmacsystemfont','segoe ui','roboto','helvetica','noto sans']);
+    const customRequested = value.requested.some((family: string) => !genericFamilies.has(family.toLowerCase()));
+    if (customRequested && !fonts.some(font => value.requested.some((family: string) => font.family.toLowerCase() === family.toLowerCase()))) {
+      const failed = value.requested.some((family: string) => value.failedFonts.some((name: string) => name.toLowerCase() === family.toLowerCase()));
+      warnings.push({ elementId: property.name, code: 'FONT_LOAD_FAILED', severity: failed ? 'confirmed' : 'uncertain', message: failed ? 'The requested custom FontFace has an error status' : 'Chromium rendered glyphs with a family other than the first requested custom family' });
+    }
+    if (clipping === 'unknown' || centerHitTest === 'unknown') warnings.push({ elementId: property.name, code: 'EVIDENCE_UNAVAILABLE', severity: 'uncertain', message: 'One or more browser diagnostics could not be established' });
+  }
+  await cdp.send('Runtime.releaseObject', { objectId }).catch(() => undefined);
+  return { nodes, warnings };
+}
+
 /** Owns one Chromium context. Runtime changes travel through React Native props, never CSS. */
 export async function createBrowserBridge(options: BrowserBridgeOptions): Promise<BrowserBridge> {
   const profile = DeviceProfileSchema.parse(options.profile);
@@ -96,8 +207,13 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
       reducedMotion: 'reduce',
     });
     const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('DOM.enable');
+    await cdp.send('DOMSnapshot.enable');
+    await cdp.send('CSS.enable');
     page.setDefaultTimeout(timeoutMs);
     await page.goto(options.webUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+    await cdp.send('DOM.getDocument', { depth: -1, pierce: true });
     await page.waitForFunction(() => !!(window as RuntimeWindow).__RN_LAYOUT_BRIDGE__, undefined, { timeout: timeoutMs });
     await page.evaluate(input => (window as RuntimeWindow).__RN_LAYOUT_BRIDGE__!.configure(input), {
       sessionId: options.sessionId,
@@ -111,6 +227,7 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
     let closed = false;
     let baseline: SpatialSnapshot | undefined;
     let activeTrial = false;
+    let activeProfile = profile;
     let navigation = 0;
     let baselineNavigation = 0;
     page.on('framenavigated', frame => { if (frame === page.mainFrame()) navigation++; });
@@ -156,7 +273,9 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
       await waitForAssets(page, timeoutMs);
       let previous: SpatialSnapshot | undefined;
       while (performance.now() - started < timeoutMs) {
-        const snapshot = validateSnapshot(await callRuntime('capture'), options);
+        const raw = await callRuntime('capture');
+        const parsed = SpatialSnapshotSchema.parse(raw);
+        const snapshot = validateSnapshot({ ...parsed, webDiagnostics: await collectDiagnostics(cdp) }, { ...options, profile: activeProfile });
         if (snapshot.status === 'stable' && previous?.status === 'stable' && identity(previous) === identity(snapshot) && geometry(previous) === geometry(snapshot)) return snapshot;
         previous = snapshot;
         await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
@@ -164,10 +283,26 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
       throw new BridgeFault('UNSTABLE_LAYOUT', 'Screen did not produce two matching stable layout captures');
     }
 
+    async function setProfile(overrides?: ProfileOverrides): Promise<void> {
+      const nextProfile = applyProfileOverrides(profile, overrides);
+      const profileChanged = JSON.stringify(nextProfile) !== JSON.stringify(activeProfile);
+      if (!profileChanged) return;
+      {
+        activeTrial = false;
+        baseline = undefined;
+        await callRuntime('resetTrial');
+        await page.setViewportSize({ width: Math.round(nextProfile.window.width), height: Math.round(nextProfile.window.height) });
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: Math.round(nextProfile.window.width), height: Math.round(nextProfile.window.height), deviceScaleFactor: nextProfile.pixelRatio, mobile: true, screenOrientation: { type: nextProfile.orientation === 'landscape' ? 'landscapePrimary' : 'portraitPrimary', angle: nextProfile.orientation === 'landscape' ? 90 : 0 } });
+      }
+      activeProfile = nextProfile;
+      await page.evaluate(input => (window as RuntimeWindow).__RN_LAYOUT_BRIDGE__!.configure(input), { sessionId: options.sessionId, scenarioId: options.scenarioId, profile: activeProfile });
+    }
+
     return {
-      async capture() {
+      async capture(overrides?: ProfileOverrides) {
         const started = performance.now();
         try {
+          await setProfile(overrides);
           const snapshot = await readStable();
           if (!activeTrial) {
             baseline = snapshot;
@@ -180,13 +315,14 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
           captureMs.push(performance.now() - started);
         }
       },
-      async trial(elementId: string, patch: RnStylePatch) {
+      async trial(elementId: string, patch: RnStylePatch, overrides?: ProfileOverrides) {
         const started = performance.now();
         ensureOpen();
         const parsed = RnStylePatchSchema.safeParse(patch);
         if (!parsed.success) throw new BridgeFault('INVALID_INPUT', 'Unsupported React Native style patch', parsed.error.flatten());
         if (!baseline) throw new BridgeFault('STALE_SNAPSHOT', 'Capture a baseline before trying a layout mutation');
         try {
+          await setProfile(overrides);
           const before = await readStable();
           if (navigation !== baselineNavigation || identity(before) !== identity(baseline)) {
             throw new BridgeFault('STALE_SNAPSHOT', 'Source, profile, navigation, or mounted elements changed since the baseline');
@@ -229,6 +365,7 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
       async close() {
         if (closed) return;
         closed = true;
+        await cdp.detach().catch(() => undefined);
         await browser!.close();
       },
       timings() { return { captureMs: [...captureMs], trialMs: [...trialMs] }; },
