@@ -1,7 +1,135 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 280" role="img" aria-labelledby="title desc">
-<title id="title">NativeMason logo option 2: Blueprint</title><desc id="desc">An indigo outline brick wall with a tall window and a trowel peeking above the top.</desc>
-<defs><pattern id="brick" width="72" height="50" patternUnits="userSpaceOnUse"><rect width="72" height="50" fill="#f5f6ff"/><path d="M0 25h72M36 0v25M0 25v25M72 25v25" fill="none" stroke="#373d87" stroke-width="4"/></pattern></defs>
-<path d="m189 57 45-24 15 22-31 16Z" fill="#c2c9fb" stroke="#373d87" stroke-width="6" stroke-linejoin="round"/><path d="m242 40 23-15" stroke="#373d87" stroke-width="10" stroke-linecap="round"/>
-<path d="M36 74h248v158H36z" fill="url(#brick)" stroke="#373d87" stroke-width="8"/><path d="M28 73h264" fill="none" stroke="#373d87" stroke-width="12" stroke-linecap="round"/>
-<rect x="105" y="108" width="110" height="113" rx="16" fill="#f5f6ff" stroke="#373d87" stroke-width="9"/><path d="M160 112v104m-51-52h102" fill="none" stroke="#8b98ef" stroke-width="7"/><path d="M96 223h128" fill="none" stroke="#373d87" stroke-width="10" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%" role="img" aria-labelledby="title-2 desc-2">
+  <title id="title-2">NativeMason Logo Option 2: Blueprint Precision</title>
+  <desc id="desc-2">Engineering blueprint style, indigo masonry wall, drafting grid, glowing arched window, precision titanium trowel.</desc>
+  <defs>
+    <!-- Blueprint Deep Ocean Background -->
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B192E" />
+      <stop offset="100%" stop-color="#050C18" />
+    </linearGradient>
+
+    <!-- Blueprint Drafting Grid -->
+    <pattern id="draftGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1E3A8A" stroke-width="0.8" opacity="0.4" />
+    </pattern>
+
+    <!-- Indigo Slate Bricks -->
+    <linearGradient id="blueBrickA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#0F204E" />
+    </linearGradient>
+    <linearGradient id="blueBrickB" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1744A3" />
+    </linearGradient>
+
+    <!-- Precision Titanium Trowel -->
+    <linearGradient id="titaniumBlade" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="40%" stop-color="#CBD5E1" />
+      <stop offset="80%" stop-color="#64748B" />
+      <stop offset="100%" stop-color="#334155" />
+    </linearGradient>
+
+    <!-- Luminous Window Glass -->
+    <linearGradient id="glowGlass" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="70%" stop-color="#0284C7" />
+      <stop offset="100%" stop-color="#075985" />
+    </linearGradient>
+
+    <filter id="neonGlow2" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Blueprint Card Base -->
+  <rect width="400" height="400" rx="44" fill="url(#bg2)" stroke="#1D3E74" stroke-width="2" />
+  <rect width="400" height="400" rx="44" fill="url(#draftGrid)" />
+
+  <g filter="url(#neonGlow2)">
+    <!-- TROWEL: Drafted Blueprint Tool -->
+    <g transform="translate(242, 50) rotate(22)">
+      <!-- Gooseneck Shank -->
+      <path d="M0,38 C-2,26 6,18 8,6 C9,-2 7,-10 7,-18" fill="none" stroke="#60A5FA" stroke-width="5" stroke-linecap="round" />
+      <rect x="1" y="-22" width="12" height="6" rx="2" fill="#38BDF8" />
+
+      <!-- High-tech Drafting Handle -->
+      <path d="M4,-22 C2,-32 0,-48 4,-62 C7,-72 13,-72 16,-62 C20,-48 18,-32 16,-22 Z" fill="#0F172A" stroke="#38BDF8" stroke-width="1.8" />
+      <line x1="10" y1="-56" x2="10" y2="-28" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" />
+
+      <!-- Precision Forged Blade -->
+      <path d="M0,-2 L-28,42 C-30,56 -22,74 -4,74 L4,74 C22,74 30,56 28,42 Z" fill="url(#titaniumBlade)" stroke="#38BDF8" stroke-width="1.5" />
+      <line x1="0" y1="0" x2="0" y2="72" stroke="#FFFFFF" stroke-width="2" />
+      <polygon points="0,-2 28,42 20,74 0,74" fill="#FFFFFF" opacity="0.25" />
+
+      <!-- Drafting Crosshair Point at Tip -->
+      <circle cx="0" cy="-2" r="3" fill="#38BDF8" />
+    </g>
+
+    <!-- BRICK STRUCTURE -->
+    <rect x="42" y="98" width="316" height="248" rx="12" fill="#0A162B" stroke="#38BDF8" stroke-width="1" />
+
+    <!-- Architectural Coping Lintel -->
+    <rect x="36" y="92" width="328" height="18" rx="5" fill="#1E3A8A" stroke="#60A5FA" stroke-width="1.8" />
+    <line x1="38" y1="94" x2="362" y2="94" stroke="#93C5FD" stroke-width="2" />
+
+    <!-- Precision Indigo Bricks -->
+    <!-- Row 1 -->
+    <rect x="46" y="116" width="76" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="126" y="116" width="80" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="210" y="116" width="80" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="294" y="116" width="60" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+
+    <!-- Row 2 -->
+    <rect x="46" y="154" width="56" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="106" y="154" width="26" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="268" y="154" width="26" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="298" y="154" width="56" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+
+    <!-- Row 3 -->
+    <rect x="46" y="192" width="40" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="90" y="192" width="42" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="268" y="192" width="42" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="314" y="192" width="40" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+
+    <!-- Row 4 -->
+    <rect x="46" y="230" width="56" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="106" y="230" width="26" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="268" y="230" width="26" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="298" y="230" width="56" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+
+    <!-- Row 5 -->
+    <rect x="46" y="268" width="80" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="130" y="268" width="78" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="212" y="268" width="70" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="286" y="268" width="68" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+
+    <!-- Row 6 -->
+    <rect x="46" y="306" width="50" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="100" y="306" width="96" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="200" y="306" width="96" height="34" rx="4" fill="url(#blueBrickB)" stroke="#38BDF8" stroke-width="1.2" />
+    <rect x="300" y="306" width="54" height="34" rx="4" fill="url(#blueBrickA)" stroke="#38BDF8" stroke-width="1.2" />
+
+    <!-- DRAFTING ARCHED WINDOW -->
+    <path d="M134,256 L134,190 C134,154 162,136 200,136 C238,136 266,154 266,190 L266,256 Z" fill="#0B192E" stroke="#60A5FA" stroke-width="2.5" />
+    <path d="M142,254 L142,192 C142,160 166,144 200,144 C234,144 258,160 258,192 L258,254 Z" fill="url(#glowGlass)" />
+
+    <!-- Blueprint Grid Lines inside Window -->
+    <line x1="200" y1="144" x2="200" y2="254" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+    <line x1="142" y1="204" x2="258" y2="204" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+    <line x1="142" y1="230" x2="258" y2="230" stroke="#FFFFFF" stroke-width="2" opacity="0.6" />
+
+    <!-- Glass Flare -->
+    <polygon points="146,244 174,156 190,156 162,244" fill="#FFFFFF" opacity="0.35" />
+    <polygon points="208,244 230,170 240,170 218,244" fill="#FFFFFF" opacity="0.35" />
+
+    <!-- Blueprint Sill -->
+    <rect x="122" y="254" width="156" height="14" rx="4" fill="#1E3A8A" stroke="#38BDF8" stroke-width="2" />
+    <line x1="124" y1="256" x2="276" y2="256" stroke="#93C5FD" stroke-width="2" />
+  </g>
 </svg>

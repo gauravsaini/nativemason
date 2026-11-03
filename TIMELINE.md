@@ -1,0 +1,7 @@
+## UPDATED ON : 2026-11-03
+
+### feat (2026-11-03) — add refined NativeMason SVG logo directions and preview
+
+1. **Brand Design**: Crafted 4 distinct high-polish SVG logos featuring architectural brick walls, windows, and peeking mason trowels (Keystone Heritage, Blueprint Precision, Courtyard Modern, and Mason Mark Mobile) with README.md preview showcase.
+2. **Tests** (before → after): Vitest 82/82 passed → 82/82 passed; ESLint & TypeCheck clean.
+3. **Files changed**: `README.md`, `assets/logos/01-keystone.svg`, `assets/logos/02-blueprint.svg`, `assets/logos/03-courtyard.svg`, `assets/logos/04-mason-mark.svg`, `assets/logos/options-preview.png`

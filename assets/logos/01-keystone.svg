@@ -1,7 +1,179 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 280" role="img" aria-labelledby="title desc">
-<title id="title">NativeMason logo option 1: Keystone</title><desc id="desc">A teal brick wall and arched window with a terracotta trowel tucked behind the roof.</desc>
-<defs><pattern id="brick" width="80" height="48" patternUnits="userSpaceOnUse"><rect width="80" height="48" fill="#0d514d"/><path d="M0 24h80M40 0v24M0 24v24M80 24v24" fill="none" stroke="#dcf2ea" stroke-width="5"/></pattern></defs>
-<path d="M177 54 225 30 244 50 207 69Z" fill="#df704d"/><path d="m238 42 20-14" stroke="#173f3c" stroke-width="9" stroke-linecap="round"/><path d="m254 31 18-10" stroke="#173f3c" stroke-width="13" stroke-linecap="round"/>
-<rect x="32" y="72" width="256" height="171" rx="9" fill="url(#brick)"/><path d="M28 72h264" stroke="#103f3d" stroke-width="16" stroke-linecap="round"/>
-<path d="M105 215v-56a55 55 0 0 1 110 0v56Z" fill="#eaf7f1" stroke="#0a3d3a" stroke-width="9"/><path d="M160 106v109M109 163h102" stroke="#0a3d3a" stroke-width="7"/><path d="M96 218h128" stroke="#0a3d3a" stroke-width="12" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%" role="img" aria-labelledby="title-1 desc-1">
+  <title id="title-1">NativeMason Logo Option 1: Keystone Heritage</title>
+  <desc id="desc-1">Artisan terracotta brick wall, Romanesque keystone arch window, polished steel and walnut trowel peeking on the top right.</desc>
+  <defs>
+    <!-- Background Card -->
+    <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1A181B" />
+      <stop offset="100%" stop-color="#0E0D0F" />
+    </linearGradient>
+
+    <!-- Warm Heritage Bricks -->
+    <linearGradient id="brick1A" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D9532F" />
+      <stop offset="100%" stop-color="#9C3015" />
+    </linearGradient>
+    <linearGradient id="brick1B" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C44322" />
+      <stop offset="100%" stop-color="#88240D" />
+    </linearGradient>
+    <linearGradient id="brick1C" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E26543" />
+      <stop offset="100%" stop-color="#A8371B" />
+    </linearGradient>
+
+    <!-- Limestone Coping & Keystone -->
+    <linearGradient id="stoneGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FBF2E9" />
+      <stop offset="50%" stop-color="#E6D3C1" />
+      <stop offset="100%" stop-color="#CBB5A0" />
+    </linearGradient>
+
+    <!-- Polished Forged Steel Blade -->
+    <linearGradient id="steelBlade" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="35%" stop-color="#E2E8F0" />
+      <stop offset="70%" stop-color="#94A3B8" />
+      <stop offset="100%" stop-color="#475569" />
+    </linearGradient>
+    <linearGradient id="walnutWood" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#54210B" />
+      <stop offset="40%" stop-color="#8C3A16" />
+      <stop offset="75%" stop-color="#54210B" />
+      <stop offset="100%" stop-color="#381405" />
+    </linearGradient>
+    <linearGradient id="brassCollar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="50%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#78350F" />
+    </linearGradient>
+
+    <!-- Window Azure Sky & Glass -->
+    <linearGradient id="skyGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="55%" stop-color="#0284C7" />
+      <stop offset="100%" stop-color="#075985" />
+    </linearGradient>
+
+    <!-- Filters -->
+    <filter id="cardShadow1" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+    <filter id="trowelShadow1" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="3" dy="6" stdDeviation="5" flood-color="#000000" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- Base Card -->
+  <rect width="400" height="400" rx="44" fill="url(#bg1)" stroke="#2A262E" stroke-width="2" />
+
+  <g filter="url(#cardShadow1)">
+    <!-- TROWEL: Peeking diagonally over top right coping -->
+    <g transform="translate(244, 48) rotate(24)" filter="url(#trowelShadow1)">
+      <!-- Cranked Shank -->
+      <path d="M0,38 C-2,26 6,18 8,6 C9,-2 7,-10 7,-18" fill="none" stroke="#334155" stroke-width="6" stroke-linecap="round" />
+      <path d="M0,38 C-2,26 6,18 8,6 C9,-2 7,-10 7,-18" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" opacity="0.8" />
+
+      <!-- Brass Ferrule -->
+      <rect x="1" y="-22" width="12" height="7" rx="2" fill="url(#brassCollar)" stroke="#78350F" stroke-width="0.8" />
+
+      <!-- Turned Hardwood Handle -->
+      <path d="M4,-22 C2,-32 -1,-48 4,-62 C7,-72 13,-72 16,-62 C21,-48 18,-32 16,-22 Z" fill="url(#walnutWood)" stroke="#260C02" stroke-width="1.2" />
+      <!-- Handle Gloss Highlight -->
+      <path d="M7,-26 C5,-38 4,-50 8,-60" fill="none" stroke="#FED7AA" stroke-width="2" stroke-linecap="round" opacity="0.65" />
+
+      <!-- Masonry Trowel Blade -->
+      <path d="M0,-2 L-30,42 C-32,56 -24,76 -6,76 L6,76 C24,76 32,56 30,42 Z" fill="url(#steelBlade)" stroke="#475569" stroke-width="1.2" stroke-linejoin="round" />
+      <!-- Blade Center Spine Ridge -->
+      <line x1="0" y1="0" x2="0" y2="74" stroke="#FFFFFF" stroke-width="2" opacity="0.9" />
+      <!-- Shading on Left Half of Blade -->
+      <path d="M0,-2 L-30,42 C-32,56 -24,76 -6,76 L0,76 Z" fill="#000000" opacity="0.12" />
+
+      <!-- Specular Sparkle / Glint at Blade Tip -->
+      <polygon points="0,-7 2,-2 7,0 2,2 0,7 -2,2 -7,0 -2,-2" fill="#FFFFFF" opacity="0.95" />
+    </g>
+
+    <!-- BRICK WALL & COPING -->
+    <rect x="42" y="98" width="316" height="248" rx="10" fill="#140E0A" />
+
+    <!-- Top Wall Coping Stone (Ledge) -->
+    <rect x="36" y="92" width="328" height="20" rx="5" fill="url(#stoneGrad)" stroke="#78593D" stroke-width="1" />
+    <line x1="38" y1="94" x2="362" y2="94" stroke="#FFFFFF" stroke-width="2" opacity="0.9" />
+    <rect x="36" y="110" width="328" height="4" fill="#000000" opacity="0.4" />
+
+    <!-- Staggered Brick Courses -->
+    <!-- Row 1 -->
+    <rect x="46" y="116" width="76" height="34" rx="4" fill="url(#brick1A)" />
+    <rect x="126" y="116" width="80" height="34" rx="4" fill="url(#brick1B)" />
+    <rect x="210" y="116" width="80" height="34" rx="4" fill="url(#brick1C)" />
+    <rect x="294" y="116" width="60" height="34" rx="4" fill="url(#brick1A)" />
+
+    <!-- Row 2 -->
+    <rect x="46" y="154" width="56" height="34" rx="4" fill="url(#brick1B)" />
+    <rect x="106" y="154" width="26" height="34" rx="4" fill="url(#brick1C)" />
+    <rect x="268" y="154" width="26" height="34" rx="4" fill="url(#brick1A)" />
+    <rect x="298" y="154" width="56" height="34" rx="4" fill="url(#brick1B)" />
+
+    <!-- Row 3 -->
+    <rect x="46" y="192" width="40" height="34" rx="4" fill="url(#brick1C)" />
+    <rect x="90" y="192" width="42" height="34" rx="4" fill="url(#brick1A)" />
+    <rect x="268" y="192" width="42" height="34" rx="4" fill="url(#brick1C)" />
+    <rect x="314" y="192" width="40" height="34" rx="4" fill="url(#brick1A)" />
+
+    <!-- Row 4 -->
+    <rect x="46" y="230" width="56" height="34" rx="4" fill="url(#brick1A)" />
+    <rect x="106" y="230" width="26" height="34" rx="4" fill="url(#brick1B)" />
+    <rect x="268" y="230" width="26" height="34" rx="4" fill="url(#brick1C)" />
+    <rect x="298" y="230" width="56" height="34" rx="4" fill="url(#brick1A)" />
+
+    <!-- Row 5 -->
+    <rect x="46" y="268" width="80" height="34" rx="4" fill="url(#brick1B)" />
+    <rect x="130" y="268" width="78" height="34" rx="4" fill="url(#brick1C)" />
+    <rect x="212" y="268" width="70" height="34" rx="4" fill="url(#brick1A)" />
+    <rect x="286" y="268" width="68" height="34" rx="4" fill="url(#brick1B)" />
+
+    <!-- Row 6 -->
+    <rect x="46" y="306" width="50" height="34" rx="4" fill="url(#brick1C)" />
+    <rect x="100" y="306" width="96" height="34" rx="4" fill="url(#brick1A)" />
+    <rect x="200" y="306" width="96" height="34" rx="4" fill="url(#brick1B)" />
+    <rect x="300" y="306" width="54" height="34" rx="4" fill="url(#brick1C)" />
+
+    <!-- Individual Brick Bevel Highlights -->
+    <g stroke="#FFA384" stroke-width="1.5" stroke-linecap="round" opacity="0.45">
+      <line x1="48" y1="118" x2="118" y2="118" />
+      <line x1="128" y1="118" x2="202" y2="118" />
+      <line x1="212" y1="118" x2="286" y2="118" />
+      <line x1="296" y1="118" x2="350" y2="118" />
+      <line x1="48" y1="270" x2="122" y2="270" />
+      <line x1="132" y1="270" x2="204" y2="270" />
+      <line x1="214" y1="270" x2="278" y2="270" />
+      <line x1="288" y1="270" x2="350" y2="270" />
+    </g>
+
+    <!-- ROMANESQUE KEYSTONE ARCH WINDOW -->
+    <path d="M130,258 L130,190 C130,150 160,132 200,132 C240,132 270,150 270,190 L270,258 Z" fill="#140D08" />
+    <path d="M134,256 L134,190 C134,154 162,136 200,136 C238,136 266,154 266,190 L266,256 Z" fill="url(#stoneGrad)" stroke="#78593D" stroke-width="1" />
+
+    <!-- Keystone Stone at Apex -->
+    <polygon points="190,132 210,132 214,154 186,154" fill="#FFFFFF" stroke="#8A6B4D" stroke-width="1.2" />
+
+    <!-- Window Aperture Glass Area -->
+    <path d="M142,254 L142,192 C142,160 166,144 200,144 C234,144 258,160 258,192 L258,254 Z" fill="url(#skyGrad1)" stroke="#0F172A" stroke-width="3" />
+
+    <!-- Ambient Daylight Glow -->
+    <ellipse cx="200" cy="180" rx="36" ry="24" fill="#BAE6FD" opacity="0.4" />
+
+    <!-- Bronze Frame Cross -->
+    <line x1="200" y1="146" x2="200" y2="254" stroke="#0F172A" stroke-width="4.5" stroke-linecap="round" />
+    <line x1="144" y1="206" x2="256" y2="206" stroke="#0F172A" stroke-width="4.5" stroke-linecap="round" />
+
+    <!-- Glass Reflection Flare -->
+    <polygon points="148,244 176,158 192,158 164,244" fill="#FFFFFF" opacity="0.3" />
+    <polygon points="208,244 230,172 240,172 218,244" fill="#FFFFFF" opacity="0.3" />
+
+    <!-- Projecting Limestone Window Sill -->
+    <rect x="122" y="254" width="156" height="14" rx="4" fill="url(#stoneGrad)" stroke="#78593D" stroke-width="1" />
+    <line x1="124" y1="256" x2="276" y2="256" stroke="#FFFFFF" stroke-width="2" opacity="0.95" />
+    <rect x="126" y="268" width="148" height="4" fill="#000000" opacity="0.35" />
+  </g>
 </svg>

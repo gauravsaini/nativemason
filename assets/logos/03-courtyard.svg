@@ -1,7 +1,133 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 280" role="img" aria-labelledby="title desc">
-<title id="title">NativeMason logo option 3: Courtyard</title><desc id="desc">A warm brick arch with a sky-blue window and a small golden trowel on the roof.</desc>
-<defs><pattern id="brick" width="84" height="48" patternUnits="userSpaceOnUse"><rect width="84" height="48" fill="#c2553b"/><path d="M0 24h84M42 0v24M0 24v24M84 24v24" fill="none" stroke="#fce4cc" stroke-width="5"/></pattern></defs>
-<circle cx="160" cy="143" r="124" fill="#fff1dc"/><path d="m178 59 38-22 18 18-26 16Z" fill="#e5a83e"/><path d="m230 45 25-14" stroke="#693c32" stroke-width="10" stroke-linecap="round"/>
-<rect x="38" y="74" width="244" height="166" rx="11" fill="url(#brick)"/><path d="M33 74h254" stroke="#873f31" stroke-width="14" stroke-linecap="round"/>
-<path d="M112 217v-54a48 48 0 0 1 96 0v54Z" fill="#bce1db" stroke="#713d32" stroke-width="9"/><path d="M160 115v102M116 163h88" stroke="#713d32" stroke-width="7"/><path d="M104 221h112" stroke="#713d32" stroke-width="10" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%" role="img" aria-labelledby="title-3 desc-3">
+  <title id="title-3">NativeMason Logo Option 3: Courtyard Modern</title>
+  <desc id="desc-3">Porcelain card, warm terracotta clay bricks, six-pane sage mint courtyard window, golden brass trowel peeking at top left.</desc>
+  <defs>
+    <!-- Warm Porcelain Card Background -->
+    <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCF9F5" />
+      <stop offset="100%" stop-color="#F3ECE1" />
+    </linearGradient>
+
+    <!-- Warm Artisan Terracotta -->
+    <linearGradient id="clayBrickA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EA580C" />
+      <stop offset="100%" stop-color="#C2410C" />
+    </linearGradient>
+    <linearGradient id="clayBrickB" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F97316" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+
+    <!-- Sage Mint Courtyard Window -->
+    <linearGradient id="sageSky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6EE7B7" />
+      <stop offset="60%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <!-- Golden Artisan Trowel -->
+    <linearGradient id="goldBlade3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF08A" />
+      <stop offset="40%" stop-color="#FBBF24" />
+      <stop offset="80%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+
+    <filter id="softShadow3" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#8C533A" flood-opacity="0.22" />
+    </filter>
+  </defs>
+
+  <!-- Clean Container Card -->
+  <rect width="400" height="400" rx="44" fill="url(#bg3)" stroke="#EBE0D2" stroke-width="2" />
+
+  <g filter="url(#softShadow3)">
+    <!-- TROWEL: Peeking gracefully top left -->
+    <g transform="translate(154, 52) rotate(-24)">
+      <!-- Gooseneck Shank -->
+      <path d="M0,38 C2,26 -6,18 -8,6 C-9,-2 -7,-10 -7,-18" fill="none" stroke="#57534E" stroke-width="6" stroke-linecap="round" />
+      <rect x="-13" y="-22" width="12" height="7" rx="2" fill="#D97706" />
+
+      <!-- Beechwood Handle -->
+      <path d="M-4,-22 C-2,-32 1,-48 -4,-62 C-7,-72 -13,-72 -16,-62 C-21,-48 -18,-32 -16,-22 Z" fill="#78350F" stroke="#451A03" stroke-width="1.2" />
+      <path d="M-7,-26 C-5,-38 -4,-50 -8,-60" fill="none" stroke="#FDE68A" stroke-width="2" stroke-linecap="round" opacity="0.75" />
+
+      <!-- Golden Polished Trowel Blade -->
+      <path d="M0,-2 L28,42 C30,56 22,74 4,74 L-4,74 C-22,74 -30,56 -28,42 Z" fill="url(#goldBlade3)" stroke="#B45309" stroke-width="1.2" />
+      <line x1="0" y1="0" x2="0" y2="72" stroke="#FFFBEB" stroke-width="2" />
+      <polygon points="0,-2 -28,42 -20,74 0,74" fill="#78350F" opacity="0.12" />
+
+      <!-- Star Glint -->
+      <polygon points="0,-6 2,-2 6,0 2,2 0,6 -2,2 -6,0 -2,-2" fill="#FFFFFF" />
+    </g>
+
+    <!-- BRICK MASONRY WALL -->
+    <rect x="42" y="98" width="316" height="248" rx="14" fill="#F4EDE4" stroke="#E3D7C8" stroke-width="2" />
+
+    <!-- Top Lintel Coping Bar -->
+    <rect x="36" y="92" width="328" height="18" rx="6" fill="#D97706" />
+    <line x1="38" y1="94" x2="362" y2="94" stroke="#FDE68A" stroke-width="2" />
+
+    <!-- Terracotta Bricks -->
+    <!-- Row 1 -->
+    <rect x="46" y="116" width="76" height="34" rx="6" fill="url(#clayBrickA)" />
+    <rect x="126" y="116" width="80" height="34" rx="6" fill="url(#clayBrickB)" />
+    <rect x="210" y="116" width="80" height="34" rx="6" fill="url(#clayBrickA)" />
+    <rect x="294" y="116" width="60" height="34" rx="6" fill="url(#clayBrickB)" />
+
+    <!-- Row 2 -->
+    <rect x="46" y="154" width="56" height="34" rx="6" fill="url(#clayBrickB)" />
+    <rect x="106" y="154" width="26" height="34" rx="6" fill="url(#clayBrickA)" />
+    <rect x="268" y="154" width="26" height="34" rx="6" fill="url(#clayBrickA)" />
+    <rect x="298" y="154" width="56" height="34" rx="6" fill="url(#clayBrickB)" />
+
+    <!-- Row 3 -->
+    <rect x="46" y="192" width="40" height="34" rx="6" fill="url(#clayBrickA)" />
+    <rect x="90" y="192" width="42" height="34" rx="6" fill="url(#clayBrickB)" />
+    <rect x="268" y="192" width="42" height="34" rx="6" fill="url(#clayBrickB)" />
+    <rect x="314" y="192" width="40" height="34" rx="6" fill="url(#clayBrickA)" />
+
+    <!-- Row 4 -->
+    <rect x="46" y="230" width="56" height="34" rx="6" fill="url(#clayBrickB)" />
+    <rect x="106" y="230" width="26" height="34" rx="6" fill="url(#clayBrickA)" />
+    <rect x="268" y="230" width="26" height="34" rx="6" fill="url(#clayBrickA)" />
+    <rect x="298" y="230" width="56" height="34" rx="6" fill="url(#clayBrickB)" />
+
+    <!-- Row 5 -->
+    <rect x="46" y="268" width="80" height="34" rx="6" fill="url(#clayBrickA)" />
+    <rect x="130" y="268" width="78" height="34" rx="6" fill="url(#clayBrickB)" />
+    <rect x="212" y="268" width="70" height="34" rx="6" fill="url(#clayBrickA)" />
+    <rect x="286" y="268" width="68" height="34" rx="6" fill="url(#clayBrickB)" />
+
+    <!-- Row 6 -->
+    <rect x="46" y="306" width="50" height="34" rx="6" fill="url(#clayBrickB)" />
+    <rect x="100" y="306" width="96" height="34" rx="6" fill="url(#clayBrickA)" />
+    <rect x="200" y="306" width="96" height="34" rx="6" fill="url(#clayBrickB)" />
+    <rect x="300" y="306" width="54" height="34" rx="6" fill="url(#clayBrickA)" />
+
+    <!-- Brick Top Highlights -->
+    <g stroke="#FED7AA" stroke-width="1.8" stroke-linecap="round" opacity="0.6">
+      <line x1="48" y1="118" x2="118" y2="118" />
+      <line x1="128" y1="118" x2="202" y2="118" />
+      <line x1="212" y1="118" x2="286" y2="118" />
+      <line x1="296" y1="118" x2="350" y2="118" />
+    </g>
+
+    <!-- ARCHED COURTYARD WINDOW -->
+    <path d="M136,256 L136,190 A64,64 0 0,1 264,190 L264,256 Z" fill="#292524" />
+    <path d="M142,254 L142,192 A58,58 0 0,1 258,192 L258,254 Z" fill="url(#sageSky)" />
+
+    <!-- Window Muntin Grid (6 Panes) -->
+    <line x1="200" y1="134" x2="200" y2="254" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" />
+    <line x1="142" y1="192" x2="258" y2="192" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
+    <line x1="142" y1="226" x2="258" y2="226" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
+
+    <!-- Translucent Diagonal Shine -->
+    <polygon points="148,244 176,156 192,156 164,244" fill="#FFFFFF" opacity="0.4" />
+    <polygon points="208,244 230,170 240,170 218,244" fill="#FFFFFF" opacity="0.4" />
+
+    <!-- Marble Sill -->
+    <rect x="124" y="254" width="152" height="14" rx="4" fill="#FFFFFF" stroke="#D6D3D1" stroke-width="1.5" />
+    <rect x="130" y="268" width="140" height="4" fill="#000000" opacity="0.12" />
+  </g>
 </svg>

@@ -6,4 +6,5 @@ artifacts/
 .env*
 android/
 ios/
+*.bak
 

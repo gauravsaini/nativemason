@@ -2,11 +2,16 @@
 
 ## Logo options
 
-Four SVG directions are ready for review. Each pairs a brick wall and window with a trowel tucked behind the top edge.
+Four handcrafted SVG design options are ready for review. Each features an architectural brick wall, an integrated window, and a mason's trowel tucked/peeking over the top edge:
 
-| 1. Keystone | 2. Blueprint | 3. Courtyard | 4. Mason Mark |
-| --- | --- | --- | --- |
-| ![Keystone logo: teal brick wall and arched window](assets/logos/01-keystone.svg) | ![Blueprint logo: indigo outlined wall and window](assets/logos/02-blueprint.svg) | ![Courtyard logo: terracotta wall and blue window](assets/logos/03-courtyard.svg) | ![Mason Mark logo: charcoal wall and rounded window](assets/logos/04-mason-mark.svg) |
+| 1. Keystone Heritage | 2. Blueprint Precision | 3. Courtyard Modern | 4. Mason Mark Mobile |
+| :---: | :---: | :---: | :---: |
+| ![Option 1: Keystone Heritage](assets/logos/01-keystone.svg) | ![Option 2: Blueprint Precision](assets/logos/02-blueprint.svg) | ![Option 3: Courtyard Modern](assets/logos/03-courtyard.svg) | ![Option 4: Mason Mark Mobile](assets/logos/04-mason-mark.svg) |
+| **Keystone Heritage**<br>Artisan terracotta brickwork, Romanesque keystone arch window, polished steel & walnut trowel peeking at top right. | **Blueprint Precision**<br>Engineering blueprint aesthetic, indigo masonry blocks, drafting grid, luminous window, titanium trowel with precision crosshair. | **Courtyard Modern**<br>Warm porcelain badge, contemporary clay bricks, 6-pane sage mint courtyard window, golden brass trowel peeking at top left. | **Mason Mark Mobile**<br>Glazed teal & forest bricks, mobile layout viewport window, centered chrome & amber trowel crowned at top notch. |
+
+<p align="center">
+  <img src="assets/logos/options-preview.png" alt="NativeMason Logo Options Preview" width="800" />
+</p>
 
 NativeMason gives an MCP coding agent a measured React Native layout loop: inspect an Expo web mirror, test React Native style props in Chromium, preview or apply a small source edit, and verify the committed result on Android.
 
