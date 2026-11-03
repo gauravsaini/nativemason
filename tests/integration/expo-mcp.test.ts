@@ -79,7 +79,7 @@ describe('real Expo + Chromium + MCP',()=>{
    const state=await call('run_scenario',{sessionId,target:'web',script:{scenarioId,reset:[{type:'hook',name:'resetCheckout'}],actions:[{type:'input',elementId:'checkout-email',text:'person@example.com'},{type:'tap',elementId:'checkout-toggle'},{type:'wait',elementId:'checkout-details',timeoutMs:5000}]}});expect(state.snapshot.nodes.some((node:any)=>node.id==='checkout-details')).toBe(true);
    const inspected=await call('inspect_ui_spatial_graph',{sessionId});
    const trial=await call('simulate_layout_mutation',{sessionId,baselineSnapshotId:inspected.snapshot.snapshotId,mutations:[{elementId:'checkout-toggle',patch:{marginTop:20}},{elementId:'checkout-summary',patch:{fontSize:18}}]});
-   const input={sessionId,trialId:trial.trialId,expectedRevisions:trial.snapshot.revisions};const preview=await call('commit_rn_ast_patch',{...input,mode:'preview'});expect(preview.transactionPlan.files).toHaveLength(2);
+   await writeFile(path.join(root,'artifacts/integration/checkout-trial.json'),JSON.stringify(trial,null,2));const input={sessionId,trialId:trial.trialId,expectedRevisions:trial.snapshot.revisions};const preview=await call('commit_rn_ast_patch',{...input,mode:'preview'});expect(preview.transactionPlan.files).toHaveLength(2);
    const committed=await call('commit_rn_ast_patch',{...input,mode:'apply'});expect(committed.webStatus).toBe('passed');expect(committed.receipt.files).toHaveLength(2);
    const reverted=await call('revert_commit',{sessionId,commitId:committed.receipt.commitId});expect(reverted.receipt.nativeStatus).toBe('pending');expect(reverted.snapshot).not.toBeNull();
    for(let i=0;i<paths.length;i++)expect(await readFile(path.join(project,paths[i]),'utf8')).toBe(originals[i]);

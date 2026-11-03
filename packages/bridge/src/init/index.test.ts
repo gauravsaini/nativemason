@@ -22,7 +22,7 @@ describe('initialize',()=>{
   const first=await initialize(root);const once=await readFile(path.join(root,'babel.config.js'),'utf8');
   const second=await initialize(root);const twice=await readFile(path.join(root,'babel.config.js'),'utf8');
   expect(first.changed).toBe(true);expect(second.changed).toBe(false);expect(twice).toBe(once);
-  expect(once).toContain("'other-plugin'");expect(once).toContain('nativemason/babel');
+  expect(once).toContain("'other-plugin'");expect(once).toContain('nativemason/babel');expect(once).not.toContain(root);expect(once).toContain('__dirname');expect(await readFile(path.join(root,'.gitignore'),'utf8')).toContain('/.nativemason/');
  });
  it('dry run reports the exact edit without writing',async()=>{
   const root=await project();const result=await initialize(root,true);

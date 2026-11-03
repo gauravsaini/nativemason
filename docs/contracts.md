@@ -6,7 +6,7 @@
 
 Coordinates are floating-point app-root-relative logical units. Screenshot scaling is separate. Native roots normalize registered host measurements against the safe-area/window frame; safe-area intersection applies insets once. Explicit providers identify their root. Automatic providers require exactly one parentless instrumented host and reject ambiguous roots.
 
-Source hashes are SHA-256 of original UTF-8 source; JSX offsets use UTF-16 indices. Development transforms register loaded project-module revisions so edits to imported style/token files can be checked after reload. Mounted metadata must agree with those revisions. Synthetic bundler polyfills, dependencies, and production builds receive no injected imports or collection.
+Source hashes are SHA-256 of original UTF-8 source; offsets use UTF-16 indices. Node source references identify JSX ranges; shared-style edit plans identify the changed declaration range in the edited file. Development transforms register loaded project-module revisions so edits to imported style/token files can be checked after reload. Mounted metadata must agree with those revisions. Synthetic bundler polyfills, dependencies, and production builds receive no injected imports or collection.
 
 Screen-unique explicit IDs/testIDs take precedence. Generated source-site IDs support unique sites. Repeated instances with uncertain cross-platform identity cannot establish acceptance through assumed ordering.
 
@@ -33,3 +33,7 @@ Web-only diagnostics retain clipping, center-hit tests, overflow, paint order, m
 `ToolSchemas` and `ToolOutputSchemas` validate every call/result. MCP uses object-root schemas derived from the authoritative outputs to accommodate SDK limitations around outer unions/refinements; application validation still enforces valid trial/reset and preview/receipt combinations. Structured results accompany readable text and images.
 
 Core geometry, constraints, inference, candidate generation, overlay planning, and source planning are deterministic. Browser/native/filesystem/scenario adapters own effects. Native profile changes require measured confirmation and journaled restoration. Browser font scaling remains unsupported until rendered-text evidence establishes it.
+
+Snapshot revisions contain mounted source files and their statically referenced local style/token dependencies; unrelated eagerly evaluated scenario modules are excluded. Measurement evidence updates do not change mount identity. Authored content/style changes still invalidate the baseline.
+
+CDP center-point ownership follows composed DOM ancestry, including user-agent shadow roots. A control owning its hit node is clear; an ancestor receiving the hit is uncertain rather than proven occlusion. An unrelated hit node remains confirmed occlusion.

@@ -23,8 +23,8 @@ jobs:
       - run: yarn build
       - run: yarn lint
       - run: yarn typecheck
-      - run: yarn test
       - run: yarn playwright install --with-deps chromium
+      - run: yarn test
       - run: yarn test:integration
       - run: yarn test:packages
       - uses: actions/upload-artifact@v4
@@ -56,6 +56,8 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - run: npm install --global corepack && corepack enable
       - run: yarn install --immutable && yarn build
       - run: yarn playwright install --with-deps chromium
@@ -111,6 +113,8 @@ jobs:
       - run: npm install --global corepack && corepack enable
       - run: yarn install --immutable && yarn build
       - run: yarn playwright install chromium
+      - name: Initialize Expo CLI cache directory
+        run: mkdir -p "$HOME/.expo"
       - name: Select and boot an available iOS phone simulator
         run: node scripts/select-ios-simulator.mjs
       - name: Build and install native debug fixture
