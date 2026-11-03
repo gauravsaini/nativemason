@@ -120,7 +120,7 @@ Configure an MCP client to launch `node` with the absolute path to `packages/bri
 | --- | --- |
 | `open_session` | Supply an absolute app project root, web URL, scenario ID, and device profile. Returns a session ID and native connection port/token. |
 | `load_wireframe_spec` | Load explicit JSON constraints matching that session's scenario and profile. |
-| `inspect_ui_spatial_graph` | Obtain element IDs, source metadata, rectangles, and constraint results; establishes the trial baseline. |
+| `inspect_ui_spatial_graph` | Obtain element IDs, source metadata, rectangles, constraint results, and browser diagnostics; establishes the trial baseline. |
 | `capture_annotated_overlay` | Obtain a PNG with numbered element marks for a specified snapshot. |
 | `simulate_layout_mutation` | Replace the current trial with RN style props; a null patch resets it. |
 | `commit_rn_ast_patch` | Use `preview` for a diff or `apply` for a hash-checked source write. |
@@ -156,9 +156,41 @@ For the example, trial `{"flexDirection":"row"}` on `footer`, passing the inspec
 
 Edits support static inline objects and literal local `StyleSheet.create` entries. Shared, imported, repeated-instance, spread, and dynamic targets are rejected. Constraints also support target rectangles and explicitly disjoint elements; intentional overlap is allowed unless a constraint forbids it. See [contracts](docs/contracts.md) and [ownership](docs/ownership.md).
 
+## Browser diagnostics and profile trials
+
+Web snapshots can include `webDiagnostics`, with per-element clipping, center-point hit testing, scroll overflow, paint order, font usage, and line-box information. Evidence can be `confirmed`, `clear`, or `unknown`; font records may contain multiple families. Confirmed clipping, center occlusion, or a font-load failure blocks applying a trial. Uncertain warnings remain visible to the agent without blocking it. These findings describe Chromium and do not establish Android visibility, touchability, font fallback, or text truncation.
+
+Instrumented text can also report authored text properties and `measuredLineCount` when the runtime receives a text-layout event. A line count does not prove that text was not truncated.
+
+To inspect another orientation, pass `profileOverrides` to inspection and use the **same override** when simulating against the returned baseline:
+
+```json
+{ "sessionId": "<session-id>", "profileOverrides": { "orientation": "landscape" } }
+```
+
+```json
+{
+  "sessionId": "<session-id>",
+  "baselineSnapshotId": "<landscape-snapshot-id>",
+  "elementId": "footer",
+  "patch": { "flexDirection": "row" },
+  "profileOverrides": { "orientation": "landscape" }
+}
+```
+
+Changing profile requires a fresh inspection and invalidates the previous trial. An override trial can be previewed; applying it for Android acceptance requires a fresh baseline and trial using the session's original device profile. `fontScale` is accepted by the input schema but currently returns `UNSUPPORTED_PROFILE`: the browser has not established that an override changes rendered text. See the [managed Chromium specification](docs/cdp-browser-port.md).
+
+Add a minimum layout-box constraint to a wireframe specification when size matters:
+
+```json
+{ "id": "submit-size", "type": "minTouchTarget", "elementId": "submit", "width": 48, "height": 48, "tolerance": 0 }
+```
+
+The constraint measures the registered box in logical units; it does not prove the element can receive a touch. Constraints default to a tolerance of 2 logical units. Add `"pixelAware": true` to opt into a minimum tolerance of `2 / pixelRatio`; otherwise an explicit tolerance, including zero, is preserved.
+
 ## Physical Android acceptance
 
-The full footer workflow has passed on an explicitly selected physical Samsung device running Android API 37. Evidence is generated at `artifacts/android-acceptance/acceptance.json`; this is a tested configuration, not a claim of universal device compatibility. This helper tests the included fixture; use the MCP workflow above to verify a consumer app.
+The earlier footer workflow passed on an explicitly selected physical Samsung device running Android API 37. The latest V1.1 Android acceptance attempt was incomplete because that device was absent from ADB, so the new runtime measurements still need device verification. Evidence is generated at `artifacts/android-acceptance/acceptance.json` on a successful run. This helper tests the included fixture; use the MCP workflow above to verify a consumer app.
 
 Use a connected, authorized physical Android device with ADB and either **Expo Go supporting SDK 58** or a compatible development client for the fixture. No local Mac emulator is required or started by the test. See [Android fixture acceptance](docs/android-acceptance.md) for development-client launch options. That launch path still needs validation on a device.
 
