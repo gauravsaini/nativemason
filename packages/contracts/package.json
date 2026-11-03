@@ -25,5 +25,9 @@
     "type": "git",
     "url": "git+https://github.com/gauravsaini/nativemason.git",
     "directory": "packages/contracts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

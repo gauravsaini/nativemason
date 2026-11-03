@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude \"tests/**\"",
     "test:integration": "vitest run tests/integration",
-    "test:e2e:android": "tsx tests/e2e/android.ts"
+    "test:e2e:android": "tsx tests/e2e/android.ts",
+    "test:e2e:ios": "tsx tests/e2e/ios.ts",
+    "test:e2e:android:emulator": "tsx tests/e2e/android-emulator.ts",
+    "test:packages": "tsx scripts/package-install.ts"
   },
   "devDependencies": {
     "@babel/core": "^7.28.5",
@@ -23,12 +26,14 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@types/react-test-renderer": "^19.1.0",
     "@types/ws": "^8.18.1",
     "eslint": "^9.39.1",
     "nativemason": "workspace:*",
     "playwright": "^1.56.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-test-renderer": "19.3.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.0",

@@ -7,7 +7,7 @@ import { SpatialSnapshotSchema,SpatialDeltaSchema,ProfileOverridesSchema,WebDiag
 import { CommitReceiptSchema,EditPlanSchema } from './source.js';
 const session={sessionId:z.string().min(1)};
 export const ToolSchemas={
-open_session:z.object({projectRoot:z.string().min(1),webUrl:z.string().url(),scenarioId:z.string().min(1),profile:DeviceProfileSchema,nativeTarget:NativeTargetSchema.optional(),nativePort:z.number().int().min(1024).max(65535).optional(),nativeToken:z.string().min(16).optional()}).strict(),
+open_session:z.object({projectRoot:z.string().min(1),webUrl:z.string().url(),scenarioId:z.string().min(1),profile:DeviceProfileSchema,nativeTarget:NativeTargetSchema.optional(),nativeScenario:z.object({appId:z.string().min(1),adbSerial:z.string().optional(),maestroPath:z.string().optional(),ssh:z.object({destination:z.string(),identityFile:z.string().optional()}).strict().optional()}).strict().optional(),nativePort:z.number().int().min(1024).max(65535).optional(),nativeToken:z.string().min(16).optional()}).strict(),
 load_wireframe_spec:z.object({...session,spec:WireframeSpecSchema}).strict(),
 inspect_ui_spatial_graph:z.object({...session,profileOverrides:ProfileOverridesSchema.optional()}).strict(),
 capture_annotated_overlay:z.object({...session,snapshotId:z.string()}).strict(),

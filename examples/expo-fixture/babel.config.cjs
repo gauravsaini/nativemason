@@ -1,7 +1,7 @@
 module.exports = function (api) {
   api.cache(true);
   return {
-    presets: ['babel-preset-expo'],
-    plugins: [[require.resolve('@rn-layout/bridge/babel'), { projectRoot: __dirname }]],
+    presets: [['babel-preset-expo', { jsxImportSource: 'nativewind' }], 'nativewind/babel'],
+    plugins: [[require.resolve('nativemason/babel'), { projectRoot: __dirname, autoInstrument: true, nativewind: true }]],
   };
 };

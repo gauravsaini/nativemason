@@ -18,6 +18,15 @@ describe('LayoutRegistry', () => {
     expect(registry.overrides.has('footer')).toBe(false); registry.resetTrial();
     expect(registry.generation).toBe(generation); expect(registry.entries.get('footer')?.styles).toEqual({ flexDirection: 'column' });
   });
+  it('replaces a batch atomically and an empty batch resets every override', () => {
+    const registry = new LayoutRegistry('footer', profile, 'screen'); registry.register(entry()); registry.register(entry('other'));
+    registry.setTrialBatch([{ elementId: 'footer', patch: { width: 20 } }, { elementId: 'other', patch: { height: 30 } }]);
+    expect([...registry.overrides]).toEqual([['footer', { width: 20 }], ['other', { height: 30 }]]);
+    registry.setTrialBatch([{ elementId: 'other', patch: { height: 40 } }]);
+    expect([...registry.overrides]).toEqual([['other', { height: 40 }]]);
+    registry.setTrialBatch([]);
+    expect(registry.overrides.size).toBe(0);
+  });
   it('rejects mismatched scenarios and reports repeated source sites as uneditable', () => {
     const registry = new LayoutRegistry('footer', profile, 'screen');
     expect(() => registry.configure({ sessionId: 's', scenarioId: 'other', profile })).toThrow('Scenario mismatch');

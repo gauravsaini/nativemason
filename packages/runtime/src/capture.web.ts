@@ -1,7 +1,9 @@
-import { BridgeFault, type SpatialSnapshot } from '@rn-layout/contracts';
+import { captureSourceRevisions } from './source-revisions.js';
+import { BridgeFault, type SpatialSnapshot } from '@nativemason/contracts';
 import { LayoutRegistry, nextFrame, toSpatialNodes, validateSnapshot } from './registry/index.js';
 
 export async function captureWeb(registry: LayoutRegistry): Promise<SpatialSnapshot> {
+  if (registry.autoRoot && [...registry.entries.values()].filter(entry => entry.parentId === null).length !== 1) throw new BridgeFault('INVALID_INPUT', 'Automatic root requires exactly one instrumented root host');
   if (!registry.entries.has(registry.rootId)) throw new BridgeFault('MISSING_ELEMENT', `Designated root ${registry.rootId} is not mounted`);
   let capturedProfile = registry.profile;
   let previous = '';
@@ -24,7 +26,7 @@ export async function captureWeb(registry: LayoutRegistry): Promise<SpatialSnaps
     if (key === previous && generation === registry.generation) { stable = true; break; }
     previous = key;
   }
-  const revisions = Object.fromEntries(nodes.filter(node => node.source).map(node => [node.source!.path, node.source!.hash]));
+  const revisions = captureSourceRevisions(nodes);
   return validateSnapshot({ schemaVersion: 1, sessionId: registry.sessionId, snapshotId: `web-${Date.now()}-${++captureSequence}`, platform: 'web', scenarioId: registry.scenarioId, profile: capturedProfile, revisions, nodes, status: stable ? 'stable' : 'unstable', generation: registry.generation });
 }
 let captureSequence = 0;

@@ -3,7 +3,7 @@ import { LayoutRegistry } from './registry/index.js';
 vi.mock('react-native', () => ({ Platform: { OS: 'android' }, Dimensions: { get: () => ({ width: 384, height: 749.8666666666667 }) }, PixelRatio: { get: () => 3.75, getFontScale: () => 1 } }));
 import { captureNative } from './capture.native.js';
 
-// Samsung edge-to-edge regression: Dimensions.window excludes system bars,
+// Android edge-to-edge regression: Dimensions.window excludes system bars,
 // while SafeAreaProvider frame includes them; measureInWindow also adds a
 // viewport offset that measure().pageY intentionally omits in RN0.88.
 describe('native coordinate contract', () => {

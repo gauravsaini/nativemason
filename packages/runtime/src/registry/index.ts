@@ -1,4 +1,4 @@
-import { BridgeFault, SpatialSnapshotSchema, type SpatialSnapshot, type BrowserRuntime, type DeviceProfile, type RnStylePatch, type SourceRef, type SpatialNode } from '@rn-layout/contracts';
+import { BridgeFault, SpatialSnapshotSchema, type SpatialSnapshot, type BrowserRuntime, type DeviceProfile, type RnStylePatch, type SourceRef, type SpatialNode, type TextFitEvidence, type LayoutMutation, type NativeTarget } from '@nativemason/contracts';
 
 export interface HostNode {
   getBoundingClientRect?: () => { x: number; y: number; width: number; height: number };
@@ -15,6 +15,8 @@ export interface Registration {
   dynamicStyle: boolean;
   authoredTextProps?: SpatialNode['authoredTextProps'];
   measuredLineCount?: number;
+  textFit?: TextFitEvidence;
+  measurementSignature?: string;
   host: HostNode;
 }
 export class LayoutRegistry {
@@ -29,6 +31,19 @@ export class LayoutRegistry {
   rootId: string;
   windowOrigin = { x: 0, y: 0 };
   configured = false;
+  nativeTarget?: NativeTarget;
+  textProbes = false;
+  autoRoot = false;
+  private readonly autoIds = new Map<string, Map<string, string>>();
+  claimAutoId(base: string, instance: string): string {
+    let claims = this.autoIds.get(base);
+    if (!claims) { claims = new Map(); this.autoIds.set(base, claims); }
+    const existing = claims.get(instance);
+    if (existing) return existing;
+    const id = claims.size ? `${base}#${instance}` : base;
+    claims.set(instance, id);
+    return id;
+  }
   runtime?: BrowserRuntime;
   constructor(scenarioId: string, profile: DeviceProfile, rootId: string) {
     this.scenarioId = scenarioId;
@@ -46,9 +61,12 @@ export class LayoutRegistry {
   }
   register(entry: Registration) {
     const old = this.entries.get(entry.id);
+    if (this.autoRoot && entry.parentId === null && !this.entries.has(this.rootId)) this.rootId = entry.id;
     if (old && old.host !== entry.host) throw new BridgeFault('DUPLICATE_ELEMENT', `Duplicate layoutId: ${entry.id}`);
-    if (!old || JSON.stringify({ ...old, host: null }) !== JSON.stringify({ ...entry, host: null })) this.generation++;
-    this.entries.set(entry.id, entry);
+    const comparable = (value: Registration) => ({ ...value, host: null, measuredLineCount: undefined, textFit: undefined });
+    if (!old || JSON.stringify(comparable(old)) !== JSON.stringify(comparable(entry))) this.generation++;
+    const preserve = old?.measurementSignature === entry.measurementSignature;
+    this.entries.set(entry.id, { ...entry, ...(preserve && old?.measuredLineCount !== undefined ? { measuredLineCount: old.measuredLineCount } : {}), ...(preserve && old?.textFit ? { textFit: old.textFit } : {}) });
   }
   unregister(id: string, host: HostNode) {
     if (this.entries.get(id)?.host === host) {
@@ -61,6 +79,24 @@ export class LayoutRegistry {
     if (!entry || entry.measuredLineCount === measuredLineCount) return;
     this.entries.set(id, { ...entry, measuredLineCount });
     this.generation++;
+    this.notify();
+  }
+  updateTextFit(id: string, textFit: TextFitEvidence) {
+    const entry = this.entries.get(id);
+    if (!entry || JSON.stringify(entry.textFit) === JSON.stringify(textFit)) return;
+    this.entries.set(id, { ...entry, textFit });
+    this.generation++;
+    this.notify();
+  }
+  setTrialBatch(mutations: readonly LayoutMutation[]) {
+    const ids = new Set<string>();
+    for (const mutation of mutations) {
+      if (!this.entries.has(mutation.elementId)) throw new BridgeFault('MISSING_ELEMENT', 'Unknown layoutId: ' + mutation.elementId);
+      if (ids.has(mutation.elementId)) throw new BridgeFault('INVALID_INPUT', 'Duplicate mutation target');
+      ids.add(mutation.elementId);
+    }
+    this.overrides.clear();
+    for (const mutation of mutations) this.overrides.set(mutation.elementId, mutation.patch);
     this.notify();
   }
   configure(input: Parameters<BrowserRuntime['configure']>[0]) {
@@ -102,7 +138,7 @@ export function toSpatialNodes(registry: LayoutRegistry, rectangles: Map<string,
     const editReason = !entry.source ? 'Missing build-time source metadata' : repeated ? 'Source site has multiple mounted instances' : entry.dynamicStyle ? 'Dynamic style expression' : null;
     const rect = rectangles.get(entry.id);
     if (!rect) throw new BridgeFault('MISSING_ELEMENT', `No measurement for ${entry.id}`);
-    return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles: { ...entry.styles, ...registry.overrides.get(entry.id) }, source: entry.source, editable: editReason === null, editReason, ...(entry.authoredTextProps ? { authoredTextProps: entry.authoredTextProps } : {}), ...(entry.measuredLineCount === undefined ? {} : { measuredLineCount: entry.measuredLineCount }) };
+    return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles: { ...entry.styles, ...registry.overrides.get(entry.id) }, source: entry.source, editable: editReason === null, editReason, ...(entry.textFit ? { textFit: entry.textFit } : {}), ...(entry.authoredTextProps ? { authoredTextProps: entry.authoredTextProps } : {}), ...(entry.measuredLineCount === undefined ? {} : { measuredLineCount: entry.measuredLineCount }) };
   });
 }
 
