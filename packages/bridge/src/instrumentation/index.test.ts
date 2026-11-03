@@ -1,4 +1,4 @@
-import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,rmSync,symlinkSync,realpathSync,mkdirSync} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { transformSync } from '@babel/core';
@@ -44,8 +44,15 @@ it('tracks local style/token dependencies without unrelated component imports',(
   writeFileSync(path.join(root,'theme.ts'),"import {spacing} from './tokens';export const styles={box:{gap:spacing.small}};");
   writeFileSync(path.join(root,'Other.tsx'),'export default function Other(){return null;}');
   const source="import {View} from 'react-native';import {styles} from './theme';import Other from './Other';export default ()=> <View style={styles.box}/>;";
+  writeFileSync(path.join(root,'App.tsx'),source);
   const result=transformSync(source,{filename:path.join(root,'App.tsx'),envName:'development',configFile:false,babelrc:false,parserOpts:{plugins:['jsx','typescript']},plugins:[[plugin,{projectRoot:root,autoInstrument:true}]]})!.code!;
   expect(result).toContain('dependencies: ["theme.ts", "tokens.ts"]');
   expect(result).not.toContain('dependencies: ["Other.tsx"');
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+it('disables instrumentation for Metro release callers even without a production envName',()=>{
+ const result=transformSync("import {View} from 'react-native';export default ()=> <View/>;",{filename:'/project/App.tsx',envName:'development',configFile:false,babelrc:false,caller:{name:'metro',...{dev:false}},parserOpts:{plugins:['jsx']},plugins:[[plugin,{projectRoot:'/project',autoInstrument:true,rootComponent:'App.tsx'}]]})!.code!;
+ expect(result).not.toContain('__bridgeSource');expect(result).not.toContain('registerSourceRevision');expect(result).not.toContain('withLayoutRoot');
+});
+
+it('canonicalizes real source and project paths across symlink aliases',()=>{const root=mkdtempSync(path.join(os.tmpdir(),'nm-alias-'));try{const actual=path.join(root,'actual'),alias=path.join(root,'alias');mkdirSync(actual);symlinkSync(actual,alias,'dir');const source="import {View} from 'react-native';export default ()=> <View/>;";writeFileSync(path.join(actual,'App.tsx'),source);const result=transformSync(source,{filename:realpathSync(path.join(actual,'App.tsx')),envName:'development',configFile:false,babelrc:false,parserOpts:{plugins:['jsx']},plugins:[[plugin,{projectRoot:alias,autoInstrument:true}]]})!.code!;expect(result).toContain('__bridgeSource');expect(result).toContain('path: "App.tsx"');}finally{rmSync(root,{recursive:true,force:true});}});

@@ -17,7 +17,14 @@ export async function initialize(projectRoot:string,dryRun=false,settings:{textP
  const old=present.length?await readFile(path.join(root,file),'utf8'):"module.exports = function(api) { api.cache(true); return { presets: ['babel-preset-expo'], plugins: [] }; };\n";
  const project=new Project({useInMemoryFileSystem:true,skipAddingFilesFromTsConfig:true});const source=project.createSourceFile('/babel.js',old);
  const config=source.getDescendantsOfKind(SyntaxKind.ObjectLiteralExpression).filter(o=>o.getProperty('presets')||o.getProperty('plugins'));
- const options={autoInstrument:true,textProbes:settings.textProbes??false,nativewind:Boolean(app.dependencies?.nativewind),rootComponent:candidates[0]};
+ const rootSource=project.createSourceFile('/root.tsx',await readFile(path.join(root,candidates[0]),'utf8'));
+ const providerTags=new Set<string>();let wrappedRoot=false;
+ for(const declaration of rootSource.getImportDeclarations())if(declaration.getModuleSpecifierValue()==='@nativemason/runtime'){
+  for(const imported of declaration.getNamedImports()){if(imported.getName()==='LayoutProvider')providerTags.add(imported.getAliasNode()?.getText()??imported.getName());if(imported.getName()==='withLayoutRoot')wrappedRoot=true;}
+  const namespace=declaration.getNamespaceImport();if(namespace)providerTags.add(namespace.getText()+'.LayoutProvider');
+ }
+ const manualProvider=wrappedRoot||rootSource.getDescendants().some(node=>(Node.isJsxOpeningElement(node)||Node.isJsxSelfClosingElement(node))&&providerTags.has(node.getTagNameNode().getText()));
+ const options={autoInstrument:true,textProbes:settings.textProbes??false,nativewind:Boolean(app.dependencies?.nativewind),...(manualProvider?{}:{rootComponent:candidates[0]})};
  let updated=old;
  if(!old.includes('nativemason/babel')){
   if(config.length!==1)throw new BridgeFault('UNSUPPORTED_EDIT','Babel configuration cannot be safely edited',{suggestedPlugin:["nativemason/babel",options]});
@@ -33,5 +40,5 @@ export async function initialize(projectRoot:string,dryRun=false,settings:{textP
  for(const entry of ['/.nativemason/','/artifacts/nativemason/'])if(!ignoreBefore.split(/\r?\n/).includes(entry))ignoreAfter+=(ignoreAfter&&!ignoreAfter.endsWith('\n')?'\n':'')+entry+'\n';
  if(!dryRun){if(updated!==old)await writeFile(path.join(root,file),updated,'utf8');if(ignoreAfter!==ignoreBefore)await writeFile(ignorePath,ignoreAfter,'utf8');}
  const mcp={mcpServers:{nativemason:{command:'node',args:[fileURLToPath(new URL('../cli.js',import.meta.url))],cwd:root}}};
- return {projectRoot:root,rootComponent:candidates[0],dryRun,changed:updated!==old||ignoreAfter!==ignoreBefore,file,before:old,after:updated,ignoreEdit:{before:ignoreBefore,after:ignoreAfter},install:'Install matching nativemason, @nativemason/runtime and @nativemason/contracts packages before starting Expo.',mcp};
+ return {projectRoot:root,rootComponent:candidates[0],automaticRoot:!manualProvider,dryRun,changed:updated!==old||ignoreAfter!==ignoreBefore,file,before:old,after:updated,ignoreEdit:{before:ignoreBefore,after:ignoreAfter},install:'Install matching nativemason, @nativemason/runtime and @nativemason/contracts packages before starting Expo.',mcp};
 }

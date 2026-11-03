@@ -1,5 +1,5 @@
 import {parseSync,type PluginObj,type PluginPass,type NodePath} from '@babel/core';
-import {existsSync,readFileSync} from 'node:fs';
+import {existsSync,readFileSync,realpathSync} from 'node:fs';
 import * as t from '@babel/types';
 import { createHash } from 'node:crypto';
 import { dirname,relative, resolve, sep } from 'node:path';
@@ -7,11 +7,12 @@ import { dirname,relative, resolve, sep } from 'node:path';
 interface Options { projectRoot?: string; autoInstrument?: boolean; rootComponent?: string; textProbes?: boolean; nativewind?: boolean }
 type State = PluginPass & { opts: Options; bridgeHosts?: Map<string, t.Identifier>; bridgeRoot?: t.Identifier; bridgeRevision?: t.Identifier; bridgeBindings?:Map<string,unknown>;bridgeStyleImports?:Map<string,{file:string;binding:unknown}>;bridgeDependencyCache?:Map<string,string[]>;bridgeOrdinal?: number };
 const hosts = new Set(['View', 'Text', 'Pressable', 'TextInput', 'ScrollView', 'Image']);
-function development(state: State) { const filename=state.filename??state.file.opts.filename??''; if(filename.includes('\0')||! /\.[cm]?[jt]sx?$/.test(filename))return false; return process.env.NODE_ENV !== 'production' && state.file.opts.envName !== 'production' && !state.filename?.split(/[\\/]/).includes('node_modules'); }
+function development(state: State) { const caller=state.file.opts.caller;if(caller&&'dev' in caller&&caller.dev===false)return false;const filename=state.filename??state.file.opts.filename??''; if(filename.includes('\0')||! /\.[cm]?[jt]sx?$/.test(filename))return false; return process.env.NODE_ENV !== 'production' && state.file.opts.envName !== 'production' && !state.filename?.split(/[\\/]/).includes('node_modules'); }
+function physicalPath(path:string){try{return realpathSync(path);}catch{return resolve(path);}}
 function filePath(state: State) {
   const filename = state.filename ?? state.file.opts.filename;
   if (!filename) return null;
-  return relative(resolve(state.opts.projectRoot ?? state.file.opts.root ?? process.cwd()), filename).split(sep).join('/');
+  return relative(physicalPath(state.opts.projectRoot ?? state.file.opts.root ?? process.cwd()), physicalPath(filename)).split(sep).join('/');
 }
 function localModule(from:string,specifier:string):string|undefined {
   if(!specifier.startsWith('.'))return;
@@ -20,6 +21,7 @@ function localModule(from:string,specifier:string):string|undefined {
 }
 function styleModules(file:string,root:string,seen=new Set<string>()):string[] {
   if(seen.has(file))return [];seen.add(file);
+  file=physicalPath(file);root=physicalPath(root);
   const relativePath=relative(root,file).split(sep).join('/');
   if(relativePath.startsWith('../'))return [];
   const result=[relativePath];

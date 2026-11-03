@@ -18,6 +18,7 @@ export interface Registration {
   textFit?: TextFitEvidence;
   measurementSignature?: string;
   authoredSignature?:string;
+  trialable?:boolean;
   autoIdBase?:string;
   autoIdInstance?:string;
   host: HostNode;
@@ -95,6 +96,7 @@ export class LayoutRegistry {
   setTrialBatch(mutations: readonly LayoutMutation[]) {
     const ids = new Set<string>();
     for (const mutation of mutations) {
+      if(this.entries.get(mutation.elementId)?.trialable===false)throw new BridgeFault('UNSUPPORTED_EDIT','The measurement-only root does not accept style trials');
       if (!this.entries.has(mutation.elementId)) throw new BridgeFault('MISSING_ELEMENT', 'Unknown layoutId: ' + mutation.elementId);
       if (ids.has(mutation.elementId)) throw new BridgeFault('INVALID_INPUT', 'Duplicate mutation target');
       ids.add(mutation.elementId);
@@ -113,6 +115,7 @@ export class LayoutRegistry {
   }
   setTrial(id: string, patch: RnStylePatch) {
     if (!this.entries.has(id)) throw new BridgeFault('MISSING_ELEMENT', `Unknown layoutId: ${id}`);
+    if(this.entries.get(id)?.trialable===false)throw new BridgeFault('UNSUPPORTED_EDIT','The measurement-only root does not accept style trials');
     this.overrides.clear();
     this.overrides.set(id, patch);
     this.notify();

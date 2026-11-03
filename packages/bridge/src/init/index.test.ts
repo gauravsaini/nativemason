@@ -40,3 +40,8 @@ describe('initialize',()=>{
   await expect(initialize(noExpo)).rejects.toMatchObject({code:'INVALID_INPUT'});
  });
 });
+it('preserves an existing explicit provider instead of injecting another root provider',async()=>{
+ const root=await project({'App.tsx':"import {LayoutProvider as Provider} from '@nativemason/runtime';export default ()=> <Provider rootId='screen' scenarioId='app'/>;"});
+ const result=await initialize(root);
+ expect(result.automaticRoot).toBe(false);expect(result.after).toContain('autoInstrument');expect(result.after).not.toContain('"rootComponent"');
+});

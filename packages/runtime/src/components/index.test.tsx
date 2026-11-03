@@ -1,4 +1,5 @@
 import React, { createRef } from 'react';
+import type {Text as NativeText} from 'react-native';
 import TestRenderer, { act, type ReactTestInstance } from 'react-test-renderer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,15 +18,15 @@ vi.mock('react-native-safe-area-context', async () => {
   const ReactModule = await import('react');
   const SafeAreaInsetsContext = ReactModule.createContext({ top: 0, right: 0, bottom: 0, left: 0 });
   const SafeAreaFrameContext = ReactModule.createContext({ x: 0, y: 0, width: 400, height: 800 });
-  return { SafeAreaInsetsContext, SafeAreaFrameContext, SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children };
+  return { SafeAreaInsetsContext, SafeAreaFrameContext, SafeAreaProvider: ReactModule.forwardRef(({children}:{children?:React.ReactNode},ref)=>ReactModule.createElement('SafeAreaProviderHost',{ref},children)) };
 });
 
-import { LayoutProvider, LayoutText, LayoutView, LayoutPressable } from './index.js';
+import { LayoutProvider, LayoutText, LayoutView, LayoutPressable,withLayoutRoot } from './index.js';
 import { LayoutRegistry } from '../registry/index.js';
 
 const profile = { window: { width: 400, height: 800 }, root: { x: 0, y: 0, width: 400, height: 800 }, pixelRatio: 1, fontScale: 1, orientation: 'portrait' as const, insets: { top: 0, right: 0, bottom: 0, left: 0 } };
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
-const createNodeMock = ({ type }: React.ReactElement) => ({ type });
+const createNodeMock = ({ type }: React.ReactElement) => ({ type,...(String(type)==='SafeAreaProviderHost'?{measure:vi.fn()}:{} ) });
 const mount = async (children: React.ReactNode, textProbes = false) => {
   let renderer!: TestRenderer.ReactTestRenderer;
   await act(async () => {
@@ -38,6 +39,15 @@ const findHost = (renderer: TestRenderer.ReactTestRenderer, type: string): React
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe('layout component contracts', () => {
+  it('uses the existing safe-area host as the automatic root for multiple route hosts',async()=>{
+    const registrations=vi.spyOn(LayoutRegistry.prototype,'register');
+    const Root=withLayoutRoot(()=> <><LayoutView testID="route-a"/><LayoutView testID="route-b"/></>);
+    let renderer!:TestRenderer.ReactTestRenderer;
+    await act(async()=>{renderer=TestRenderer.create(<Root/>,{createNodeMock});});
+    expect(registrations.mock.calls.some(([entry])=>entry.id==='__nativemason_app_root'&&entry.host)).toBe(true);
+    for(const id of ['route-a','route-b'])expect(registrations.mock.calls.some(([entry])=>entry.id===id&&entry.parentId==='__nativemason_app_root')).toBe(true);
+    await act(async()=>renderer.unmount());
+  });
   it('uses current probe evidence without requiring another limited callback and rejects a stale width probe',async()=>{
     const updates=vi.spyOn(LayoutRegistry.prototype,'updateTextFit');
     const renderer=await mount(<LayoutText layoutId="copy" numberOfLines={1} style={{fontSize:16}}>Long text</LayoutText>,true);
@@ -56,7 +66,7 @@ describe('layout component contracts', () => {
     await act(async()=>renderer.unmount());
   });
   it('composes text callbacks without changing their event and preserves object refs through cleanup', async () => {
-    const forwarded = createRef<React.ComponentRef<typeof LayoutText>>();
+    const forwarded = createRef<React.ComponentRef<typeof NativeText>>();
     const onLayout = vi.fn();
     const onTextLayout = vi.fn();
     const renderer = await mount(<LayoutText layoutId="copy" ref={forwarded} onLayout={onLayout} onTextLayout={onTextLayout}>Hello</LayoutText>);

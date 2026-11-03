@@ -20,8 +20,10 @@ export interface LayoutProviderProps extends PropsWithChildren {
   nativeToken?: string;
   nativeTarget?: NativeTarget;
   textProbes?: boolean;
+  /** @internal Existing root provider host supplied by withLayoutRoot. */
+  __bridgeRootHost?:HostNode|null;
 }
-export function LayoutProvider({ scenarioId, rootId, profile, nativeUrl, nativeToken, nativeTarget, textProbes = false, children }: LayoutProviderProps) {
+export function LayoutProvider({ scenarioId, rootId, profile, nativeUrl, nativeToken, nativeTarget, textProbes = false,__bridgeRootHost, children }: LayoutProviderProps) {
   const dimensions = useWindowDimensions();
   const safeFrame = useContext(SafeAreaFrameContext);
   const safeInsets = useContext(SafeAreaInsetsContext) ?? { top: 0, right: 0, bottom: 0, left: 0 };
@@ -46,6 +48,11 @@ export function LayoutProvider({ scenarioId, rootId, profile, nativeUrl, nativeT
       if (JSON.stringify(next) !== JSON.stringify(registry.profile)) { registry.profile = next; registry.generation++; }
     }
   });
+  useLayoutEffect(()=>{
+    if(!isDevelopment()||!__bridgeRootHost)return;
+    registry.register({id:rootId,parentId:null,kind:'View',role:null,styles:{flex:1},source:null,dynamicStyle:false,trialable:false,host:__bridgeRootHost});
+    return ()=>registry.unregister(rootId,__bridgeRootHost);
+  },[registry,rootId,__bridgeRootHost]);
   useEffect(() => {
     if (!isDevelopment() || Platform.OS !== 'web') return;
     const runtime = createBrowserRuntime(registry);
@@ -94,7 +101,7 @@ export function LayoutProvider({ scenarioId, rootId, profile, nativeUrl, nativeT
     return () => { disposed = true; clearTimeout(reconnect); socket?.close(); };
   }, [nativeToken, nativeUrl, configuredTarget?.targetId, textProbes, registry, scenarioId]);
   const insets = Platform.OS === 'web' && registry.configured ? registry.profile.insets : safeInsets;
-  return <RegistryContext.Provider value={isDevelopment() ? registry : null}><SafeAreaInsetsContext.Provider value={insets}>{children}</SafeAreaInsetsContext.Provider></RegistryContext.Provider>;
+  return <RegistryContext.Provider value={isDevelopment() ? registry : null}><SafeAreaInsetsContext.Provider value={insets}>{__bridgeRootHost!==undefined?<ParentContext.Provider value={rootId}>{children}</ParentContext.Provider>:children}</SafeAreaInsetsContext.Provider></RegistryContext.Provider>;
 }
 export interface LayoutElementProps { layoutId?: string; __bridgeSource?: SourceRef; __bridgeId?: string }
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
@@ -128,11 +135,11 @@ function useRegistration(props: LayoutElementProps & { style?: unknown; accessib
 }
 const noSubscribe = () => () => {};
 const zeroRevision = () => 0;
-export const LayoutView = forwardRef<View, ViewProps & LayoutElementProps>(function LayoutView({ layoutId, __bridgeSource, __bridgeId, children, ...props }, forwarded) {
+export const LayoutView = forwardRef<React.ComponentRef<typeof View>, ViewProps & LayoutElementProps>(function LayoutView({ layoutId, __bridgeSource, __bridgeId, children, ...props }, forwarded) {
   const { ref, id, override } = useRegistration({ ...props, layoutId, __bridgeSource, __bridgeId }, 'View', forwarded);
   return <ParentContext.Provider value={id}><View {...props} collapsable={isDevelopment() ? false : props.collapsable} ref={ref} style={override ? [props.style, override] : props.style}>{children}</View></ParentContext.Provider>;
 });
-export const LayoutText = forwardRef<Text, TextProps & LayoutElementProps>(function LayoutText({ layoutId, __bridgeSource, __bridgeId, children, ...props }, forwarded) {
+export const LayoutText = forwardRef<React.ComponentRef<typeof Text>, TextProps & LayoutElementProps>(function LayoutText({ layoutId, __bridgeSource, __bridgeId, children, ...props }, forwarded) {
   const nestedText = useContext(TextNestingContext);
   const flattened = StyleSheet.flatten(props.style) ?? {};
   const authoredTextProps: Registration['authoredTextProps'] = {
@@ -174,7 +181,7 @@ export const LayoutText = forwardRef<Text, TextProps & LayoutElementProps>(funct
   const probe = isDevelopment() && Platform.OS !== 'web' && registry?.textProbes && !nestedText && plain && comparableText && typeof effectiveTextStyle.fontSize === 'number' && box.width > 0;
   return <ParentContext.Provider value={id}><TextNestingContext.Provider value={true}><Text {...props} onLayout={isDevelopment() ? onLayout : props.onLayout} onTextLayout={isDevelopment() ? onTextLayout : props.onTextLayout} ref={ref} style={override ? [props.style, override] : props.style}>{children}</Text>{probe ? <Text key={signature} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" allowFontScaling={props.allowFontScaling} maxFontSizeMultiplier={props.maxFontSizeMultiplier} textBreakStrategy={props.textBreakStrategy} android_hyphenationFrequency={props.android_hyphenationFrequency} lineBreakStrategyIOS={props.lineBreakStrategyIOS} dynamicTypeRamp={props.dynamicTypeRamp} style={[props.style, override, { position: 'absolute', opacity: 0, width: box.width, height: undefined, minHeight: undefined, maxHeight: undefined, flex: 0 }]} onTextLayout={event => { const lines = event.nativeEvent.lines; const height = lines.reduce((max, line) => Math.max(max, line.y + line.height), 0); setFull({ signature,lineCount: lines.length, height }); }}>{children}</Text> : null}</TextNestingContext.Provider></ParentContext.Provider>;
 });
-export const LayoutPressable = forwardRef<View, PressableProps & LayoutElementProps>(function LayoutPressable({ layoutId, __bridgeSource, __bridgeId, children, ...props }, forwarded) {
+export const LayoutPressable = forwardRef<React.ComponentRef<typeof View>, PressableProps & LayoutElementProps>(function LayoutPressable({ layoutId, __bridgeSource, __bridgeId, children, ...props }, forwarded) {
   const { ref, id, override } = useRegistration({ ...props, layoutId, __bridgeSource, __bridgeId }, 'Pressable', forwarded);
   let style: PressableProps['style'] = props.style;
   if (override) {
@@ -184,15 +191,15 @@ export const LayoutPressable = forwardRef<View, PressableProps & LayoutElementPr
   return <ParentContext.Provider value={id}><Pressable {...props} ref={ref} style={style}>{children}</Pressable></ParentContext.Provider>;
 });
 
-export const LayoutTextInput = forwardRef<TextInput, TextInputProps & LayoutElementProps>(function LayoutTextInput({ layoutId, __bridgeSource, __bridgeId, ...props }, forwarded) {
+export const LayoutTextInput = forwardRef<React.ComponentRef<typeof TextInput>, TextInputProps & LayoutElementProps>(function LayoutTextInput({ layoutId, __bridgeSource, __bridgeId, ...props }, forwarded) {
   const { ref, override } = useRegistration({ ...props, layoutId, __bridgeSource, __bridgeId }, 'TextInput', forwarded);
   return <TextInput {...props} ref={ref} style={override ? [props.style, override] : props.style} />;
 });
-export const LayoutScrollView = forwardRef<ScrollView, ScrollViewProps & LayoutElementProps>(function LayoutScrollView({ layoutId, __bridgeSource, __bridgeId, children, ...props }, forwarded) {
+export const LayoutScrollView = forwardRef<React.ComponentRef<typeof ScrollView>, ScrollViewProps & LayoutElementProps>(function LayoutScrollView({ layoutId, __bridgeSource, __bridgeId, children, ...props }, forwarded) {
   const { ref, id, override } = useRegistration({ ...props, layoutId, __bridgeSource, __bridgeId }, 'ScrollView', forwarded);
   return <ParentContext.Provider value={id}><ScrollView {...props} ref={ref} style={override ? [props.style, override] : props.style}>{children}</ScrollView></ParentContext.Provider>;
 });
-export const LayoutImage = forwardRef<Image, ImageProps & LayoutElementProps>(function LayoutImage({ layoutId, __bridgeSource, __bridgeId, ...props }, forwarded) {
+export const LayoutImage = forwardRef<React.ComponentRef<typeof Image>, ImageProps & LayoutElementProps>(function LayoutImage({ layoutId, __bridgeSource, __bridgeId, ...props }, forwarded) {
   const { ref, override } = useRegistration({ ...props, layoutId, __bridgeSource, __bridgeId }, 'Image', forwarded);
   return <Image {...props} ref={ref} style={override ? [props.style, override] : props.style} />;
 });
@@ -200,7 +207,9 @@ export const LayoutImage = forwardRef<Image, ImageProps & LayoutElementProps>(fu
 export function withLayoutRoot<P extends object>(Component: React.ComponentType<P>, options: Partial<LayoutProviderProps> = {}) {
   if (!isDevelopment()) return Component;
   function InstrumentedRoot(props: P) {
-    return <SafeAreaProvider><LayoutProvider {...options} rootId="__nativemason_auto_root" scenarioId={options.scenarioId ?? process.env.EXPO_PUBLIC_LAYOUT_SCENARIO ?? 'default'} nativeUrl={options.nativeUrl ?? process.env.EXPO_PUBLIC_LAYOUT_NATIVE_URL} nativeToken={options.nativeToken ?? process.env.EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN}><Component {...props} /></LayoutProvider></SafeAreaProvider>;
+    const [host,setHost]=useState<HostNode|null>(null);
+    const rootRef=useCallback((value:unknown)=>{if(value===null){setHost(null);return;}if(typeof value==='object'&&value!==null&&(('measure' in value&&typeof value.measure==='function')||('getBoundingClientRect' in value&&typeof value.getBoundingClientRect==='function'))){setHost(value as HostNode);return;}throw new BridgeFault('MISSING_ELEMENT','Safe-area provider did not expose a measurable root host');},[]);
+    return <SafeAreaProvider ref={rootRef}><LayoutProvider {...options} rootId={options.rootId??'__nativemason_app_root'} __bridgeRootHost={options.rootId?undefined:host} scenarioId={options.scenarioId ?? (typeof window!=='undefined'&&window.location?new URLSearchParams(window.location.search).get('scenario'):null) ?? process.env.EXPO_PUBLIC_LAYOUT_SCENARIO ?? 'default'} nativeUrl={options.nativeUrl ?? process.env.EXPO_PUBLIC_LAYOUT_NATIVE_URL} nativeToken={options.nativeToken ?? process.env.EXPO_PUBLIC_LAYOUT_NATIVE_TOKEN}><Component {...props} /></LayoutProvider></SafeAreaProvider>;
   }
   InstrumentedRoot.displayName = 'NativeMasonRoot';
   return InstrumentedRoot;
