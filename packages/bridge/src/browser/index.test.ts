@@ -14,10 +14,13 @@ function html(mode: string): string {
   return `<!doctype html><html><body style="margin:0"><div id="target" style="width:50px;height:30px;background:blue"></div><script>
     let config, generation=1, seq=0, style={};
     const mode=${JSON.stringify(mode)};
-    const target=document.getElementById('target');
+    let target=document.getElementById('target');
+    if(mode==='/input-hit'){const input=document.createElement('input');input.id='target';input.value='person@example.com';input.style.cssText='width:50px;height:30px;padding:0;border:0';target.replaceWith(input);target=input;}
+    if(mode==='/ancestor-hit')target.style.pointerEvents='none';
     function draw(){target.style.width=(style.width??50)+'px';target.style.height=(style.height??30)+'px';}
     window.__RN_LAYOUT_BRIDGE__={
       configure(c){config=c},
+      getDiagnosticTargets(){return [{id:"target",element:target}]},
       async capture(){if(mode==='/runtime-error')throw Object.assign(new Error('Registry duplicate'),{code:'DUPLICATE_ELEMENT'});if(mode==='/hanging')await new Promise(()=>{});const r=target.getBoundingClientRect();const node={id:'target',parentId:null,kind:'View',role:null,rect:{x:r.x,y:r.y,width:r.width,height:r.height},styles:style,source:null,editable:false,editReason:'harness'};return {schemaVersion:1,sessionId:config.sessionId,snapshotId:'s'+seq++,platform:'web',scenarioId:config.scenarioId,profile:config.profile,revisions:{},nodes:mode==='/duplicate'?[node,node]:[node],status:mode==='/unstable'?'unstable':'stable',generation}},
       async applyTrial(id,p){style=p;draw();if(mode==='/apply-fails')throw Object.assign(new Error('Trial failed after applying'),{code:'INTERNAL_ERROR'});if(p.width===777)generation++},
       async resetTrial(){style={};draw()}
@@ -39,6 +42,10 @@ afterAll(async () => { await new Promise<void>((resolve, reject) => server.close
 const open = (path = '/', timeoutMs = 2000) => createBrowserBridge({ webUrl: origin + path, sessionId: 'test-session', scenarioId: 'harness', profile, timeoutMs });
 
 describe('Chromium browser adapter', () => {
+  it('recognizes user-agent shadow content and leaves ancestor hit evidence uncertain',async()=>{
+    const input=await open('/input-hit');try{expect((await input.capture()).webDiagnostics?.nodes.target.centerHitTest).toBe('clear');}finally{await input.close();}
+    const ancestor=await open('/ancestor-hit');try{const snapshot=await ancestor.capture();expect(snapshot.webDiagnostics?.nodes.target.centerHitTest).toBe('unknown');expect(snapshot.webDiagnostics?.warnings.some(w=>w.code==='OCCLUDED'&&w.severity==='confirmed')).toBe(false);}finally{await ancestor.close();}
+  });
   it('captures, replaces trials against baseline, resets, and renders a device-scale screenshot', async () => {
     const browser = await open();
     try {

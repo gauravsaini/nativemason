@@ -31,7 +31,7 @@ export class BridgeApplication {
   private sessions=new Map<string,Session>();
   private deps:Dependencies;
   constructor(deps:Partial<Dependencies>={}) {
-    this.deps={browser:createBrowserBridge,native:createNativeBridge,source:createTransactionSourcePort,artifactsRoot:path.resolve('artifacts'),...deps};
+    this.deps={browser:createBrowserBridge,native:createNativeBridge,source:createTransactionSourcePort,artifactsRoot:path.resolve('artifacts/nativemason'),...deps};
   }
   async execute<K extends ToolName>(name:K,input:unknown):Promise<ToolOutput<K>> {
     return ToolOutputSchemas[name].parse(await this.dispatch(name,input)) as ToolOutput<K>;
@@ -221,7 +221,7 @@ export class BridgeApplication {
       const results=evaluateConstraints(entry.web,entry.spec);
       await this.artifact(s.id,`${receipt.commitId}.web.json`,JSON.stringify({receipt,snapshot:entry.web,results},null,2));
       return {receipt,snapshot:entry.web,results,webStatus:allPass(results)?'passed':'failed'};
-    }catch(e){const failure={receipt,webStatus:'capture-failed',message:e instanceof Error?e.message:String(e)};await this.artifact(s.id,receipt.commitId+'.web-failure.json',JSON.stringify(failure,null,2));return failure;}
+    }catch(e){const failure={receipt,webStatus:'capture-failed',message:e instanceof Error?e.message:String(e)};await this.artifact(s.id,receipt.commitId+'.web-failure.json',JSON.stringify(failure,null,2)).catch(()=>undefined);return failure;}
   }
   private async verify(s:Session,commitId:string) {
     const entry=s.commits.get(commitId);

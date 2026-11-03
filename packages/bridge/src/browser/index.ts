@@ -163,10 +163,10 @@ async function collectDiagnostics(cdp: any): Promise<WebDiagnostics> {
       if (hitObject.object.objectId) {
         const contains = await cdp.send('Runtime.callFunctionOn', {
           objectId: elementObjectId,
-          functionDeclaration: 'function(hit){return this===hit||this.contains(hit)}',
+          functionDeclaration: `function(hit){const owns=(ancestor,node)=>{for(let current=node;current;current=current.parentNode||(current.getRootNode&&current.getRootNode().host)||null)if(current===ancestor)return true;return false;};return owns(this,hit)?'clear':owns(hit,this)?'unknown':'confirmed';}`,
           arguments: [{ objectId: hitObject.object.objectId }], returnByValue: true,
         });
-        centerHitTest = contains.result.value === true ? 'clear' : 'confirmed';
+        centerHitTest = contains.result.value;
       }
     } catch { centerHitTest = 'unknown'; }
     let paintOrder: number | null = null;
