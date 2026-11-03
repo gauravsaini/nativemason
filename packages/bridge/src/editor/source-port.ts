@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { lstat, open, readFile, realpath, rename, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
-import { BridgeFault, EditPlanSchema, type CommitReceipt, type EditPlan, type SourcePort } from '@rn-layout/contracts';
+import { BridgeFault, EditPlanSchema, type CommitReceipt, type EditPlan, type SourcePort } from '@nativemason/contracts';
 import { hashSource } from './planner.js';
 
 /** Serialized, hash-checked single-file writes. External editors are checked again immediately before rename. */

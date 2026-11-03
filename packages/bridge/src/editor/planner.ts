@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { createTwoFilesPatch } from 'diff';
 import { Node, Project, SyntaxKind, type JsxElement, type JsxSelfClosingElement, type ObjectLiteralExpression, type Expression, type SourceFile as AstSourceFile } from 'ts-morph';
-import { RnStylePatchSchema, SourceRefSchema, type EditPlan, type Result, type RnStylePatch, type SourceRef } from '@rn-layout/contracts';
+import { RnStylePatchSchema, SourceRefSchema, type EditPlan, type Result, type RnStylePatch, type SourceRef, type EditScope } from '@nativemason/contracts';
 
 export const hashSource = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex');
 
@@ -83,7 +83,7 @@ function rejectRepeatedSite(target: Target): void {
 }
 
 /** Pure planning: parses in memory and returns text; never writes the source tree. */
-export function planSourcePatch(sourceText: string, sourceRef: SourceRef, patch: RnStylePatch): Result<EditPlan> {
+export function planSourcePatch(sourceText: string, sourceRef: SourceRef, patch: RnStylePatch, scope?: EditScope): Result<EditPlan> {
   const parsedSource = SourceRefSchema.safeParse(sourceRef);
   const parsedPatch = RnStylePatchSchema.safeParse(patch);
   if (!parsedSource.success || !parsedPatch.success) return { ok: false, error: { code: 'INVALID_INPUT', message: 'Invalid source reference or RN style patch' } };
@@ -96,9 +96,34 @@ export function planSourcePatch(sourceText: string, sourceRef: SourceRef, patch:
     if (!target) return { ok: false, error: { code: 'STALE_SOURCE', message: 'Source range does not identify the original JSX element' } };
     const location = source.getLineAndColumnAtPos(target.getStart());
     if (location.line !== sourceRef.line || location.column - 1 !== sourceRef.column) return { ok: false, error: { code: 'STALE_SOURCE', message: 'Source location does not match the original JSX element' } };
-    rejectRepeatedSite(target);
+    if (!scope?.acknowledgeInstances) rejectRepeatedSite(target);
     const opening = Node.isJsxElement(target) ? target.getOpeningElement() : target;
     if (opening.getAttributes().some(Node.isJsxSpreadAttribute)) reject('JSX spread attributes could override the trial styles');
+    if (scope?.kind === 'nativewind') return planNativeWind(sourceText, sourceRef, parsedPatch.data, opening, scope);
+    if (scope?.kind === 'local' || scope?.kind === 'branch') {
+      const attrs = opening.getAttributes().filter(a => Node.isJsxAttribute(a) && a.getNameNode().getText() === 'style');
+      if (attrs.length > 1) reject('Duplicate style attributes are unsupported');
+      const attribute = attrs[0];
+      const literal = '{ ' + Object.keys(parsedPatch.data).sort().map(key => key + ': ' + JSON.stringify(parsedPatch.data[key as keyof RnStylePatch])).join(', ') + ' }';
+      let updatedText: string;
+      if (attribute && Node.isJsxAttribute(attribute)) {
+        const initializer = attribute.getInitializer();
+        if (!initializer || !Node.isJsxExpression(initializer)) reject('Style must be a JSX expression');
+        let expression = initializer.getExpression();
+        if (!expression) reject('Style expression is empty');
+        if (scope.kind === 'branch') {
+          if (!Node.isConditionalExpression(expression) || !scope.branch) reject('Branch editing requires a conditional style and an explicit branch');
+          expression = scope.branch === 'consequent' ? expression.getWhenTrue() : expression.getWhenFalse();
+        }
+        if (Node.isArrowFunction(expression) || Node.isFunctionExpression(expression)) reject('Style callback edits require a measured state and are unsupported');
+        const replacement = '[' + expression.getText() + ', ' + literal + ']';
+        updatedText = sourceText.slice(0, expression.getStart()) + replacement + sourceText.slice(expression.getEnd());
+      } else {
+        const end = opening.getTagNameNode().getEnd();
+        updatedText = sourceText.slice(0, end) + ' style={' + literal + '}' + sourceText.slice(end);
+      }
+      return {ok:true,value:{source:sourceRef,expectedHash:sourceRef.hash,updatedText,diff:createTwoFilesPatch(sourceRef.path,sourceRef.path,sourceText,updatedText)}};
+    }
     const attributes = opening.getAttributes().filter(attribute => Node.isJsxAttribute(attribute) && attribute.getNameNode().getText() === 'style');
     if (attributes.length > 1) reject('Duplicate style attributes are unsupported');
     const styleAttribute = attributes[0];
@@ -141,4 +166,35 @@ export function planSourcePatch(sourceText: string, sourceRef: SourceRef, patch:
   } catch (error) {
     return { ok: false, error: { code: 'UNSUPPORTED_EDIT', message: error instanceof Error ? error.message : 'Unsupported source edit' } };
   }
+}
+
+function planNativeWind(text: string, source: SourceRef, patch: RnStylePatch, opening: ReturnType<JsxElement['getOpeningElement']> | JsxSelfClosingElement, scope: EditScope): Result<EditPlan> {
+  const attr = opening.getAttribute('className');
+  if (!attr || !Node.isJsxAttribute(attr)) reject('NativeWind requires a literal className');
+  let init = attr.getInitializer();
+  if(init && Node.isJsxExpression(init) && init.getExpression() && Node.isConditionalExpression(init.getExpression())){
+    const conditional=init.getExpression() as import('ts-morph').ConditionalExpression;
+    if(!scope.branch)reject('Conditional NativeWind classes require an explicit branch');
+    const expression=scope.branch==='consequent'?conditional.getWhenTrue():conditional.getWhenFalse();
+    if(!Node.isStringLiteral(expression))reject('NativeWind branches must be string literals');
+    init=expression;
+  }
+  let classes: string;
+  if (init && Node.isStringLiteral(init)) classes = init.getLiteralValue();
+  else if (init && Node.isJsxExpression(init) && init.getExpression() && Node.isStringLiteral(init.getExpression())) classes = (init.getExpression() as import('ts-morph').StringLiteral).getLiteralValue();
+  else reject('Dynamic class construction is unsupported');
+  const utility: Record<string,string> = {width:'w',height:'h',minWidth:'min-w',maxWidth:'max-w',minHeight:'min-h',maxHeight:'max-h',gap:'gap',rowGap:'gap-y',columnGap:'gap-x',padding:'p',paddingHorizontal:'px',paddingVertical:'py',paddingTop:'pt',paddingBottom:'pb',paddingLeft:'pl',paddingRight:'pr',margin:'m',marginHorizontal:'mx',marginVertical:'my',marginTop:'mt',marginBottom:'mb',marginLeft:'ml',marginRight:'mr',fontSize:'text',lineHeight:'leading',top:'top',bottom:'bottom',left:'left',right:'right',flexGrow:'grow',flexShrink:'shrink'};
+  const fixed: Record<string,Record<string,string>> = {flexDirection:{row:'flex-row',column:'flex-col','row-reverse':'flex-row-reverse','column-reverse':'flex-col-reverse'},justifyContent:{'flex-start':'justify-start','flex-end':'justify-end',center:'justify-center','space-between':'justify-between','space-around':'justify-around','space-evenly':'justify-evenly'},alignItems:{'flex-start':'items-start','flex-end':'items-end',center:'items-center',stretch:'items-stretch',baseline:'items-baseline'},flexWrap:{wrap:'flex-wrap',nowrap:'flex-nowrap','wrap-reverse':'flex-wrap-reverse'},position:{relative:'relative',absolute:'absolute',static:'static'}};
+  let tokens = classes.split(/\s+/).filter(Boolean);
+  for (const [key,value] of Object.entries(patch)) {
+    if (value === undefined) continue;
+    let token: string;
+    let matches: (s:string)=>boolean;
+    if (fixed[key]) { token = fixed[key][String(value)]; if (!token) reject('Unsupported NativeWind value for '+key); const values = Object.values(fixed[key]); matches = s=>values.includes(s); }
+    else { const prefix=utility[key]; if (!prefix) reject('Unsupported NativeWind property '+key); token=prefix+'-['+String(value)+(typeof value === 'number'&&!['flexGrow','flexShrink'].includes(key)?'px':'')+']'; matches=s=>s.startsWith(prefix+'-')&&!s.startsWith(prefix+'-x-')&&!s.startsWith(prefix+'-y-')&&(key!=='fontSize'||/^text-(?:\[[-.\d]|xs$|sm$|base$|lg$|[2-9]?xl$)/.test(s)); }
+    if(tokens.some(s=>s.includes(':') && matches(s.slice(s.lastIndexOf(':')+1))))reject('Conflicting variant utilities require an explicit variant-specific edit');
+    tokens = tokens.filter(s=>s.includes(':') || !matches(s)); tokens.push(token);
+  }
+  const updatedText=text.slice(0,init!.getStart())+JSON.stringify(tokens.join(' '))+text.slice(init!.getEnd());
+  return {ok:true,value:{source,expectedHash:source.hash,updatedText,diff:createTwoFilesPatch(source.path,source.path,text,updatedText)}};
 }

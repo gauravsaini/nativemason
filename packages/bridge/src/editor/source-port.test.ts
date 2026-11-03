@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { chmod, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { type EditPlan } from '@rn-layout/contracts';
+import { type EditPlan } from '@nativemason/contracts';
 import { createSourcePort } from './source-port.js';
 import { hashSource } from './planner.js';
 

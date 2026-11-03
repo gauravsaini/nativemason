@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Project, Node } from 'ts-morph';
-import { type SourceRef, type RnStylePatch } from '@rn-layout/contracts';
+import { type SourceRef, type RnStylePatch } from '@nativemason/contracts';
 import { hashSource, planSourcePatch } from './planner.js';
 
 function reference(text: string, index = 0): SourceRef {
