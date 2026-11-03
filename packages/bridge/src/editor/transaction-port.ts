@@ -96,7 +96,7 @@ export function createTransactionSourcePort(projectRoot:string):TransactionSourc
       if(!/^[a-f0-9]{64}$/.test(commitId))throw new BridgeFault('INVALID_INPUT','Invalid transaction commit ID');
       const stored=JSON.parse(await readFile(path.join(dir,commitId+'.receipt.json'),'utf8')) as {receipt:TransactionReceipt;files:JournalFile[]};
       const files=stored.files.map(item=>{const current=stored.receipt.files.find(f=>f.path===item.path)!;return {source:{path:item.path,hash:current.newHash,start:0,end:1,line:1,column:0},expectedHash:current.newHash,updatedText:item.before,diff:createTwoFilesPatch(item.path,item.path,item.after,item.before)};});
-      return applyUnlocked({files,blastRadius:{consumers:[],unresolvedReferences:[]}},dir,commitId);
+      return applyUnlocked({intentId:'revert:'+commitId,files,blastRadius:{consumers:[],unresolvedReferences:[]}},dir,commitId);
     }),
   };
 }

@@ -24,11 +24,15 @@ describe('recoverable transaction source port', () => {
   it('distinguishes a new trial after revert from replaying an old intent', async () => {
     const {port,plan}=await setup();
     const first=await port.applyTransaction({...plan,intentId:'first-trial'});
-    await port.revert(first.commitId);
+    const firstRevert=await port.revert(first.commitId);
     await expect(port.applyTransaction({...plan,intentId:'first-trial'})).rejects.toMatchObject({code:'STALE_SOURCE'});
     const second=await port.applyTransaction({...plan,intentId:'second-trial'});
     expect(second.commitId).not.toBe(first.commitId);
     expect(await port.applyTransaction({...plan,intentId:'second-trial'})).toEqual(second);
+    const secondRevert=await port.revert(second.commitId);
+    expect(secondRevert.commitId).not.toBe(firstRevert.commitId);
+    expect(secondRevert.revertsCommitId).toBe(second.commitId);
+    expect(await port.revert(second.commitId)).toEqual(secondRevert);
   });
   it('applies every file, replays the receipt, and reverts as a linked transaction', async () => {
     const { root, port, plan } = await setup();
