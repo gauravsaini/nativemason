@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { BridgeApplication } from '../../packages/bridge/src/application/index.js';
 import {createNativeProfilePort} from '../../packages/bridge/src/scenario/index.js';
+import {createBrowserBridge} from '../../packages/bridge/src/browser/index.js';
 import {evaluateConstraints} from '../../packages/bridge/src/core/index.js';
 import { createNativeBridge } from '../../packages/bridge/src/native/index.js';
 import { WireframeSpecSchema, type NativePort,type NativeTarget, type SpatialSnapshot, type ToolOutput } from '@nativemason/contracts';
@@ -28,7 +29,7 @@ export async function runNativeAcceptance(options:{target:NativeTarget;appId?:st
     await writeFile(path.join(artifactRoot,'calibration.json'),JSON.stringify(calibrated,null,2));
   }finally{await calibration.close();}
   let liveNative:NativePort|undefined;
-  const app=new BridgeApplication({artifactsRoot:artifactRoot,native:async options=>{const port=await createNativeBridge(options);liveNative=port;return port;}});
+  const app=new BridgeApplication({artifactsRoot:artifactRoot,browser:options=>createBrowserBridge({...options,timeoutMs:90_000}),native:async options=>{const port=await createNativeBridge(options);liveNative=port;return port;}});
   try{
     const {sessionId}=await app.execute('open_session',{projectRoot,webUrl:options.webUrl??'http://127.0.0.1:8081/?scenario=broken-footer',scenarioId:'broken-footer',profile:calibrated.profile,nativePort,nativeToken:token,nativeTarget:target});
     const sourceSpec=JSON.parse(await readFile(path.join(root,'packages/contracts/fixtures/footer.json'),'utf8'));
