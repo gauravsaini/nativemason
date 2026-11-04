@@ -17,13 +17,17 @@ function options(argv: string[]): Map<string, string> {
 
 function pullRequestFromEnvironment(): number | undefined {
   const ref = process.env.GITHUB_REF?.match(/^refs\/pull\/(\d+)\//);
-  if (ref) return Number(ref[1]);
+  if (ref) {
+    const number = Number(ref[1]);
+    return Number.isSafeInteger(number) && number > 0 ? number : undefined;
+  }
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (!eventPath) return undefined;
   try {
     if (statSync(eventPath).size > 1024 * 1024) return undefined;
     const event = JSON.parse(readFileSync(eventPath, 'utf8')) as { pull_request?: { number?: unknown } };
-    return typeof event.pull_request?.number === 'number' ? event.pull_request.number : undefined;
+    const number = event.pull_request?.number;
+    return typeof number === 'number' && Number.isSafeInteger(number) && number > 0 ? number : undefined;
   } catch { return undefined; }
 }
 
@@ -34,11 +38,11 @@ function main(argv: string[]): void {
   const revision = args.get('--revision') ?? process.env.GITHUB_SHA;
   const pullRequestText = args.get('--pull-request');
   const pullRequest = pullRequestText === undefined ? pullRequestFromEnvironment() : Number(pullRequestText);
-  if (!out || !repository || !revision || (pullRequestText !== undefined && (!/^\d+$/.test(pullRequestText) || !Number.isSafeInteger(pullRequest)))) throw new Error(usage);
+  if (!out || !repository || !revision || (pullRequestText !== undefined && (!/^[1-9]\d*$/.test(pullRequestText) || !Number.isSafeInteger(pullRequest)))) throw new Error(usage);
   const report = buildEvidenceReport({
     repository,
     revision,
-    ...(pullRequest ? { pullRequest } : {}),
+    ...(pullRequest !== undefined ? { pullRequest } : {}),
     ...(args.has('--web') ? { webFile: args.get('--web') } : {}),
     ...(args.has('--android') ? { androidDirectory: args.get('--android') } : {}),
     ...(args.has('--ios') ? { iosDirectory: args.get('--ios') } : {}),

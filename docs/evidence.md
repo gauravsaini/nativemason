@@ -17,6 +17,8 @@ GitHub Actions stores these artifacts with the workflow run, so each report stay
 Use Node 24 and the repository's installed Yarn toolchain:
 
 ```sh
+# Install the repository's declared workspace tools once from the lockfile.
+yarn install --immutable
 yarn workspace @nativemason/contracts build
 yarn tsx scripts/build-evidence-report.ts \
   --web artifacts/integration/visual-evidence.json \
@@ -30,3 +32,5 @@ yarn tsx scripts/build-evidence-report.ts \
 The web input is one `VisualEvidenceRun`. Each native directory contains `calibration.json` and `acceptance.json` with `target` and `verified.{snapshot,results,receipt,passed}`. Repository and revision metadata can be supplied as options or through `GITHUB_REPOSITORY` and `GITHUB_SHA`; pull request metadata is read from the GitHub event when available or supplied with `--pull-request`. If a GitHub step summary path is present, the CLI also appends the run-status table to it.
 
 The command writes `index.html`, `manifest.json`, and `summary.md` under the output directory. Missing evidence files are allowed so local and partial CI runs can still produce a report with explicit unavailable notes.
+
+The contracts build uses the package's declared workspace TypeScript dependency; CI runs it with bare Yarn after `yarn install --immutable`. It does not rely on an `npx` wrapper to place `tsc` on `PATH`. The workspace dependency fix is tracked in commit `aa30212`. For the partial CI artifact set at revision `25d0f6e078d89ed80e38ae39cc6ed9fc187e896b`, the generated report retained one verified Android emulator pass with four passing constraints and explicitly reported iOS acceptance and web evidence unavailable. The iOS artifact directory had calibration data but no `acceptance.json`, so no iOS run or result was invented.
