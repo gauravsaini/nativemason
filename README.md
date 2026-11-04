@@ -1,3 +1,38 @@
+## LLM instructions: integrate NativeMason into this app
+
+Copy this into your coding agent, or ask it to follow this section directly:
+
+```text
+Integrate NativeMason into this Expo React Native app and verify one real UI flow.
+
+1. Inspect package.json, the Expo version, Babel/Metro configuration, app entry,
+   and existing providers. Preserve the app's package manager and configuration.
+2. NativeMason 0.2 packages are not published yet. Build the NativeMason checkout,
+   pack contracts/runtime/bridge, and install all three matching tarballs. Check
+   peer compatibility; report unsupported app versions instead of upgrading them
+   silently. Follow “Integrate an Expo app” below for the exact commands.
+3. Run nativemason init --dry-run, review the configuration edits, then run init.
+   Restart Metro. Prefer existing testID values; add explicit screen-unique IDs
+   where repeated elements need stable identity. Keep an existing LayoutProvider.
+4. Start the app's web mirror and the selected native development runtime in the
+   same explicitly named scenario. Use development-only pairing settings. Read
+   the actual native profile; do not substitute a guessed device profile.
+5. Add the MCP configuration printed by init to this coding agent. Open a session
+   with the app root, web URL, scenario, profile, and selected native target.
+6. Inspect the spatial graph. Load explicit constraints or propose them with
+   infer_constraints and review their design intent. Missing evidence is unavailable.
+7. Trial React Native style patches through simulate_layout_mutation. A passing
+   Chromium trial is candidate evidence; it does not establish native correctness.
+8. Preview commit_rn_ast_patch with the trial ID and expected source revisions.
+   Review every changed file, shared consumer, and affected scenario. Apply the
+   authorized candidate; preserve unrelated styles and application behavior.
+9. Run verify_native_layout on the committed revisions and matching native state.
+   Report failed constraints, disconnects, unsupported evidence, and profile gaps.
+   Use revert_commit if a revert is requested, then verify that new receipt too.
+10. Close the session. Report source hashes, diffs, profiles, measurements, and
+    artifact locations. Keep collection, probes, and networking disabled in production.
+```
+
 <p align="center"><img src="assets/app-logos/08-vision-acrylic.svg" alt="NativeMason logo" width="160" /></p>
 
 # NativeMason
