@@ -27,6 +27,7 @@ async function main(){
     await exec('npm',['install','--prefer-offline','--no-audit','--no-fund',...tarballs],{cwd:temp,env:{...process.env,SHARP_IGNORE_GLOBAL_LIBVIPS:'1'},timeout:600000,maxBuffer:8*1024*1024});
     const binary=path.join(temp,'node_modules/nativemason/bin/nativemason.js');
     const help=(await exec(process.execPath,[binary,'--help'],{cwd:temp})).stdout;assert.match(help,/nativemason/);
+    const dryRun=JSON.parse((await exec(process.execPath,[binary,'init',temp,'--dry-run'],{cwd:temp})).stdout);assert.equal(dryRun.dryRun,true);await assert.rejects(readFile(path.join(temp,'babel.config.cjs'),'utf8'),{code:'ENOENT'});
     const first=JSON.parse((await exec(process.execPath,[binary,'init',temp],{cwd:temp})).stdout);assert.ok(first);
     const before=await readFile(path.join(temp,'babel.config.cjs'),'utf8');
     await exec(process.execPath,[binary,'init',temp],{cwd:temp});assert.equal(await readFile(path.join(temp,'babel.config.cjs'),'utf8'),before,'Init must be idempotent');
@@ -43,7 +44,7 @@ async function main(){
       assert.ok(!opened.isError,JSON.stringify(opened.content));const sessionId=(opened.structuredContent as {sessionId:string}).sessionId;
       const inspected=await client.callTool({name:'inspect_ui_spatial_graph',arguments:{sessionId}});assert.ok(!inspected.isError,JSON.stringify(inspected.content));const snapshot=(inspected.structuredContent as {snapshot:{nodes:{id:string}[]}}).snapshot;assert.ok(snapshot.nodes.some(node=>node.id==='consumer-root'),'Auto-instrumented packed consumer root missing');assert.ok(snapshot.nodes.some(node=>node.id==='consumer-copy'),'Auto-instrumented packed consumer text missing');await client.callTool({name:'close_session',arguments:{sessionId}});
     }finally{await client.close();}
-    await writeFile(path.join(packs,'install-smoke.json'),JSON.stringify({passed:true,packages:names,node:process.version,consumer:'separate npm Expo project',checks:['allowlists','license','install','executable','init-idempotency','public-exports','mcp-discovery','packed-consumer-web-capture']},null,2));
+    await writeFile(path.join(packs,'install-smoke.json'),JSON.stringify({passed:true,packages:names,node:process.version,consumer:'separate npm Expo project',checks:['allowlists','license','install','executable','init-dry-run','init-idempotency','public-exports','mcp-discovery','packed-consumer-web-capture']},null,2));
     console.log('PACKAGE_INSTALL_SMOKE_PASSED');
   }catch(error){throw new Error((error instanceof Error?error.message:String(error))+'\nConsumer Metro: '+logs.slice(-4000),{cause:error});}finally{if(metro?.pid){try{process.kill(-metro.pid,'SIGTERM');}catch{ /* The readiness deadline and process exit check handle transient startup failures. */ }}await rm(temp,{recursive:true,force:true});}
 }

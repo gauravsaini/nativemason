@@ -85,10 +85,20 @@ describe('real Expo + Chromium + MCP',()=>{
    for(let i=0;i<paths.length;i++)expect(await readFile(path.join(project,paths[i]),'utf8')).toBe(originals[i]);
   }finally{for(let i=0;i<paths.length;i++)await writeFile(path.join(project,paths[i]),originals[i]);await call('close_session',{sessionId});}
  },120000);
- it('renders NativeWind theme utilities and previews a conditional class edit',async()=>{
-  const scenarioId='nativewind';const {sessionId}=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario='+scenarioId,scenarioId,profile:spec.profile,nativePort:19487,nativeToken:'nativemason-integration-token'});
-  try{await call('load_wireframe_spec',{sessionId,spec:{...spec,scenarioId,requiredElementIds:['utility-cancel'],constraints:[{id:'utility-size',type:'minTouchTarget',elementId:'utility-cancel',width:48,height:48,tolerance:0}]}});const before=await call('inspect_ui_spatial_graph',{sessionId});expect(before.snapshot.nodes.find((node:any)=>node.id==='utility-cancel').rect.height).toBe(48);const trial=await call('simulate_layout_mutation',{sessionId,baselineSnapshotId:before.snapshot.snapshotId,elementId:'utility-footer',patch:{flexDirection:'row',gap:12}});const preview=await call('commit_rn_ast_patch',{sessionId,trialId:trial.trialId,expectedRevisions:trial.snapshot.revisions,mode:'preview',scope:{kind:'nativewind',branch:'alternate'}});expect(preview.plan.diff).toContain('flex-row');expect(preview.plan.diff).toContain('gap-');}finally{await call('close_session',{sessionId});}
- },60000);
+ it('applies and reverts a NativeWind conditional class edit against measured constraints',async()=>{
+  const scenarioId='nativewind',file=path.join(project,'NativeWindFlow.tsx'),original=await readFile(file,'utf8');
+  const {sessionId}=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario='+scenarioId,scenarioId,profile:spec.profile,nativePort:19487,nativeToken:'nativemason-integration-token'});
+  try{
+   await call('load_wireframe_spec',{sessionId,spec:{...spec,scenarioId,requiredElementIds:['utility-cancel','utility-submit'],constraints:[{id:'utility-size',type:'minTouchTarget',elementId:'utility-cancel',width:48,height:48,tolerance:0},{id:'utility-row',type:'align',axis:'y',edge:'center',elementIds:['utility-cancel','utility-submit']},{id:'utility-gap',type:'gap',axis:'x',first:'utility-cancel',second:'utility-submit',value:12}]}});
+   const before=await call('inspect_ui_spatial_graph',{sessionId});expect(before.results.some((r:any)=>r.status==='fail')).toBe(true);expect(before.snapshot.nodes.find((node:any)=>node.id==='utility-cancel').rect.height).toBe(48);
+   const trial=await call('simulate_layout_mutation',{sessionId,baselineSnapshotId:before.snapshot.snapshotId,elementId:'utility-footer',patch:{flexDirection:'row',gap:12}});expect(trial.results.every((r:any)=>r.status==='pass')).toBe(true);
+   const input={sessionId,trialId:trial.trialId,expectedRevisions:trial.snapshot.revisions,scope:{kind:'nativewind',branch:'alternate'}};
+   const preview=await call('commit_rn_ast_patch',{...input,mode:'preview'});expect(preview.plan.diff).toContain('flex-row');expect(preview.plan.diff).toContain('gap-');
+   const applied=await call('commit_rn_ast_patch',{...input,mode:'apply'});expect(applied.webStatus).toBe('passed');
+   const inspected=await call('inspect_ui_spatial_graph',{sessionId});expect(inspected.results.every((r:any)=>r.status==='pass')).toBe(true);
+   const reverted=await call('revert_commit',{sessionId,commitId:applied.receipt.commitId});expect(reverted.snapshot).not.toBeNull();expect(await readFile(file,'utf8')).toBe(original);
+  }finally{await writeFile(file,original);await call('close_session',{sessionId});}
+ },90000);
  it('sweeps orientation with a profile-bound baseline and reports browser-only hazards',async()=>{
   const overlap=WireframeSpecSchema.parse(JSON.parse(await readFile(path.join(root,'packages/contracts/fixtures/overlap.json'),'utf8')));
   const opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario=intentional-overlap',scenarioId:overlap.scenarioId,profile:overlap.profile,nativePort:19485,nativeToken:'nativemason-integration-token'});
