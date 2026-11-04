@@ -147,8 +147,9 @@ export function toSpatialNodes(registry: LayoutRegistry, rectangles: Map<string,
     const editReason = !entry.source ? 'Missing build-time source metadata' : entry.dynamicStyle&&entry.source.styleForm!=='pressable-state' ? 'Dynamic style expression' : repeated ? 'Source site has multiple mounted instances' : null;
     const rect = rectangles.get(entry.id);
     if (!rect) throw new BridgeFault('MISSING_ELEMENT', `No measurement for ${entry.id}`);
-    const resolved=entry.resolveStyle?.();
-    return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles: { ...(resolved?.styles??entry.styles), ...registry.overrides.get(entry.id) }, source: entry.source, editable: editReason === null, editReason, ...(resolved?{pressableState:resolved.pressed?'pressed' as const:'rest' as const}:{}),...(entry.accessibility?{accessibility:entry.accessibility}:{}), ...(entry.textFit ? { textFit: entry.textFit } : {}), ...(entry.authoredTextProps ? { authoredTextProps: entry.authoredTextProps } : {}), ...(entry.measuredLineCount === undefined ? {} : { measuredLineCount: entry.measuredLineCount }) };
+    const resolved=entry.resolveStyle?.(),styles={...(resolved?.styles??entry.styles),...registry.overrides.get(entry.id)},direction=(styles as Record<string,unknown>).direction;
+    const accessibility=entry.accessibility&&(direction==='rtl'||direction==='ltr'?{...entry.accessibility,direction:direction as 'rtl'|'ltr',directionSource:'authored' as const}:entry.accessibility);
+    return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles, source: entry.source, editable: editReason === null, editReason, ...(resolved?{pressableState:resolved.pressed?'pressed' as const:'rest' as const}:{}),...(accessibility?{accessibility}:{}), ...(entry.textFit ? { textFit: entry.textFit } : {}), ...(entry.authoredTextProps ? { authoredTextProps: entry.authoredTextProps } : {}), ...(entry.measuredLineCount === undefined ? {} : { measuredLineCount: entry.measuredLineCount }) };
   });
 }
 

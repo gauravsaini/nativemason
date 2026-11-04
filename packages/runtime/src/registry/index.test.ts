@@ -44,6 +44,14 @@ describe('LayoutRegistry', () => {
     registry.setTrialBatch([]);
     expect(registry.overrides.size).toBe(0);
   });
+  it('prefers explicit per-node direction over global I18nManager evidence',()=>{
+    const registry=new LayoutRegistry('footer',profile,'screen');
+    registry.register({...entry('global'),accessibility:{direction:'rtl',directionSource:'native-global'}});
+    registry.register({...entry('explicit'),styles:{direction:'ltr'},accessibility:{direction:'rtl',directionSource:'native-global'}});
+    const nodes=toSpatialNodes(registry,new Map([['global',{x:0,y:0,width:20,height:20}],['explicit',{x:0,y:20,width:20,height:20}]]));
+    expect(nodes.find(node=>node.id==='global')?.accessibility).toMatchObject({direction:'rtl',directionSource:'native-global'});
+    expect(nodes.find(node=>node.id==='explicit')?.accessibility).toMatchObject({direction:'ltr',directionSource:'authored'});
+  });
   it('rejects mismatched scenarios and reports repeated source sites as uneditable', () => {
     const registry = new LayoutRegistry('footer', profile, 'screen');
     expect(() => registry.configure({ sessionId: 's', scenarioId: 'other', profile })).toThrow('Scenario mismatch');

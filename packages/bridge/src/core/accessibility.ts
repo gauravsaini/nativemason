@@ -12,8 +12,11 @@ export function inspectAccessibility(snapshot:SpatialSnapshot):AccessibilityFind
   const findings:AccessibilityFinding[]=[];
   const add=(code:AccessibilityFinding['code'],status:AccessibilityFinding['status'],ids:string[],message:string)=>findings.push({code,status,elementIds:ids,message,platform:snapshot.platform});
   if(snapshot.status!=='stable')return [{code:'RTL_EVIDENCE',status:'unavailable',elementIds:[],message:'Accessibility checks require a settled capture',platform:snapshot.platform}];
+  const byId=new Map(snapshot.nodes.map(node=>[node.id,node]));
+  const inactive=(node:SpatialSnapshot['nodes'][number])=>{for(let parent=node.parentId;parent;parent=byId.get(parent)?.parentId??null)if(byId.get(parent)?.accessibility?.disabled)return true;return node.accessibility?.disabled===true;};
   for(const node of snapshot.nodes){
     const evidence=node.accessibility;
+    if(snapshot.platform!=='web'&&evidence?.directionSource==='native-global')add('RTL_EVIDENCE','unavailable',[node.id],'I18nManager provides only a global direction; this node’s resolved Yoga direction was not measured');
     if(evidence?.hidden||evidence?.accessible===false){
       if(snapshot.platform==='web'&&typeof evidence.browser?.focusOrder==='number')add('FOCUS_ORDER','advisory',[node.id],'Estimated DOM sequential focus position: '+evidence.browser.focusOrder+'. This control is hidden from the accessibility tree, and the estimate is not verified assistive-technology order.');
       continue;
@@ -28,12 +31,13 @@ export function inspectAccessibility(snapshot:SpatialSnapshot):AccessibilityFind
     }
     if(node.kind==='Text'||node.kind==='TextInput'){
       const contrast=evidence?.browser?.contrast;
-      if(contrast?.status==='measured'&&contrast.ratio!==undefined&&contrast.requiredRatio!==undefined)add('TEXT_CONTRAST',contrast.ratio>=contrast.requiredRatio?'pass':'fail',[node.id],'Computed opaque-style contrast '+contrast.ratio.toFixed(2)+'; required '+contrast.requiredRatio);
+      if(inactive(node))add('TEXT_CONTRAST','unavailable',[node.id],'Text belongs to an inactive control and is exempt from ordinary WCAG text contrast evaluation');
+      else if(contrast?.status==='measured'&&contrast.ratio!==undefined&&contrast.requiredRatio!==undefined)add('TEXT_CONTRAST',contrast.ratio>=contrast.requiredRatio?'pass':'fail',[node.id],'Computed opaque-style contrast '+contrast.ratio.toFixed(2)+'; required '+contrast.requiredRatio);
       else add('TEXT_CONTRAST','unavailable',[node.id],contrast?.reason??'Native foreground/background pixel contrast has not been measured');
     }
     if(evidence?.direction==='rtl'){
       const physical=['marginLeft','marginRight','paddingLeft','paddingRight','left','right'].filter(property=>node.styles[property]!==undefined);
-      if(physical.length)add('RTL_PHYSICAL_SPACING','advisory',[node.id],'RTL layout uses physical properties '+physical.join(', ')+'. Confirm that physical, rather than logical, edges are intended.');
+      if(physical.length)add('RTL_PHYSICAL_SPACING','advisory',[node.id],(evidence.directionSource==='native-global'?'I18nManager reports global RTL; this node’s direction is unmeasured. ':'RTL layout uses ')+ 'physical properties '+physical.join(', ')+'. Confirm that physical, rather than logical, edges are intended.');
     }
   }
   if(!snapshot.nodes.some(node=>node.accessibility?.direction&&node.accessibility.direction!=='unknown'))add('RTL_EVIDENCE','unavailable',[],'Layout direction was not measured');

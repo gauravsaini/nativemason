@@ -23,6 +23,7 @@ beforeAll(async()=>{
  const appFile=path.join(project,'App.tsx'),appText=await readFile(appFile,'utf8');
  await writeFile(appFile,appText.replace("import React from 'react';","import React from 'react';\nimport { pressStyles } from './imported-press';")
   .replace("case 'broken-footer': return <FooterScenario />;",`case 'pressable-state': return <LayoutView layoutId="press-screen" style={styles.screen}><LayoutPressable layoutId="state-button" accessibilityLabel="State button" style={({pressed})=>pressed?{backgroundColor:'#dc2626',width:120}:{backgroundColor:'#2563eb',width:100}}><LayoutText>Hold</LayoutText></LayoutPressable><LayoutPressable layoutId="aria-hidden-button" accessibilityLabel="AX hidden but tabbable" accessibilityElementsHidden style={{height:48}}><LayoutText>Hidden from AX</LayoutText></LayoutPressable></LayoutView>;
+    case 'contrast-evidence': return <LayoutView layoutId="contrast-screen" style={styles.screen}><LayoutText layoutId="text-fill" style={{color:'black',backgroundColor:'white',WebkitTextFillColor:'white'}}>Filled text</LayoutText><LayoutText layoutId="text-stroke" style={{color:'black',backgroundColor:'white',WebkitTextStrokeWidth:1}}>Stroked text</LayoutText><LayoutPressable layoutId="disabled-control" accessibilityRole="button" accessibilityState={{disabled:true}} disabled style={{backgroundColor:'white'}}><LayoutText layoutId="disabled-label" style={{color:'white'}}>Inactive text</LayoutText></LayoutPressable></LayoutView>;
     case 'imported-press': return <LayoutView layoutId="import-screen" style={styles.screen}><LayoutPressable layoutId="imported-button" accessibilityLabel="Imported button" style={pressStyles.button}><LayoutText>Imported</LayoutText></LayoutPressable></LayoutView>;
     case 'broken-footer': return <FooterScenario />;`));
  await writeFile(path.join(project,'imported-press.ts'),'export const pressStyles = { button: { width: 120, height: 48, backgroundColor: \'#2563eb\' } };\n');
@@ -45,13 +46,14 @@ describe('real Expo + Chromium + MCP',()=>{
    const initial=await call('inspect_ui_spatial_graph',{sessionId});expect(initial.results.some((r:any)=>r.status==='fail')).toBe(true);expect(initial.snapshot.nodes.filter((n:any)=>n.source).every((n:any)=>n.source.path==='App.tsx')).toBe(true);
    const accessibility=await call('inspect_accessibility',{sessionId,target:'web'});expect(accessibility.snapshot.platform).toBe('web');
    const cancel=accessibility.snapshot.nodes.find((node:any)=>node.id==='cancel'),label=accessibility.snapshot.nodes.find((node:any)=>node.id==='cancel-label');
-   expect(cancel.accessibility.browser.name).toBe('Cancel');expect(cancel.accessibility.browser.focusOrderSource).toBe('dom-sequential-estimate');
+   expect(cancel.accessibility.browser.name).toBe('Cancel');expect(cancel.accessibility.browser.focusOrderSource).toBe('dom-sequential-estimate');expect(cancel.accessibility.directionSource).toBe('browser-computed');
    expect(accessibility.findings.some((finding:any)=>finding.code==='ACCESSIBLE_NAME'&&finding.elementIds.includes('cancel')&&finding.status==='pass')).toBe(true);
    expect(label.accessibility.browser.contrast).toMatchObject({status:'measured',requiredRatio:4.5});expect(label.accessibility.browser.contrast.ratio).toBeGreaterThanOrEqual(4.5);
    const design=await call('import_design_intent',{sessionId,design:{kind:'reference-annotations',scenarioId:spec.scenarioId,profile:spec.profile,image:{sha256:'a'.repeat(64),width:824,height:1830},appRootPixels:{x:0,y:0,width:824,height:1830},pixelsPerLogicalUnit:2,annotations:[{elementId:'footer',rectPixels:{x:20,y:20,width:80,height:80}}]}});
    expect(design.reviewRequired).toBe(true);expect(design.spec.constraints[0]).toMatchObject({type:'rect',elementId:'footer',target:{x:10,y:10,width:40,height:40}});
    const suggestions=await call('suggest_fix',{sessionId,baselineSnapshotId:initial.snapshot.snapshotId,limit:4,profiles:[{id:'compact',profile:{...spec.profile,window:{width:360,height:800},root:{x:0,y:0,width:360,height:800}}},{id:'font-scale',profile:{...spec.profile,fontScale:1.3}}]});
-   expect(suggestions.candidates.length).toBeGreaterThan(0);for(const candidate of suggestions.candidates){expect(candidate.profiles.map((p:any)=>p.profileId)).toEqual(['baseline','compact','font-scale']);expect(candidate.profiles[2].status).toBe('unsupported');expect(candidate.profiles[1].profile.window.width).toBe(360);expect(candidate.profiles[0].snapshotId).not.toBe(candidate.profiles[1].snapshotId);}
+   expect(suggestions.baselines.map((row:any)=>row.profileId)).toEqual(['baseline','compact','font-scale']);expect(suggestions.baselines[0].scenarioState).toBe('baseline');expect(suggestions.baselines[1].scenarioState).toBe('initial');expect(suggestions.baselines[2].status).toBe('unsupported');
+   expect(suggestions.candidates.length).toBeGreaterThan(0);for(const candidate of suggestions.candidates){expect(candidate.profiles.map((p:any)=>p.profileId)).toEqual(['baseline','compact','font-scale']);expect(candidate.profiles[2].status).toBe('unsupported');expect(candidate.profiles[1].profile.window.width).toBe(360);expect(candidate.profiles[1].scenarioState).toBe('initial');expect(candidate.profiles[0].snapshotId).not.toBe(candidate.profiles[1].snapshotId);}
    const trial=await call('simulate_layout_mutation',{sessionId,baselineSnapshotId:initial.snapshot.snapshotId,elementId:'footer',patch:{flexDirection:'row'}});expect(trial.results.every((r:any)=>r.status==='pass')).toBe(true);
    const original=await readFile(path.join(project,'App.tsx'),'utf8');expect(original).toContain("flexDirection: 'column'");
    const image=await client.callTool({name:'capture_annotated_overlay',arguments:{sessionId,snapshotId:trial.snapshot.snapshotId}});expect(image.isError).not.toBe(true);expect((image.content as any[]).some(c=>c.type==='image')).toBe(true);
@@ -193,4 +195,33 @@ describe('real Expo + Chromium + MCP',()=>{
   const port=createNativeScenarioPort({target:{targetId:'unused-target',platform:'android',kind:'physical'},appId:'com.example.app',projectRoot:project});
   try{await expect(port.run({scenarioId:'screen',reset:[],actions:[{type:'press',elementId:'button',phase:'down'}]})).rejects.toMatchObject({code:'UNSUPPORTED_ACTION'});}finally{await port.close();}
  });
+ it('restores an interactive pressed state only when a profile scenario supplies it',async()=>{
+  const scenarioId='pressable-state',opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario='+scenarioId,scenarioId,profile:spec.profile,nativePort:19490,nativeToken:'nativemason-integration-token'}),sessionId=opened.sessionId;
+  try{
+   await call('load_wireframe_spec',{sessionId,spec:{...spec,scenarioId,requiredElementIds:[],constraints:[]}});
+   const accessibility=await call('inspect_accessibility',{sessionId,target:'web'}),hidden=accessibility.snapshot.nodes.find((node:any)=>node.id==='aria-hidden-button');expect(hidden.accessibility.hidden).toBe(true);expect(hidden.accessibility.browser.focusOrderSource).toBe('dom-sequential-estimate');expect(hidden.accessibility.browser.focusOrder).not.toBeNull();
+   const held=await call('run_scenario',{sessionId,target:'web',script:{scenarioId,reset:[],actions:[{type:'press',elementId:'state-button',phase:'down'}]}});
+   const target=held.snapshot.nodes.find((node:any)=>node.id==='state-button');expect(target.pressableState).toBe('pressed');
+   const constraint={id:'pressed-width',type:'rect',elementId:'state-button',target:target.rect,tolerance:0};
+   await call('load_wireframe_spec',{sessionId,spec:{...spec,scenarioId,requiredElementIds:['state-button'],constraints:[constraint]}});
+   const baseline=await call('inspect_ui_spatial_graph',{sessionId});expect(baseline.snapshot.nodes.find((node:any)=>node.id==='state-button').pressableState).toBe('pressed');
+   const result=await call('suggest_fix',{sessionId,baselineSnapshotId:baseline.snapshot.snapshotId,profiles:[
+    {id:'fresh-page',profile:spec.profile},
+    {id:'restored',profile:spec.profile,script:{scenarioId,reset:[],actions:[{type:'press',elementId:'state-button',phase:'down'}]}},
+   ]});
+   expect(result.baselines.find((row:any)=>row.profileId==='baseline')).toMatchObject({scenarioState:'baseline',status:'passed'});
+   expect(result.baselines.find((row:any)=>row.profileId==='fresh-page')).toMatchObject({scenarioState:'initial',status:'failed'});
+   expect(result.baselines.find((row:any)=>row.profileId==='restored')).toMatchObject({scenarioState:'scripted',status:'passed'});
+  }finally{await call('close_session',{sessionId});}
+ },90000);
+ it('uses computed text fill and withholds contrast for stroked or inactive text',async()=>{
+  const scenarioId='contrast-evidence',opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario='+scenarioId,scenarioId,profile:spec.profile,nativePort:19491,nativeToken:'nativemason-integration-token'});
+  try{
+   const result=await call('inspect_accessibility',{sessionId:opened.sessionId,target:'web'}),node=(id:string)=>result.snapshot.nodes.find((item:any)=>item.id===id);
+   expect(node('text-fill').accessibility.browser.contrast).toMatchObject({status:'measured',ratio:1});
+   expect(node('text-stroke').accessibility.browser.contrast).toMatchObject({status:'unavailable',reason:expect.stringContaining('Text stroke')});
+   expect(node('disabled-label').accessibility.browser.contrast).toMatchObject({status:'unavailable',reason:expect.stringContaining('inactive control')});
+   expect(result.findings).not.toContainEqual(expect.objectContaining({code:'TEXT_CONTRAST',status:'fail',elementIds:['disabled-label']}));
+  }finally{await call('close_session',{sessionId:opened.sessionId});}
+ },90000);
 });

@@ -132,21 +132,30 @@ export class BridgeApplication {
     await this.assertRevisions(s,baseline);
     const candidates:ToolOutput<'suggest_fix'>['candidates']=[];
     const primarySpec=s.baselineSpec??this.spec(s);
-    if(new Set(input.profiles?.map(p=>p.id)).size!==(input.profiles?.length??0)||input.profiles?.some(p=>p.id==='baseline'))throw new BridgeFault('INVALID_INPUT','Profile IDs must be unique; baseline is reserved');
+    if(input.profiles?.some(p=>p.script&&p.script.scenarioId!==s.scenarioId))throw new BridgeFault('INVALID_INPUT','Profile scenario scripts must match the session scenario');
     type Evidence=NonNullable<ToolOutput<'suggest_fix'>['candidates'][number]['profiles']>[number];
-    const contexts:{id:string;profile:DeviceProfile;port?:BrowserPort;snapshot?:SpatialSnapshot;spec?:WireframeSpec;error?:Evidence['error']}[]=[{id:'baseline',profile:baseline.profile,port:s.browser,snapshot:baseline,spec:primarySpec}];
+    const contexts:{id:string;profile:DeviceProfile;port?:BrowserPort;snapshot?:SpatialSnapshot;spec?:WireframeSpec;scenarioState?:NonNullable<Evidence['scenarioState']>;error?:Evidence['error']}[]=[{id:'baseline',profile:baseline.profile,port:s.browser,snapshot:baseline,spec:primarySpec,scenarioState:'baseline'}];
     const opened:BrowserPort[]=[];
+    let baselines:Evidence[]=[];
     const errorValue=(error:unknown):NonNullable<Evidence['error']>=>({code:error instanceof BridgeFault?error.code:'INTERNAL_ERROR',message:error instanceof Error?error.message:String(error)});
+    const resultStatus=(results:ReturnType<typeof evaluateConstraints>):Evidence['status']=>!results.length||results.some(result=>result.status==='unavailable')?'unavailable':allPass(results)?'passed':'failed';
+    const unavailableProfile=(error:Evidence['error']):Evidence['status']=>error?.code==='UNSUPPORTED_PROFILE'||error?.code==='UNSUPPORTED_ACTION'?'unsupported':'unavailable';
     s.trial=undefined;
     try {
       for(const requested of input.profiles??[]){
         const context:typeof contexts[number]={id:requested.id,profile:requested.profile};contexts.push(context);
         try{
           if(requested.profile.fontScale!==1)throw new BridgeFault('UNSUPPORTED_PROFILE','Chromium font-scale simulation has no rendered-text proof');
-          const port=await this.deps.browser({sessionId:s.id,scenarioId:s.scenarioId,webUrl:s.webUrl,profile:requested.profile});opened.push(port);context.port=port;
+          const port=await this.deps.browser({sessionId:s.id,scenarioId:s.scenarioId,webUrl:s.webUrl,profile:requested.profile});opened.push(port);context.port=port;context.scenarioState='initial';
+          if(requested.script){if(!port.runScenario)throw new BridgeFault('UNSUPPORTED_ACTION','Profile-specific scenarios require a browser scenario driver');await port.runScenario(requested.script);context.scenarioState='scripted';}
           context.snapshot=await port.capture();await this.assertRevisions(s,context.snapshot);context.spec=specForProfile(primarySpec,context.snapshot);
         }catch(error){context.error=errorValue(error);}
       }
+      baselines=contexts.map(context=>{
+        if(context.error)return {profileId:context.id,platform:'web',profile:context.profile,scenarioState:context.scenarioState,status:unavailableProfile(context.error),results:[],regressions:0,warnings:0,error:context.error};
+        const results=evaluateConstraints(context.snapshot!,context.spec!);
+        return {profileId:context.id,platform:'web',profile:context.profile,scenarioState:context.scenarioState,snapshotId:context.snapshot!.snapshotId,status:resultStatus(results),results:[...results],regressions:0,warnings:context.snapshot!.webDiagnostics?.warnings.filter(w=>w.severity==='confirmed').length??0};
+      });
       const proposals=new Map<string,ReturnType<typeof generateFixCandidates>[number]>();
       for(const context of contexts)if(context.snapshot&&context.spec)for(const proposal of generateFixCandidates(context.snapshot,context.spec,input.limit)){const key=JSON.stringify(proposal.mutations);if(!proposals.has(key))proposals.set(key,proposal);}
       for(const candidate of [...proposals.values()].slice(0,input.limit)) {
@@ -160,10 +169,10 @@ export class BridgeApplication {
             const snapshot=port.trialBatch?await port.trialBatch(candidate.mutations,overrides):await port.trial(candidate.mutations[0].elementId,candidate.mutations[0].patch,overrides);
             await this.assertRevisions(s,snapshot);
             const results=[...evaluateConstraints(snapshot,context.spec!)],passes=new Set(evaluateConstraints(context.snapshot!,context.spec!).filter(r=>r.status==='pass').map(r=>r.constraintId));
-            evidence.push({profileId:context.id,platform:'web',profile:snapshot.profile,snapshotId:snapshot.snapshotId,status:results.length&&allPass(results)?'passed':'failed',results,regressions:results.filter(r=>r.status!=='pass'&&passes.has(r.constraintId)).length,warnings:snapshot.webDiagnostics?.warnings.filter(w=>w.severity==='confirmed').length??0});
+            evidence.push({profileId:context.id,platform:'web',profile:snapshot.profile,scenarioState:context.scenarioState,snapshotId:snapshot.snapshotId,status:resultStatus(results),results,regressions:results.filter(r=>r.status==='fail'&&passes.has(r.constraintId)).length,warnings:snapshot.webDiagnostics?.warnings.filter(w=>w.severity==='confirmed').length??0});
           }catch(error){
             if(error instanceof BridgeFault&&['STALE_SOURCE','STALE_SNAPSHOT','SESSION_NOT_FOUND'].includes(error.code))throw error;
-            evidence.push({profileId:context.id,platform:'web',profile:context.profile,status:error instanceof BridgeFault&&error.code==='UNSUPPORTED_PROFILE'?'unsupported':'unavailable',results:[],regressions:0,warnings:0,error:errorValue(error)});
+            const evidenceError=errorValue(error);evidence.push({profileId:context.id,platform:'web',profile:context.profile,scenarioState:context.scenarioState,status:unavailableProfile(evidenceError),results:[],regressions:0,warnings:0,error:evidenceError});
           }
         }
         const primary=evidence[0];candidates.push({...candidate,results:primary.results,warnings:primary.warnings,score:0,profiles:evidence,...(primary.error?{error:primary.error}:{})});
@@ -174,10 +183,10 @@ export class BridgeApplication {
     const unavailable=(candidate:typeof candidates[number])=>candidate.profiles?.filter(p=>p.status==='unavailable'||p.status==='unsupported').length??0;
     const regressions=(candidate:typeof candidates[number])=>candidate.profiles?.reduce((sum,p)=>sum+p.regressions,0)??0;
     const warnings=(candidate:typeof candidates[number])=>candidate.profiles?.reduce((sum,p)=>sum+p.warnings,0)??0;
-    const remaining=(candidate:typeof candidates[number])=>candidate.profiles?.reduce((sum,p)=>sum+p.results.filter(result=>result.status!=='pass').length,0)??0;
+    const remaining=(candidate:typeof candidates[number])=>candidate.profiles?.reduce((sum,p)=>sum+p.results.filter(result=>result.status==='fail').length,0)??0;
     const editSize=(candidate:typeof candidates[number])=>candidate.mutations.reduce((count,mutation)=>count+Object.keys(mutation.patch).length,0);
     candidates.sort((a,b)=>Number('error' in a)-Number('error' in b)||unavailable(a)-unavailable(b)||regressions(a)-regressions(b)||warnings(a)-warnings(b)||remaining(a)-remaining(b)||editSize(a)-editSize(b));
-    const result={candidates:candidates.map((candidate,index)=>({...candidate,score:index+1})),baselineSnapshotId:input.baselineSnapshotId};
+    const result={candidates:candidates.map((candidate,index)=>({...candidate,score:index+1})),baselineSnapshotId:input.baselineSnapshotId,baselines};
     await this.artifact(s.id,'suggestions.json',JSON.stringify(result,null,2));return result;
   }
   private async open(input:ToolInput<'open_session'>) {

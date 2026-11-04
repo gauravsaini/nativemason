@@ -16,22 +16,24 @@ export async function captureAccessibilityEvidence(page:Page,cdp:CDPSession,snap
     };
     return Object.fromEntries((runtime?.getDiagnosticTargets()??[]).map(({id,element})=>{
       if(!(element instanceof HTMLElement))return [id,{direction:'unknown',focusOrder:null,foreground:null,background:null,requiredRatio:4.5,contrastReason:'Registered host is not an HTML element'}];
-      const style=getComputedStyle(element),color=rgba(style.color);let background:number[]|null=null,reason:string|null=null;
+      const style=getComputedStyle(element),textFill=style.getPropertyValue('-webkit-text-fill-color'),color=textFill?rgba(textFill):rgba(style.color);let background:number[]|null=null,reason:string|null=element.closest(':disabled,[aria-disabled="true"]')?'Text belongs to an inactive control; contrast exemption cannot be evaluated as ordinary text':null;
       for(let current:HTMLElement|null=element;current;current=current.parentElement){
         const computed=getComputedStyle(current);
-        if(Number(computed.opacity)!==1||computed.filter!=='none'||computed.mixBlendMode!=='normal'||(computed.backdropFilter&&computed.backdropFilter!=='none')){reason='Opacity, blending, or filters prevent a proven solid-color contrast';break;}
+        if(Number(computed.opacity)!==1||computed.filter!=='none'||computed.mixBlendMode!=='normal'||(computed.backdropFilter&&computed.backdropFilter!=='none')){reason??='Opacity, blending, or filters prevent a proven solid-color contrast';break;}
         if(!background){
-          if(computed.backgroundImage!=='none'){reason='An image or gradient background requires pixel evidence';break;}
+          if(computed.backgroundImage!=='none'){reason??='An image or gradient background requires pixel evidence';break;}
           const value=rgba(computed.backgroundColor);
-          if(!value){reason='Unsupported background color space';break;}
+          if(!value){reason??='Unsupported background color space';break;}
           if(value[3]===1)background=value.slice(0,3);
-          else if(value[3]!==0){reason='Translucent backgrounds require compositing evidence';break;}
+          else if(value[3]!==0){reason??='Translucent backgrounds require compositing evidence';break;}
         }
       }
-      if(!color||color[3]!==1)reason='An opaque sRGB foreground was not established';
+      if(textFill&&!color)reason??='Unsupported text fill color space';
+      if(!color||color[3]!==1)reason??='An opaque sRGB foreground was not established';
       if(!background)reason??='No explicit opaque ancestor background was established';
-      if(style.textShadow!=='none')reason='Text shadow changes require pixel evidence';
-      if(element instanceof HTMLInputElement&&element.value===''&&element.placeholder)reason='Placeholder foreground evidence is unavailable';
+      if(parseFloat(style.getPropertyValue('-webkit-text-stroke-width'))>0)reason??='Text stroke changes glyph contrast and requires pixel evidence';
+      if(style.textShadow!=='none')reason??='Text shadow changes require pixel evidence';
+      if(element instanceof HTMLInputElement&&element.value===''&&element.placeholder)reason??='Placeholder foreground evidence is unavailable';
       const index=focusable.indexOf(element),large=parseFloat(style.fontSize)>=24||(parseFloat(style.fontSize)>=18.6666667&&Number(style.fontWeight)>=700);
       return [id,{direction:style.direction==='rtl'?'rtl':'ltr',focusOrder:index<0?null:index,foreground:reason?null:color!.slice(0,3),background:reason?null:background,requiredRatio:large?3:4.5,contrastReason:reason}];
     }));
@@ -57,6 +59,6 @@ export async function captureAccessibilityEvidence(page:Page,cdp:CDPSession,snap
     const sample=samples[node.id];
     if(!sample)return node;
     const contrast:NonNullable<AccessibilityEvidence['browser']>['contrast']=sample.foreground&&sample.background?{status:'measured',ratio:solidContrastRatio(sample.foreground,sample.background),requiredRatio:sample.requiredRatio}:{status:'unavailable',reason:sample.contrastReason??'Solid-style contrast is unavailable'};
-    return {...node,accessibility:{...node.accessibility,direction:sample.direction,browser:{name:names.get(node.id)??null,focusOrder:sample.focusOrder,focusOrderSource:'dom-sequential-estimate' as const,contrast}}};
+    return {...node,accessibility:{...node.accessibility,direction:sample.direction,directionSource:'browser-computed' as const,browser:{name:names.get(node.id)??null,focusOrder:sample.focusOrder,focusOrderSource:'dom-sequential-estimate' as const,contrast}}};
   })};
 }

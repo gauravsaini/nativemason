@@ -59,8 +59,10 @@ describe('inspectAccessibility', () => {
       node({ id: 'unavailable', kind: 'Text', accessibility: { direction: 'ltr', browser: { name: null, focusOrder: null, focusOrderSource: 'dom-sequential-estimate', contrast: { status: 'unavailable', reason: 'Background is translucent' } } } }),
       node({ id: 'pass', kind: 'Text', accessibility: { direction: 'ltr', browser: { name: null, focusOrder: null, focusOrderSource: 'dom-sequential-estimate', contrast: { status: 'measured', ratio: 4.5, requiredRatio: 4.5 } } } }),
       node({ id: 'fail', kind: 'Text', accessibility: { direction: 'ltr', browser: { name: null, focusOrder: null, focusOrderSource: 'dom-sequential-estimate', contrast: { status: 'measured', ratio: 3, requiredRatio: 4.5 } } } }),
+      node({ id: 'disabled-parent', accessibility: { direction: 'ltr', disabled: true } }),
+      node({ id: 'disabled-text', parentId: 'disabled-parent', kind: 'Text', accessibility: { direction: 'ltr', browser: { name: null, focusOrder: null, focusOrderSource: 'dom-sequential-estimate', contrast: { status: 'measured', ratio: 1, requiredRatio: 4.5 } } } }),
     ]));
-    expect(findings.filter(item => item.code === 'TEXT_CONTRAST').map(item => [item.elementIds[0], item.status])).toEqual([['unavailable', 'unavailable'], ['pass', 'pass'], ['fail', 'fail']]);
+    expect(findings.filter(item => item.code === 'TEXT_CONTRAST').map(item => [item.elementIds[0], item.status])).toEqual([['unavailable', 'unavailable'], ['pass', 'pass'], ['fail', 'fail'], ['disabled-text', 'unavailable']]);
   });
 
   it('keeps RTL physical-spacing and unknown direction findings advisory or unavailable', () => {
@@ -71,5 +73,11 @@ describe('inspectAccessibility', () => {
     expect(findings.find(item => item.code === 'RTL_PHYSICAL_SPACING')?.status).toBe('advisory');
     expect(inspectAccessibility(snapshot([node({ id: 'direction-unknown', kind: 'View', accessibility: { direction: 'unknown' } })]))
       .find(item => item.code === 'RTL_EVIDENCE')?.status).toBe('unavailable');
+  });
+
+  it('marks I18nManager direction as global-only while keeping physical spacing advisory',()=>{
+    const findings=inspectAccessibility(snapshot([node({id:'native-global-rtl',styles:{marginLeft:8},accessibility:{direction:'rtl',directionSource:'native-global'}})],'android'));
+    expect(findings).toContainEqual(expect.objectContaining({code:'RTL_EVIDENCE',status:'unavailable',elementIds:['native-global-rtl']}));
+    expect(findings).toContainEqual(expect.objectContaining({code:'RTL_PHYSICAL_SPACING',status:'advisory',elementIds:['native-global-rtl']}));
   });
 });
