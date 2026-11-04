@@ -26,7 +26,7 @@ Geometric constraints include target rectangles, alignment, gap, safe-area inclu
 
 `textFits` uses a settled, equivalent unconstrained native probe, the measured box, and authored `numberOfLines`. Probe evidence must match the current text/style/width/font-scale signature. A limited callback can add evidence but is not required when the full probe and box establish fit. Stale, nested/rich, inherited, or otherwise unsupported measurements stay unavailable. A line count alone cannot prove no truncation.
 
-Web-only diagnostics retain clipping, center-hit tests, overflow, paint order, multiple font records, and explicit unknown evidence. Confirmed clipping, occlusion, or font-load failure blocks apply; uncertainty is visible and nonblocking. These findings do not establish native paint order, font fallback, or touchability.
+Web-only diagnostics retain clipping, center-hit tests, overflow, paint order, multiple font records, and explicit unknown evidence. Confirmed clipping, occlusion, or font-load failure blocks apply, including newly confirmed evidence in the final pre-write capture; uncertainty is visible and nonblocking. These findings do not establish native paint order, font fallback, or touchability.
 
 ## Tools and effects
 

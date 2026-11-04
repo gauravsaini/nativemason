@@ -262,6 +262,7 @@ export class BridgeApplication {
     if(input.mode==='apply'&&s.baseline&&!profilesMatch(s.baseline.profile,s.profile))throw new BridgeFault('UNSUPPORTED_PROFILE','Trials captured with profile overrides can be previewed but not committed for Android acceptance');
     if(input.mode==='apply'&&trial.snapshot.webDiagnostics?.warnings.some(w=>w.severity==='confirmed'))throw new BridgeFault('VERIFICATION_FAILED','Confirmed Chromium diagnostics must be resolved before applying this trial');
     const current=await s.browser.capture(s.baselineOverrides);
+    if(input.mode==='apply'&&current.webDiagnostics?.warnings.some(w=>w.severity==='confirmed'))throw new BridgeFault('VERIFICATION_FAILED','Confirmed Chromium diagnostics must be resolved before applying this trial');
     if(fingerprint(current)!==fingerprint(trial.snapshot)||JSON.stringify(current.nodes.map(n=>n.rect))!==JSON.stringify(trial.snapshot.nodes.map(n=>n.rect)))throw new BridgeFault('STALE_SNAPSHOT','Trial layout changed before commit');
     await this.assertRevisions(s,s.baseline);
     const mutations=trial.mutations??[{elementId:trial.elementId,patch:trial.patch}];
