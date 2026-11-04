@@ -1,3 +1,11 @@
+<p align="center"><img src="assets/app-logos/08-vision-acrylic.svg" alt="NativeMason logo" width="160" /></p>
+
+# NativeMason
+
+A measured layout workflow for AI-driven React Native development. Connect your coding agent through MCP, inspect an Expo web mirror, trial React Native styles in Chromium, preview a source transaction, and verify its committed revisions on Android or iOS.
+
+The agent supplies the reasoning. NativeMason supplies measurements, deterministic suggestions, source-edit guards, and verification evidence. Browser diagnostics describe Chromium; native measurements determine acceptance on the selected native target.
+
 ## LLM instructions: integrate NativeMason into this app
 
 Copy this into your coding agent, or ask it to follow this section directly:
@@ -7,7 +15,7 @@ Integrate NativeMason into this Expo React Native app and verify one real UI flo
 
 1. Inspect package.json, the Expo version, Babel/Metro configuration, app entry,
    and existing providers. Preserve the app's package manager and configuration.
-2. NativeMason 0.2 packages are not published yet. Build the NativeMason checkout,
+2. If NativeMason packages are not published,  build the NativeMason checkout,
    pack contracts/runtime/bridge, and install all three matching tarballs. Check
    peer compatibility; report unsupported app versions instead of upgrading them
    silently. Follow “Integrate an Expo app” below for the exact commands.
@@ -32,14 +40,6 @@ Integrate NativeMason into this Expo React Native app and verify one real UI flo
 10. Close the session. Report source hashes, diffs, profiles, measurements, and
     artifact locations. Keep collection, probes, and networking disabled in production.
 ```
-
-<p align="center"><img src="assets/app-logos/08-vision-acrylic.svg" alt="NativeMason logo" width="160" /></p>
-
-# NativeMason
-
-A measured layout workflow for AI-driven React Native development. Connect your coding agent through MCP, inspect an Expo web mirror, trial React Native styles in Chromium, preview a source transaction, and verify its committed revisions on Android or iOS.
-
-The agent supplies the reasoning. NativeMason supplies measurements, deterministic suggestions, source-edit guards, and verification evidence. Browser diagnostics describe Chromium; native measurements determine acceptance on the selected native target.
 
 **Status:** 0.2.0 release preparation. Packages are not yet published to npm. Use the checkout or packed packages below. Publishing follows native acceptance and explicit release approval.
 
