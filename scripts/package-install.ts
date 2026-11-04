@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {execFile,spawn,type ChildProcess} from 'node:child_process';
 import {chromium} from 'playwright';import {promisify} from 'node:util';
 import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';import path from 'node:path';import {tmpdir} from 'node:os';import {fileURLToPath,URL} from 'node:url';
@@ -25,6 +26,8 @@ async function main(){
     await writeFile(path.join(temp,'app.json'),JSON.stringify({expo:{name:'NativeMason Consumer',slug:'nativemason-consumer'}}));
     await writeFile(path.join(temp,'App.tsx'),"import {View, Text} from 'react-native'; export default function App(){return <View testID='consumer-root' style={{flex:1}}><Text testID='consumer-copy'>Consumer</Text></View>;}\n");
     await exec('npm',['install','--prefer-offline','--no-audit','--no-fund',...tarballs],{cwd:temp,env:{...process.env,SHARP_IGNORE_GLOBAL_LIBVIPS:'1'},timeout:600000,maxBuffer:8*1024*1024});
+    await writeFile(path.join(temp,'ConsumerTypes.tsx'),"import {LayoutView} from '@nativemason/runtime';import {TransactionPlanSchema,type TransactionPlan} from '@nativemason/contracts';import {createMcpServer} from 'nativemason';export const Consumer=()=> <LayoutView layoutId='typed-consumer'/>;export const schema=TransactionPlanSchema;export type Plan=TransactionPlan;export const serverFactory=createMcpServer;\n");
+    await exec(process.execPath,[path.join(temp,'node_modules/typescript/bin/tsc'),'--noEmit','--skipLibCheck','--module','NodeNext','--moduleResolution','NodeNext','--target','ES2022','--jsx','react-jsx','--esModuleInterop','ConsumerTypes.tsx'],{cwd:temp,timeout:60000,maxBuffer:4*1024*1024});
     const binary=path.join(temp,'node_modules/nativemason/bin/nativemason.js');
     const help=(await exec(process.execPath,[binary,'--help'],{cwd:temp})).stdout;assert.match(help,/nativemason/);
     const dryRun=JSON.parse((await exec(process.execPath,[binary,'init',temp,'--dry-run'],{cwd:temp})).stdout);assert.equal(dryRun.dryRun,true);await assert.rejects(readFile(path.join(temp,'babel.config.cjs'),'utf8'),{code:'ENOENT'});
@@ -44,7 +47,7 @@ async function main(){
       assert.ok(!opened.isError,JSON.stringify(opened.content));const sessionId=(opened.structuredContent as {sessionId:string}).sessionId;
       const inspected=await client.callTool({name:'inspect_ui_spatial_graph',arguments:{sessionId}});assert.ok(!inspected.isError,JSON.stringify(inspected.content));const snapshot=(inspected.structuredContent as {snapshot:{nodes:{id:string}[]}}).snapshot;assert.ok(snapshot.nodes.some(node=>node.id==='consumer-root'),'Auto-instrumented packed consumer root missing');assert.ok(snapshot.nodes.some(node=>node.id==='consumer-copy'),'Auto-instrumented packed consumer text missing');await client.callTool({name:'close_session',arguments:{sessionId}});
     }finally{await client.close();}
-    await writeFile(path.join(packs,'install-smoke.json'),JSON.stringify({passed:true,packages:names,node:process.version,consumer:'separate npm Expo project',checks:['allowlists','license','install','executable','init-dry-run','init-idempotency','public-exports','mcp-discovery','packed-consumer-web-capture']},null,2));
+    await writeFile(path.join(packs,'install-smoke.json'),JSON.stringify({passed:true,packages:names,tarballs:await Promise.all(tarballs.map(async file=>({file:path.basename(file),sha256:createHash('sha256').update(await readFile(file)).digest('hex')}))),node:process.version,consumer:'separate npm Expo project',checks:['allowlists','license','install','executable','init-dry-run','init-idempotency','public-exports','consumer-declarations','mcp-discovery','packed-consumer-web-capture']},null,2));
     console.log('PACKAGE_INSTALL_SMOKE_PASSED');
   }catch(error){throw new Error((error instanceof Error?error.message:String(error))+'\nConsumer Metro: '+logs.slice(-4000),{cause:error});}finally{if(metro?.pid){try{process.kill(-metro.pid,'SIGTERM');}catch{ /* The readiness deadline and process exit check handle transient startup failures. */ }}await rm(temp,{recursive:true,force:true});}
 }
