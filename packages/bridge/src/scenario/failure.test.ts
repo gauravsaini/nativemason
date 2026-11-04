@@ -77,7 +77,8 @@ describe('native scenario failure evidence',()=>{
   it('bounds long process output and preserves signal termination metadata',async()=>{
     executeMock.mockRejectedValue(failure('x'.repeat(3000),{
       code:'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',killed:true,signal:'SIGTERM',
-      stdout:'o'.repeat(20000),stderr:'e'.repeat(20000),
+      stdout:`STDOUT_STARTUP ${'o'.repeat(20000)} STDOUT_FAILURE: target was not found`,
+      stderr:`STDERR_STARTUP ${'e'.repeat(20000)} STDERR_FAILURE: Maestro exited`,
     }));
     const fault=await faultFor(createNativeScenarioPort(base).run(inputScript()));
     const details=NativeScenarioFailureEvidenceSchema.parse(fault.details);
@@ -88,6 +89,10 @@ describe('native scenario failure evidence',()=>{
     expect(details.terminated).toBe(true);
     expect(details.stdout).toHaveLength(16384);
     expect(details.stderr).toHaveLength(16384);
+    expect(details.stdout).toContain('STDOUT_FAILURE: target was not found');
+    expect(details.stderr).toContain('STDERR_FAILURE: Maestro exited');
+    expect(details.stdout).not.toContain('STDOUT_STARTUP');
+    expect(details.stderr).not.toContain('STDERR_STARTUP');
     expect(details.outputTruncated).toBe(true);
     await expectLocalFlowRemoved();
   });

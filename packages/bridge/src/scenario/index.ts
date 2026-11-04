@@ -31,7 +31,7 @@ function scenarioFailureEvidence(error:unknown):ReturnType<typeof NativeScenario
   return NativeScenarioFailureEvidenceSchema.parse({
     driver:'maestro',message:fullMessage.slice(0,FAILURE_MESSAGE_LIMIT),exitCode,signal,
     terminated:processError.killed===true||signal!==null,
-    stdout:rawStdout.slice(0,FAILURE_OUTPUT_LIMIT),stderr:rawStderr.slice(0,FAILURE_OUTPUT_LIMIT),
+    stdout:rawStdout.slice(-FAILURE_OUTPUT_LIMIT),stderr:rawStderr.slice(-FAILURE_OUTPUT_LIMIT),
     outputTruncated:fullMessage.length>FAILURE_MESSAGE_LIMIT||rawStdout.length>FAILURE_OUTPUT_LIMIT||rawStderr.length>FAILURE_OUTPUT_LIMIT||String(rawCode??'').length>64||String(rawSignal??'').length>64||rawCode==='ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
   });
 }
