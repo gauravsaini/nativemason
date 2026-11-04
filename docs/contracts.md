@@ -37,3 +37,17 @@ Core geometry, constraints, inference, candidate generation, overlay planning, a
 Snapshot revisions contain mounted source files and their statically referenced local style/token dependencies; unrelated eagerly evaluated scenario modules are excluded. Measurement evidence updates do not change mount identity. Authored content/style changes still invalidate the baseline.
 
 CDP center-point ownership follows composed DOM ancestry, including user-agent shadow roots. A control owning its hit node is clear; an ancestor receiving the hit is uncertain rather than proven occlusion. An unrelated hit node remains confirmed occlusion.
+
+Initialization resolves a declared `expo-router/entry` to a layout under `src/app` before `app`, matching [Expo Router directory precedence](https://docs.expo.dev/router/reference/src-directory/). TypeScript and JavaScript layouts are supported. Unused starter App files do not make this entry ambiguous. Other ambiguous roots remain explicit errors; configuration code is never evaluated. Generated Babel configuration resolves Expo's own preset rather than relying on dependency hoisting.
+
+## Design and diagnostic extensions
+
+Safe single-consumer literals fold in place under local scope; shared, dynamic, or unresolved definitions retain local overrides. Imported definition edits use `expectedRevisions` to acknowledge both the rendered source and its style dependency. Inserted strings follow the source's JavaScript quote convention.
+
+`suggest_fix.profiles` requests up to six explicit device profiles in addition to the primary baseline. Profile evidence records constraints, regressions, confirmed warnings, and passed/failed/unsupported/unavailable status. These are Chromium trials; unsupported text scaling cannot become a simulated native pass. Scores remain response-local ranks.
+
+`import_design_intent` returns a review-required spec without loading it. Figma auto-layout imports require explicit node-to-element mapping. Reference images require agent-supplied annotated pixel rectangles, the image hash, app-root crop, and scale; NativeMason does not infer image semantics. Geometry normalization stays deterministic and design intent remains separate from captured app measurements.
+
+Accessibility evidence distinguishes authored labels/hints and native layout direction from browser-computed names, estimated sequential focus order, and contrast evidence. Unknown evidence stays unavailable. DOM focus estimates do not prove assistive-technology order, and browser evidence is forbidden in native snapshots. RTL physical-spacing findings are advisory because physical offsets can be intentional.
+
+`pressable-state` edits require an explicit `pressed` or `rest` state and a bounded, independently validated static callback branch. Unsupported dynamic callbacks remain rejected. `SourceRef.styleForm` identifies instrumented callback capability, not permission to bypass AST checks. Browser held-pointer actions are separate from native scenario hooks.

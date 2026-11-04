@@ -6,15 +6,19 @@ import {BridgeFault} from '@nativemason/contracts';
 const exists=async(p:string)=>access(p).then(()=>true,()=>false);
 export async function initialize(projectRoot:string,dryRun=false,settings:{textProbes?:boolean}={}){
  const root=path.resolve(projectRoot);
- const app=JSON.parse(await readFile(path.join(root,'package.json'),'utf8')) as {dependencies?:Record<string,string>};
+ const app=JSON.parse(await readFile(path.join(root,'package.json'),'utf8')) as {main?:string;dependencies?:Record<string,string>};
  if(!app.dependencies?.expo)throw new BridgeFault('INVALID_INPUT','Initialization requires an Expo project');
- const roots=['app/_layout.tsx','src/app/_layout.tsx','App.tsx','App.jsx','App.js','src/App.tsx'];
- const candidates=[];for(const file of roots)if(await exists(path.join(root,file)))candidates.push(file);
+ const roots=['app/_layout','src/app/_layout','App','src/App'].flatMap(base=>['tsx','jsx','js','ts'].map(extension=>base+'.'+extension));
+ const discovered:string[]=[];for(const file of roots)if(await exists(path.join(root,file)))discovered.push(file);
+ // Follow the declared Router entry and Expo's documented src/app precedence.
+ const routerEntry=typeof app.main==='string'&&/(?:^|\/)expo-router\/entry(?:\.js)?$/.test(app.main);
+ const routerDirectory=['src/app/','app/'].find(directory=>discovered.some(file=>file.startsWith(directory)));
+ const candidates=routerEntry?discovered.filter(file=>routerDirectory&&file.startsWith(routerDirectory)):discovered;
  if(candidates.length!==1)throw new BridgeFault('INVALID_INPUT','Expected one Expo app root',{candidates});
  const configs=['babel.config.js','babel.config.cjs'];const present=[];for(const file of configs)if(await exists(path.join(root,file)))present.push(file);
  if(present.length>1)throw new BridgeFault('UNSUPPORTED_EDIT','Multiple Babel configurations require manual selection');
  const file=present[0]??'babel.config.cjs';
- const old=present.length?await readFile(path.join(root,file),'utf8'):"module.exports = function(api) { api.cache(true); return { presets: ['babel-preset-expo'], plugins: [] }; };\n";
+ const old=present.length?await readFile(path.join(root,file),'utf8'):"module.exports = function(api) { api.cache(true); return { presets: [require.resolve('babel-preset-expo', { paths: [require.resolve('expo/package.json')] })], plugins: [] }; };\n";
  const project=new Project({useInMemoryFileSystem:true,skipAddingFilesFromTsConfig:true});const source=project.createSourceFile('/babel.js',old);
  const config=source.getDescendantsOfKind(SyntaxKind.ObjectLiteralExpression).filter(o=>o.getProperty('presets')||o.getProperty('plugins'));
  const rootSource=project.createSourceFile('/root.tsx',await readFile(path.join(root,candidates[0]),'utf8'));

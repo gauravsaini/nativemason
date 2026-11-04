@@ -45,3 +45,16 @@ it('preserves an existing explicit provider instead of injecting another root pr
  const result=await initialize(root);
  expect(result.automaticRoot).toBe(false);expect(result.after).toContain('autoInstrument');expect(result.after).not.toContain('"rootComponent"');
 });
+it('selects the declared Router entry over an unused starter App and honors src/app precedence',async()=>{
+ const root=await project({'app/_layout.tsx':'export default function Root(){return null;}'});
+ await writeFile(path.join(root,'package.json'),JSON.stringify({main:'expo-router/entry',dependencies:{expo:'~54.0.0'}}));
+ expect((await initialize(root,true)).rootComponent).toBe('app/_layout.tsx');
+ await mkdir(path.join(root,'src/app'),{recursive:true});await writeFile(path.join(root,'src/app/_layout.tsx'),'export default function Root(){return null;}');
+ expect((await initialize(root,true)).rootComponent).toBe('src/app/_layout.tsx');
+});
+
+it('recognizes JavaScript Router layouts without selecting an unused App file',async()=>{
+ const root=await project({'app/_layout.jsx':'export default function Root(){return null;}'});
+ await writeFile(path.join(root,'package.json'),JSON.stringify({main:'expo-router/entry',dependencies:{expo:'~55.0.0'}}));
+ expect((await initialize(root,true)).rootComponent).toBe('app/_layout.jsx');
+});
