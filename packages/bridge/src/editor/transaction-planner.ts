@@ -1,6 +1,7 @@
 import { createTwoFilesPatch } from 'diff';
 import { Node, Project, SyntaxKind, type Expression, type ObjectLiteralExpression } from 'ts-morph';
 import { SourceMutationSchema, type SourceFile, type SourceMutation, type SourceRef, type TransactionPlan, type Result, type BlastRadius } from '@nativemason/contracts';
+import {isLiteralStyleObject,valueText} from './source-format.js';
 import {hashSource,planSourcePatch} from './planner.js';
 
 /** All project inputs are supplied by the adapter. Planning never reads or executes application code. */
@@ -37,6 +38,27 @@ export function planTransaction(files:readonly SourceFile[], mutations:readonly 
       if(mutation.scope?.kind!=='shared'){
         const planned=planSourcePatch(file.text,mutation.source,mutation.patch,mutation.scope??{kind:'local'});
         if(!planned.ok)return planned;
+        // Reuse the shared-edit discovery as a proof, never as authorization to
+        // widen a local edit. Unknown/shared consumers keep the local override.
+        const ast=project.getSourceFileOrThrow('/'+file.path);
+        const site=ast.getDescendants().find(n=>(Node.isJsxElement(n)||Node.isJsxSelfClosingElement(n))&&n.getStart()===mutation.source.start&&n.getEnd()===mutation.source.end);
+        const opening=site&&(Node.isJsxElement(site)?site.getOpeningElement():Node.isJsxSelfClosingElement(site)?site:undefined);
+        const attribute=opening?.getAttribute('style');
+        const initializer=attribute&&Node.isJsxAttribute(attribute)?attribute.getInitializer():undefined;
+        const expression=initializer&&Node.isJsxExpression(initializer)?initializer.getExpression():undefined;
+        const finalExpression=expression&&Node.isArrayLiteralExpression(expression)?expression.getElements().at(-1):expression;
+        if((!mutation.scope||mutation.scope.kind==='local')&&finalExpression&&(Node.isIdentifier(finalExpression)||Node.isPropertyAccessExpression(finalExpression))){
+          const folded=planTransaction(files,[{...mutation,scope:{...mutation.scope,kind:'shared'}}]);
+          const consumer=folded.ok&&folded.value.blastRadius.consumers.length===1?folded.value.blastRadius.consumers[0]:undefined;
+          if(folded.ok&&consumer&&consumer.source.path===mutation.source.path&&consumer.source.start===mutation.source.start&&consumer.source.end===mutation.source.end&&folded.value.files.length===1){
+            const plan=folded.value.files[0],definition=project.getSourceFileOrThrow('/'+plan.source.path).getDescendants().find(n=>Node.isObjectLiteralExpression(n)&&n.getStart()===plan.source.start);
+            if(definition&&Node.isObjectLiteralExpression(definition)&&safeAutomaticDefinition(definition,project)){
+              add(plan.source.path,plan.source,plan.updatedText);
+              blastRadius.consumers.push(consumer);
+              continue;
+            }
+          }
+        }
         add(file.path,mutation.source,planned.value.updatedText);
         blastRadius.consumers.push({source:mutation.source,mountedIds:[],requiredScenarios:[]});
         continue;
@@ -49,7 +71,10 @@ export function planTransaction(files:readonly SourceFile[], mutations:readonly 
       if(!attr||!Node.isJsxAttribute(attr))throw Error('Shared editing requires a style expression');
       const initializer=attr.getInitializer();
       if(!initializer||!Node.isJsxExpression(initializer)||!initializer.getExpression())throw Error('Shared editing requires a style expression');
-      const expression=initializer.getExpression()!;
+      const initialExpression=initializer.getExpression()!;
+      const finalExpression=Node.isArrayLiteralExpression(initialExpression)?initialExpression.getElements().at(-1):initialExpression;
+      if(!finalExpression||!Node.isExpression(finalExpression))throw Error('Shared editing requires a final style expression');
+      const expression=finalExpression;
       function resolveObject(expr:Expression):ObjectLiteralExpression {
         if(Node.isObjectLiteralExpression(expr))return expr;
         if(Node.isIdentifier(expr)){
@@ -93,7 +118,7 @@ export function planTransaction(files:readonly SourceFile[], mutations:readonly 
       if(!copyObject||!Node.isObjectLiteralExpression(copyObject))throw Error('Shared source mapping failed');
       for(const [key,value]of Object.entries(mutation.patch)){
         if(value===undefined)continue;const prop=copyObject.getProperty(key);
-        if(prop&&Node.isPropertyAssignment(prop))prop.setInitializer(JSON.stringify(value));else copyObject.addPropertyAssignment({name:key,initializer:JSON.stringify(value)});
+        if(prop&&Node.isPropertyAssignment(prop))prop.setInitializer(valueText(value,copy,prop.getInitializer()));else copyObject.addPropertyAssignment({name:key,initializer:valueText(value,copy)});
       }
       const location=targetFile.getLineAndColumnAtPos(object.getStart());
       add(relative,{path:relative,hash:original.hash,start:object.getStart(),end:object.getEnd(),line:location.line,column:location.column-1},copy.getFullText());
@@ -106,4 +131,21 @@ export function planTransaction(files:readonly SourceFile[], mutations:readonly 
     if(!plans.length)throw Error('Transaction would not change source');
     return {ok:true,value:{files:plans,blastRadius}};
   }catch(error){return {ok:false,error:{code:'UNSUPPORTED_EDIT',message:error instanceof Error?error.message:String(error)}};}
+}
+
+/** Exported StyleSheet containers may only be used through known property access. */
+function safeAutomaticDefinition(object:ObjectLiteralExpression,project:Project):boolean {
+  if(!isLiteralStyleObject(object))return false;
+  const declaration=object.getAncestors().find(Node.isVariableDeclaration);
+  if(!declaration||declaration.getInitializer()===object)return true;
+  const symbol=declaration.getSymbol();if(!symbol)return false;
+  for(const file of project.getSourceFiles())for(const id of file.getDescendantsOfKind(SyntaxKind.Identifier)){
+    const target=id.getSymbol()?.getAliasedSymbol()??id.getSymbol();
+    if(target!==symbol||id===declaration.getNameNode())continue;
+    const parent=id.getParent();
+    if(Node.isImportSpecifier(parent)||Node.isExportSpecifier(parent))continue;
+    if(Node.isPropertyAccessExpression(parent)&&parent.getExpression()===id)continue;
+    return false;
+  }
+  return true;
 }

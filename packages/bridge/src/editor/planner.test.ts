@@ -28,7 +28,7 @@ function rejected(text: string, message?: RegExp): void {
 describe('source patch planning', () => {
   it('changes only literal value text, preserving comments and UTF-16 locations', () => {
     const text = '// emoji 😀\nexport const Screen = () => <LayoutView style={{ /* keep */ flexDirection: "column", gap: 8 }} />;\n';
-    expect(patched(text)).toBe(text.replace('"column"', "'row'"));
+    expect(patched(text)).toBe(text.replace('"column"', '"row"'));
   });
   it('adds supported properties deterministically and preserves other properties', () => {
     const text = 'const Screen = () => <LayoutView style={{ height: 40 }} />;';
@@ -43,7 +43,7 @@ describe('source patch planning', () => {
   });
   it('edits local uniquely used StyleSheet entry with an aliased import', () => {
     const text = 'import { StyleSheet as SS } from "react-native";\nconst styles = SS.create({ footer: { flexDirection: "column", height: 48 }, other: { gap: 4 } });\nconst Screen = () => <LayoutView style={styles.footer} />;';
-    expect(patched(text)).toBe(text.replace('"column"', "'row'"));
+    expect(patched(text)).toBe(text.replace('"column"', '"row"'));
   });
   it('allows other entries from the same stylesheet without considering them shared', () => {
     const text = 'import { StyleSheet } from "react-native"; const styles=StyleSheet.create({footer:{flexDirection:"column"},other:{gap:2}}); const Other=()=> <View style={styles.other}/>; const Screen=()=> <LayoutView style={styles.footer}/>;';
@@ -100,5 +100,43 @@ describe('source patch planning', () => {
     const patch=Object.freeze({gap:8});
     const first=planSourcePatch(text,source,patch);
     expect(planSourcePatch(text,source,patch)).toEqual(first);
+  });
+});
+
+
+describe('local literal folding and quote style',()=>{
+  function local(text:string,patch:RnStylePatch={gap:12},scope:{kind:'local'}|{kind:'branch';branch:'consequent'|'alternate'}={kind:'local'}){
+    const result=planSourcePatch(text,reference(text),patch,scope);if(!result.ok)throw Error(result.error.message);return result.value.updatedText;
+  }
+  it('updates inline literals and the final literal array entry without extra wrappers',()=>{
+    const text="const A=()=> <LayoutView style={[getStyle(), { gap: 4 }]} />;";
+    const once=local(text);expect(once).toBe(text.replace('gap: 4','gap: 12'));
+    expect(local(once,{gap:16})).toBe(text.replace('gap: 4','gap: 16'));
+    const inline="const A=()=> <LayoutView style={{gap:4}}/>;";expect(local(inline)).toBe(inline.replace('gap:4','gap:12'));
+  });
+  it('keeps a final override when a later expression can override the earlier literal',()=>{
+    const text="const A=()=> <LayoutView style={[{gap:4}, getStyle()]} />;";
+    expect(local(text)).toContain('style={[[{gap:4}, getStyle()], { gap: 12 }]}');
+  });
+  it('folds only the explicitly selected conditional arm',()=>{
+    const text="const A=()=> <LayoutView style={active ? {gap:4} : {gap:8}}/>;";
+    expect(local(text,{gap:12},{kind:'branch',branch:'alternate'})).toBe(text.replace('{gap:8}','{gap:12}'));
+  });
+  it('preserves existing value quotes and adopts JavaScript quotes for additions',()=>{
+    const single=`import {View} from 'react-native';const A=()=> <View testID="box" style={{gap:4}}/>;`;
+    const double='import {View} from "react-native";const A=()=> <View style={{gap:4}}/>;';
+    expect(local(single,{flexDirection:'row'})).toContain("flexDirection: 'row'");
+    expect(local(double,{flexDirection:'row'})).toContain('flexDirection: "row"');
+    const family="const A=()=> <LayoutView style={{fontFamily:'Old'}}/>;";
+    expect(local(family,{fontFamily:"Someone's Sans"})).toContain(String.raw`fontFamily:'Someone\'s Sans'`);
+  });
+  it('folds a unique local StyleSheet entry but keeps shared and dynamic definitions intact',()=>{
+    const prefix="import {StyleSheet} from 'react-native';const styles=StyleSheet.create({box:{gap:4}});";
+    const unique=prefix+"const A=()=> <LayoutView style={styles.box}/>;";
+    expect(local(unique)).toBe(unique.replace('gap:4','gap:12'));
+    const shared=unique+"const B=()=> <LayoutView style={styles.box}/>;";
+    expect(local(shared)).toContain('box:{gap:4}');expect(local(shared)).toContain('style={[styles.box, { gap: 12 }]}');
+    const dynamic="const A=()=> <LayoutView style={{gap:compute()}}/>;";
+    expect(local(dynamic)).toContain('style={[{gap:compute()}, { gap: 12 }]}');
   });
 });

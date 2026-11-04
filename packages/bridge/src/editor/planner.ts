@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { createTwoFilesPatch } from 'diff';
 import { Node, Project, SyntaxKind, type JsxElement, type JsxSelfClosingElement, type ObjectLiteralExpression, type Expression, type SourceFile as AstSourceFile } from 'ts-morph';
+import { isLiteralStyleObject, valueText } from './source-format.js';
 import { RnStylePatchSchema, SourceRefSchema, type EditPlan, type Result, type RnStylePatch, type SourceRef, type EditScope } from '@nativemason/contracts';
 
 export const hashSource = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex');
@@ -100,11 +101,12 @@ export function planSourcePatch(sourceText: string, sourceRef: SourceRef, patch:
     const opening = Node.isJsxElement(target) ? target.getOpeningElement() : target;
     if (opening.getAttributes().some(Node.isJsxSpreadAttribute)) reject('JSX spread attributes could override the trial styles');
     if (scope?.kind === 'nativewind') return planNativeWind(sourceText, sourceRef, parsedPatch.data, opening, scope);
+    let foldedObject: ObjectLiteralExpression | undefined;
     if (scope?.kind === 'local' || scope?.kind === 'branch') {
       const attrs = opening.getAttributes().filter(a => Node.isJsxAttribute(a) && a.getNameNode().getText() === 'style');
       if (attrs.length > 1) reject('Duplicate style attributes are unsupported');
       const attribute = attrs[0];
-      const literal = '{ ' + Object.keys(parsedPatch.data).sort().map(key => key + ': ' + JSON.stringify(parsedPatch.data[key as keyof RnStylePatch])).join(', ') + ' }';
+      const literal = '{ ' + Object.keys(parsedPatch.data).sort().map(key => key + ': ' + valueText(parsedPatch.data[key as keyof RnStylePatch], source)).join(', ') + ' }';
       let updatedText: string;
       if (attribute && Node.isJsxAttribute(attribute)) {
         const initializer = attribute.getInitializer();
@@ -116,19 +118,24 @@ export function planSourcePatch(sourceText: string, sourceRef: SourceRef, patch:
           expression = scope.branch === 'consequent' ? expression.getWhenTrue() : expression.getWhenFalse();
         }
         if (Node.isArrowFunction(expression) || Node.isFunctionExpression(expression)) reject('Style callback edits require a measured state and are unsupported');
+        // Only the final array entry can override every preceding expression.
+        const candidate = Node.isArrayLiteralExpression(expression) ? expression.getElements().at(-1) : expression;
+        if (candidate && Node.isExpression(candidate)) {
+          try { const object = localStyleObject(candidate, source); if (isLiteralStyleObject(object)) foldedObject = object; } catch { /* Shared/dynamic styles keep their final local override. */ }
+        }
         const replacement = '[' + expression.getText() + ', ' + literal + ']';
         updatedText = sourceText.slice(0, expression.getStart()) + replacement + sourceText.slice(expression.getEnd());
       } else {
         const end = opening.getTagNameNode().getEnd();
         updatedText = sourceText.slice(0, end) + ' style={' + literal + '}' + sourceText.slice(end);
       }
-      return {ok:true,value:{source:sourceRef,expectedHash:sourceRef.hash,updatedText,diff:createTwoFilesPatch(sourceRef.path,sourceRef.path,sourceText,updatedText)}};
+      if (!foldedObject) return {ok:true,value:{source:sourceRef,expectedHash:sourceRef.hash,updatedText,diff:createTwoFilesPatch(sourceRef.path,sourceRef.path,sourceText,updatedText)}};
     }
     const attributes = opening.getAttributes().filter(attribute => Node.isJsxAttribute(attribute) && attribute.getNameNode().getText() === 'style');
     if (attributes.length > 1) reject('Duplicate style attributes are unsupported');
     const styleAttribute = attributes[0];
-    let object: ObjectLiteralExpression | undefined;
-    if (styleAttribute && Node.isJsxAttribute(styleAttribute)) {
+    let object: ObjectLiteralExpression | undefined = foldedObject;
+    if (!object && styleAttribute && Node.isJsxAttribute(styleAttribute)) {
       const value = styleAttribute.getInitializer();
       if (!value || !Node.isJsxExpression(value)) reject('Style must be a JSX expression');
       const expression = value.getExpression();
@@ -141,8 +148,8 @@ export function planSourcePatch(sourceText: string, sourceRef: SourceRef, patch:
     for (const key of Object.keys(parsedPatch.data).sort()) {
       const value = parsedPatch.data[key as keyof RnStylePatch];
       if (value === undefined) continue;
-      const text = typeof value === 'string' ? `'${value}'` : String(value);
       const existing = object?.getProperty(key);
+      const text = valueText(value, source, existing && Node.isPropertyAssignment(existing) ? existing.getInitializer() : undefined);
       if (existing && Node.isPropertyAssignment(existing)) {
         const initializer = existing.getInitializerOrThrow();
         edits.push({ start: initializer.getStart(), end: initializer.getEnd(), text });
@@ -195,6 +202,6 @@ function planNativeWind(text: string, source: SourceRef, patch: RnStylePatch, op
     if(tokens.some(s=>s.includes(':') && matches(s.slice(s.lastIndexOf(':')+1))))reject('Conflicting variant utilities require an explicit variant-specific edit');
     tokens = tokens.filter(s=>s.includes(':') || !matches(s)); tokens.push(token);
   }
-  const updatedText=text.slice(0,init!.getStart())+JSON.stringify(tokens.join(' '))+text.slice(init!.getEnd());
+  const updatedText=text.slice(0,init!.getStart())+valueText(tokens.join(' '),opening.getSourceFile(),init)+text.slice(init!.getEnd());
   return {ok:true,value:{source,expectedHash:source.hash,updatedText,diff:createTwoFilesPatch(source.path,source.path,text,updatedText)}};
 }

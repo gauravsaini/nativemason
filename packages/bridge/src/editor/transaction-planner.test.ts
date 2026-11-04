@@ -28,8 +28,8 @@ describe('transaction planning', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.files).toHaveLength(1);
-      expect(result.value.files[0].updatedText).toContain('gap: 8');
-      expect(result.value.files[0].updatedText).toContain('height: 24');
+      expect(result.value.files[0].updatedText).toContain('gap:8');
+      expect(result.value.files[0].updatedText).toContain('height:24');
     }
     const stale = planTransaction([file('Screen.tsx', text + '\n')], mutations);
     expect(stale).toMatchObject({ ok: false, error: { code: 'STALE_SOURCE' } });
@@ -65,4 +65,33 @@ describe('transaction planning', () => {
     ]);
     expect(result).toMatchObject({ ok: false, error: { code: 'UNSUPPORTED_EDIT', message: 'Shared definition has unresolved or escaping consumers' } });
   });
+});
+
+it('folds an imported single-consumer StyleSheet literal in its defining file',()=>{
+ const theme="import {StyleSheet} from 'react-native';export const styles=StyleSheet.create({footer:{gap:4,flexDirection:'column'}});";
+ const screen="import {styles} from './theme';const A=()=> <View style={styles.footer}/>;";
+ const result=planTransaction([file('Screen.tsx',screen),file('theme.ts',theme)],[{source:ref('Screen.tsx',screen),patch:{gap:12,flexDirection:'row'}}]);
+ expect(result.ok).toBe(true);if(result.ok){expect(result.value.files).toHaveLength(1);expect(result.value.files[0].source.path).toBe('theme.ts');expect(result.value.files[0].updatedText).toBe(theme.replace('gap:4','gap:12').replace("'column'","'row'"));expect(result.value.blastRadius.consumers).toHaveLength(1);}
+});
+it.each([
+ "const B=()=> <View style={styles.footer}/>;",
+ 'consume(styles);',
+ 'consume(styles.footer);'
+])('keeps default local scope for shared or escaping imported definitions: %s',extra=>{
+ const theme="import {StyleSheet} from 'react-native';export const styles=StyleSheet.create({footer:{gap:4}});";
+ const screen="import {styles} from './theme';const A=()=> <View style={styles.footer}/>;"+extra;
+ const result=planTransaction([file('Screen.tsx',screen),file('theme.ts',theme)],[{source:ref('Screen.tsx',screen),patch:{gap:12}}]);
+ expect(result.ok).toBe(true);if(result.ok){expect(result.value.files.map(f=>f.source.path)).toEqual(['Screen.tsx']);expect(result.value.files[0].updatedText).toContain('style={[styles.footer, { gap: 12 }]}');}
+});
+it('does not remove dynamic evaluation when an imported definition has one consumer',()=>{
+ const theme="import {StyleSheet} from 'react-native';export const styles=StyleSheet.create({footer:{gap:compute()}});";
+ const screen="import {styles} from './theme';const A=()=> <View style={styles.footer}/>;";
+ const result=planTransaction([file('Screen.tsx',screen),file('theme.ts',theme)],[{source:ref('Screen.tsx',screen),patch:{gap:12}}]);
+ expect(result.ok).toBe(true);if(result.ok)expect(result.value.files.map(f=>f.source.path)).toEqual(['Screen.tsx']);
+});
+it('folds an imported final array entry without changing preceding style evaluation',()=>{
+ const theme="import {StyleSheet} from 'react-native';export const styles=StyleSheet.create({footer:{gap:4}});";
+ const screen="import {styles} from './theme';const A=()=> <View style={[computeBase(),styles.footer]}/>;";
+ const result=planTransaction([file('Screen.tsx',screen),file('theme.ts',theme)],[{source:ref('Screen.tsx',screen),patch:{gap:12}}]);
+ expect(result.ok).toBe(true);if(result.ok){expect(result.value.files.map(f=>f.source.path)).toEqual(['theme.ts']);expect(result.value.files[0].updatedText).toBe(theme.replace('gap:4','gap:12'));}
 });
