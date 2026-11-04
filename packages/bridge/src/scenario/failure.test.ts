@@ -98,16 +98,26 @@ describe('native scenario failure evidence',()=>{
   });
 
   it('does not mutate a frozen caller script on success and removes the temporary flow',async()=>{
-    const script:ScenarioScript={scenarioId:'checkout',reset:[],actions:[{type:'input',mode:'replace',elementId:'email',text:'reader@example.test'}]};
+    const script:ScenarioScript={scenarioId:'checkout',reset:[],actions:[{type:'input',mode:'replace',elementId:'email',text:'a"b\\c'}]};
     const action=script.actions[0]!;
     Object.freeze(script.reset);
     Object.freeze(script.actions);
     Object.freeze(action);
     Object.freeze(script);
-    executeMock.mockResolvedValue({stdout:'',stderr:''});
+    let flow='';
+    executeMock.mockImplementation(async(_executable:string,args:string[])=>{
+      flow=await readFile(args[3]!, 'utf8');
+      return {stdout:'',stderr:''};
+    });
     await expect(createNativeScenarioPort(base).run(script)).resolves.toBeUndefined();
     expect(script.actions[0]).toBe(action);
     expect(executeMock).toHaveBeenCalledTimes(1);
+    const commands=JSON.parse(flow.split('---\n')[1]!) as unknown[];
+    expect(commands).toContainEqual({assertTrue:'${maestro.copiedText.length <= 100}'});
+    expect(commands).toContainEqual({eraseText:100});
+    expect(commands).toContainEqual({copyTextFrom:{id:'^email$'}});
+    expect(commands).toContainEqual({assertTrue:'${maestro.copiedText === "a\\"b\\\\c"}'});
+    expect(commands).not.toContainEqual({assertVisible:{id:'^email$',text:'^$'}});
     const args=executeMock.mock.calls[0]?.[1] as string[];
     await expect(readFile(args[3]!)).rejects.toMatchObject({code:'ENOENT'});
     await expect(access(path.dirname(args[3]!))).rejects.toMatchObject({code:'ENOENT'});

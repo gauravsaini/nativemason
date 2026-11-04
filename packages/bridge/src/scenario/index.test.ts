@@ -18,6 +18,11 @@ describe('native scenario driver validation',()=>{
   await expect(port.run({scenarioId:'checkout',reset:[],actions:[{type:'input',mode:'replace',elementId:'email',text:'${secret}'}]})).rejects.toMatchObject({code:'UNSUPPORTED_ACTION'});
   await expect(port.run({scenarioId:'checkout',reset:[],actions:[{type:'input',mode:'replace',elementId:'email',text:'café'}]})).rejects.toMatchObject({code:'UNSUPPORTED_ACTION'});
  });
+ it('rejects empty native replacement before reset hooks run',async()=>{
+  const runHook=vi.fn(async()=>{});const port=createNativeScenarioPort({...base,runHook});
+  await expect(port.run({scenarioId:'checkout',reset:[{type:'hook',name:'reset'}],actions:[{type:'input',mode:'replace',elementId:'email',text:''}]})).rejects.toMatchObject({code:'UNSUPPORTED_ACTION'});
+  expect(runHook).not.toHaveBeenCalled();
+ });
  it('requires an explicit hook transport',async()=>{
   const port=createNativeScenarioPort(base);
   await expect(port.run({scenarioId:'checkout',reset:[],actions:[{type:'hook',name:'reset'}]})).rejects.toMatchObject({code:'UNSUPPORTED_ACTION'});

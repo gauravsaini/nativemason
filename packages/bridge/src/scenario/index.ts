@@ -87,6 +87,7 @@ export function createNativeScenarioPort(options:NativeScenarioOptions):Scenario
         if('elementId' in action)safeString(action.elementId);
         if(action.type==='navigate')safeString(action.url);
         if(action.type==='input'){safeString(action.text);if(options.target.platform==='android'&&[...action.text].some(character=>character.codePointAt(0)!>127))throw new BridgeFault('UNSUPPORTED_ACTION','Maestro inputText does not support Unicode on Android');}
+        if(action.type==='input'&&action.mode==='replace'&&action.text==='')throw new BridgeFault('UNSUPPORTED_ACTION','Maestro cannot verify an empty native text value when the field may expose a placeholder or accessibility label');
       }
       const commands:unknown[]=[];
       const flush=async()=>{if(commands.length){await maestro(options,commands);commands.length=0;}};
@@ -104,9 +105,10 @@ export function createNativeScenarioPort(options:NativeScenarioOptions):Scenario
         if(action.type==='wait')commands.push({extendedWaitUntil:{visible:selector,timeout:action.timeoutMs}});
         if(action.type==='input'){
           safeString(action.text);commands.push({tapOn:selector});
-          if(action.mode==='replace')commands.push({copyTextFrom:selector},{assertTrue:'${maestro.copiedText.length <= 100}'},{eraseText:100},{assertVisible:{...selector,text:'^$'}});
+          if(action.mode==='replace')commands.push({copyTextFrom:selector},{assertTrue:'${maestro.copiedText.length <= 100}'},{eraseText:100});
           commands.push({inputText:action.text});
-          if(action.mode==='replace')commands.push({assertVisible:{...selector,text:regex(action.text)}});
+          // Maestro may resolve copiedText from hint/accessibility text when the actual text is empty.
+          if(action.mode==='replace')commands.push({copyTextFrom:selector},{assertTrue:`\${maestro.copiedText === ${JSON.stringify(action.text)}}`});
         }
       }
       await flush();
