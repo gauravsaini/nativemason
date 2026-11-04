@@ -1,3 +1,4 @@
+import {AccessibilityEvidenceSchema} from './accessibility.js';
 import {TextFitEvidenceSchema,NativeTargetSchema,type LayoutMutation} from './workflow.js';
 import { z } from 'zod';
 import { DeviceProfileSchema, RectSchema } from './geometry.js';
@@ -16,11 +17,12 @@ export const WebNodeDiagnosticsSchema=z.object({
 }).strict();
 export const WebDiagnosticsSchema=z.object({nodes:z.record(z.string(),WebNodeDiagnosticsSchema),warnings:z.array(z.object({elementId:z.string(),code:z.enum(['CLIPPED','OCCLUDED','FONT_LOAD_FAILED','EVIDENCE_UNAVAILABLE']),severity:z.enum(['confirmed','uncertain']),message:z.string()}).strict())}).strict();
 export type WebDiagnostics=z.infer<typeof WebDiagnosticsSchema>;
-export const SpatialNodeSchema=z.object({id:z.string().min(1),parentId:z.string().nullable(),kind:z.enum(['View','Text','Pressable','TextInput','ScrollView','Image']),role:z.string().nullable(),rect:RectSchema,styles:z.record(z.string(),z.unknown()),source:SourceRefSchema.nullable(),editable:z.boolean(),editReason:z.string().nullable(),textFit:TextFitEvidenceSchema.optional(),authoredTextProps:AuthoredTextPropsSchema.optional(),measuredLineCount:z.number().int().nonnegative().optional()}).strict();
+export const SpatialNodeSchema=z.object({id:z.string().min(1),parentId:z.string().nullable(),kind:z.enum(['View','Text','Pressable','TextInput','ScrollView','Image']),role:z.string().nullable(),rect:RectSchema,styles:z.record(z.string(),z.unknown()),source:SourceRefSchema.nullable(),editable:z.boolean(),editReason:z.string().nullable(),pressableState:z.enum(['pressed','rest']).optional(),accessibility:AccessibilityEvidenceSchema.optional(),textFit:TextFitEvidenceSchema.optional(),authoredTextProps:AuthoredTextPropsSchema.optional(),measuredLineCount:z.number().int().nonnegative().optional()}).strict();
 export type SpatialNode=z.infer<typeof SpatialNodeSchema>;
 export const SpatialSnapshotSchema=z.object({schemaVersion:z.literal(1),sessionId:z.string(),snapshotId:z.string(),platform:z.enum(['web','android','ios']),scenarioId:z.string(),profile:DeviceProfileSchema,revisions:SourceRevisionsSchema,nodes:z.array(SpatialNodeSchema),status:z.enum(['stable','unstable']),generation:z.number().int().nonnegative(),nativeTarget:NativeTargetSchema.optional(),webDiagnostics:WebDiagnosticsSchema.optional()}).strict().superRefine((snapshot,ctx)=>{
   if(snapshot.platform!=='web'&&snapshot.webDiagnostics)ctx.addIssue({code:'custom',message:'Web diagnostics cannot appear in Android snapshots',path:['webDiagnostics']});
   snapshot.nodes.forEach((node,i)=>{
+    if(snapshot.platform!=='web'&&node.accessibility?.browser)ctx.addIssue({code:'custom',message:'Browser accessibility evidence cannot appear in native snapshots',path:['nodes',i,'accessibility','browser']});
     for(const dependency of node.source?.dependencies??[])if(!snapshot.revisions[dependency])ctx.addIssue({code:'custom',message:'Required style dependency revision is missing',path:['nodes',i,'source','dependencies'],params:{bridgeCode:'STALE_SOURCE'}});
     if(node.source && snapshot.revisions[node.source.path]!==node.source.hash)ctx.addIssue({code:'custom',message:'Node source hash disagrees with snapshot revisions',path:['nodes',i,'source','hash'],params:{bridgeCode:'STALE_SOURCE'}});
   });

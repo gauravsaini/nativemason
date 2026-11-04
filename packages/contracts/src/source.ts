@@ -1,5 +1,5 @@
 import { z } from 'zod';
-export const SourceRefSchema=z.object({path:z.string().min(1),dependencies:z.array(z.string().min(1)).optional(),hash:z.string().regex(/^[a-f0-9]{64}$/),start:z.number().int().nonnegative(),end:z.number().int().positive(),line:z.number().int().positive(),column:z.number().int().nonnegative()}).strict().refine(s=>s.end>s.start,'Invalid source range');
+export const SourceRefSchema=z.object({path:z.string().min(1),styleForm:z.literal('pressable-state').optional(),dependencies:z.array(z.string().min(1)).optional(),hash:z.string().regex(/^[a-f0-9]{64}$/),start:z.number().int().nonnegative(),end:z.number().int().positive(),line:z.number().int().positive(),column:z.number().int().nonnegative()}).strict().refine(s=>s.end>s.start,'Invalid source range');
 export type SourceRef=z.infer<typeof SourceRefSchema>;
 export const SourceRevisionsSchema=z.record(z.string(),z.string().regex(/^[a-f0-9]{64}$/));
 export type SourceRevisions=z.infer<typeof SourceRevisionsSchema>;

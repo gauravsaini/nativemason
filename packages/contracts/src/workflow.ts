@@ -3,7 +3,7 @@ import {SourceRefSchema,EditPlanSchema,SourceFile,SourcePort} from './source.js'
 import {RnStylePatchSchema} from './styles.js';
 export const LayoutMutationSchema=z.object({elementId:z.string().min(1),patch:RnStylePatchSchema}).strict();
 export type LayoutMutation=z.infer<typeof LayoutMutationSchema>;
-export const EditScopeSchema=z.object({kind:z.enum(['local','branch','shared','nativewind']),branch:z.enum(['consequent','alternate']).optional(),acknowledgeInstances:z.boolean().optional()}).strict();
+export const EditScopeSchema=z.object({kind:z.enum(['local','branch','shared','nativewind','pressable-state']),branch:z.enum(['consequent','alternate']).optional(),state:z.enum(['pressed','rest']).optional(),acknowledgeInstances:z.boolean().optional()}).strict();
 export type EditScope=z.infer<typeof EditScopeSchema>;
 export const SharedConsumerSchema=z.object({source:SourceRefSchema,mountedIds:z.array(z.string()),requiredScenarios:z.array(z.string())}).strict();
 export type SharedConsumer=z.infer<typeof SharedConsumerSchema>;
@@ -26,7 +26,7 @@ export const InferenceOptionsSchema=z.object({tolerance:z.number().nonnegative()
 export type InferenceOptions=z.infer<typeof InferenceOptionsSchema>;
 export const RuleFindingSchema=z.object({code:z.string(),severity:z.enum(['advisory','confirmed','unavailable']),elementIds:z.array(z.string()),message:z.string()}).strict();
 export type RuleFinding=z.infer<typeof RuleFindingSchema>;
-export const ScenarioActionSchema=z.discriminatedUnion('type',[z.object({type:z.literal('navigate'),url:z.string()}),z.object({type:z.literal('tap'),elementId:z.string()}),z.object({type:z.literal('input'),elementId:z.string(),text:z.string(),mode:z.enum(['replace','append']).default('replace')}),z.object({type:z.literal('swipe'),elementId:z.string(),direction:z.enum(['UP','DOWN','LEFT','RIGHT'])}),z.object({type:z.literal('scroll'),elementId:z.string(),x:z.number(),y:z.number()}),z.object({type:z.literal('keyboard'),visible:z.boolean()}),z.object({type:z.literal('wait'),elementId:z.string(),timeoutMs:z.number().positive().max(30000).default(5000)}),z.object({type:z.literal('hook'),name:z.string(),value:z.unknown().optional()})]);
+export const ScenarioActionSchema=z.discriminatedUnion('type',[z.object({type:z.literal('navigate'),url:z.string()}),z.object({type:z.literal('tap'),elementId:z.string()}),z.object({type:z.literal('press'),elementId:z.string(),phase:z.enum(['down','up'])}),z.object({type:z.literal('input'),elementId:z.string(),text:z.string(),mode:z.enum(['replace','append']).default('replace')}),z.object({type:z.literal('swipe'),elementId:z.string(),direction:z.enum(['UP','DOWN','LEFT','RIGHT'])}),z.object({type:z.literal('scroll'),elementId:z.string(),x:z.number(),y:z.number()}),z.object({type:z.literal('keyboard'),visible:z.boolean()}),z.object({type:z.literal('wait'),elementId:z.string(),timeoutMs:z.number().positive().max(30000).default(5000)}),z.object({type:z.literal('hook'),name:z.string(),value:z.unknown().optional()})]);
 export type ScenarioAction=z.infer<typeof ScenarioActionSchema>;
 export const ScenarioScriptSchema=z.object({scenarioId:z.string(),reset:z.array(ScenarioActionSchema),actions:z.array(ScenarioActionSchema)}).strict();
 export type ScenarioScript=z.infer<typeof ScenarioScriptSchema>;

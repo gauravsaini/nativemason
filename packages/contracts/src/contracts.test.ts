@@ -1,10 +1,12 @@
 import {describe,it,expect} from 'vitest';
 import {DeviceProfileSchema,WireframeSpecSchema,ToolSchemas,ToolOutputSchemas,RnStylePatchSchema,NativeClientMessageSchema,SpatialSnapshotSchema,ProfileOverridesSchema} from './index.js';
 import fixture from '../fixtures/footer.json';
+import expansion from '../fixtures/design-diagnostics.json';
+import {DesignIntentSchema,AccessibilityEvidenceSchema,SuggestionProfileSchema} from './index.js';
 describe('boundary contracts',()=>{
  it('round-trips the authoritative fixture and applies default tolerance',()=>{const s=WireframeSpecSchema.parse(fixture);expect(WireframeSpecSchema.parse(JSON.parse(JSON.stringify(s)))).toEqual(s);const c={...fixture,constraints:[{type:'insideSafeArea',id:'safe',elementId:'submit'}]};expect(WireframeSpecSchema.parse(c).constraints[0].tolerance).toBe(2)});
  it('rejects nonfinite geometry, duplicate IDs and unknown properties',()=>{expect(DeviceProfileSchema.safeParse({...fixture.profile,fontScale:Infinity}).success).toBe(false);expect(WireframeSpecSchema.safeParse({...fixture,requiredElementIds:['a','a']}).success).toBe(false);expect(RnStylePatchSchema.safeParse({width:2,transform:'none'}).success).toBe(false)});
- it('exposes strict MCP inputs and rejects malformed native messages',()=>{expect(Object.keys(ToolSchemas)).toHaveLength(14);expect(ToolSchemas.close_session.safeParse({sessionId:'s',extra:true}).success).toBe(false);expect(NativeClientMessageSchema.safeParse({type:'hello',token:'a',scenarioId:'b',protocolVersion:2}).success).toBe(false)});
+ it('exposes strict MCP inputs and rejects malformed native messages',()=>{expect(Object.keys(ToolSchemas).sort()).toEqual(Object.keys(ToolOutputSchemas).sort());expect(ToolSchemas.close_session.safeParse({sessionId:'s',extra:true}).success).toBe(false);expect(NativeClientMessageSchema.safeParse({type:'hello',token:'a',scenarioId:'b',protocolVersion:2}).success).toBe(false)});
  it('requires exactly one plan or receipt in commit tool output',()=>{
  const plan={source:{path:'App.tsx',hash:'a'.repeat(64),start:1,end:2,line:1,column:1},expectedHash:'a'.repeat(64),updatedText:'x',diff:'d'};
  const receipt={commitId:'c',path:'App.tsx',oldHash:'a'.repeat(64),newHash:'b'.repeat(64),diff:'d',nativeStatus:'pending'};
@@ -32,4 +34,10 @@ describe('boundary contracts',()=>{
  expect(ToolSchemas.inspect_ui_spatial_graph.safeParse({sessionId:'s',profileOverrides:{orientation:'landscape'}}).success).toBe(true);
  expect(ToolSchemas.simulate_layout_mutation.safeParse({sessionId:'s',baselineSnapshotId:'b',elementId:'x',patch:{width:12},profileOverrides:{fontScale:1.2}}).success).toBe(true);
  });
+});
+
+it('round-trips reviewable design intent, profile requests, and unknown accessibility evidence',()=>{
+ for(const [schema,input] of [[DesignIntentSchema,expansion.design],[AccessibilityEvidenceSchema,expansion.accessibility],[SuggestionProfileSchema,expansion.profiles[0]]] as const){const parsed=schema.parse(input);expect(schema.parse(JSON.parse(JSON.stringify(parsed)))).toEqual(parsed);}
+ expect(ToolSchemas.import_design_intent.safeParse({sessionId:'s',design:expansion.design}).success).toBe(true);
+ expect(ToolSchemas.suggest_fix.safeParse({sessionId:'s',baselineSnapshotId:'b',profiles:expansion.profiles}).success).toBe(true);
 });

@@ -6,3 +6,6 @@ export * from './constraints.js';
 export * from './native-protocol.js';
 export * from './tools.js';
 export * from './workflow.js';
+export * from './diagnostics.js';
+export * from './design.js';
+export * from './accessibility.js';

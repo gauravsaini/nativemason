@@ -2,6 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { BridgeFault,ToolSchemas,ToolOutputSchemas,ToolMcpOutputSchemas,type ToolName } from '@nativemason/contracts';
 import { BridgeApplication } from '../application/index.js';
 const descriptions:Record<ToolName,string>={
+ import_design_intent:'Convert Figma auto-layout JSON or agent-provided screenshot annotations into a reviewable spec. Does not load or accept design intent.',
+ inspect_accessibility:'Report authored native accessibility metadata, browser accessibility evidence, and bounded RTL checks with unavailable evidence explicit.',
  open_session:'Start a local Expo web mirror and Android measurement session. Returns native connection port and token.',
  load_wireframe_spec:'Load explicit JSON constraints matching the session scenario/profile.',
  inspect_ui_spatial_graph:'Capture stable instrumented layout and evaluate constraints. Replaces the trial baseline.',
