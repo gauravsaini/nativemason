@@ -13,6 +13,8 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      evidence_url: ${{ steps.web-evidence.outputs.artifact-url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,6 +30,7 @@ jobs:
       - run: yarn test:integration
       - run: yarn test:packages
       - uses: actions/upload-artifact@v4
+        id: web-evidence
         if: always()
         with:
           name: web-and-package-evidence
@@ -36,6 +39,8 @@ jobs:
   android-emulator:
     runs-on: ubuntu-latest
     timeout-minutes: 70
+    outputs:
+      evidence_url: ${{ steps.android-evidence.outputs.artifact-url }}
     env:
       CI: '1'
       EXPO_NO_TELEMETRY: '1'
@@ -86,6 +91,7 @@ jobs:
             node scripts/wait-for-metro.mjs
             yarn test:e2e:android:emulator
       - uses: actions/upload-artifact@v4
+        id: android-evidence
         if: always()
         with:
           name: android-emulator-evidence
@@ -94,6 +100,8 @@ jobs:
   ios-simulator:
     runs-on: macos-latest
     timeout-minutes: 90
+    outputs:
+      evidence_url: ${{ steps.ios-evidence.outputs.artifact-url }}
     env:
       CI: '1'
       EXPO_NO_TELEMETRY: '1'
@@ -129,8 +137,81 @@ jobs:
           node scripts/wait-for-metro.mjs
           yarn test:e2e:ios
       - uses: actions/upload-artifact@v4
+        id: ios-evidence
         if: always()
         with:
           name: ios-simulator-evidence
           path: artifacts/ios-simulator-acceptance/
           if-no-files-found: warn
+  visual-evidence-report:
+    needs: [checks, android-emulator, ios-simulator]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --global corepack && corepack enable
+      - run: yarn install --immutable
+      - uses: actions/download-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: web-and-package-evidence
+          path: artifacts/report-input/web
+      - uses: actions/download-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: android-emulator-evidence
+          path: artifacts/report-input/android
+      - uses: actions/download-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: ios-simulator-evidence
+          path: artifacts/report-input/ios
+      - name: Build validated visual evidence report
+        if: always()
+        run: |
+          yarn workspace @nativemason/contracts build
+          yarn tsx scripts/build-evidence-report.ts \
+            --web artifacts/report-input/web/integration/visual-evidence.json \
+            --android artifacts/report-input/android \
+            --ios artifacts/report-input/ios \
+            --out artifacts/visual-evidence
+      - uses: actions/upload-artifact@v4
+        id: visual-report
+        if: always()
+        with:
+          name: visual-evidence-report-${{ github.event.pull_request.number || github.run_id }}
+          path: artifacts/visual-evidence/
+          if-no-files-found: warn
+      - name: Link evidence artifacts in pull request summary
+        if: github.event_name == 'pull_request'
+        env:
+          WEB_EVIDENCE_URL: ${{ needs.checks.outputs.evidence_url }}
+          ANDROID_EVIDENCE_URL: ${{ needs['android-emulator'].outputs.evidence_url }}
+          IOS_EVIDENCE_URL: ${{ needs['ios-simulator'].outputs.evidence_url }}
+          REPORT_URL: ${{ steps.visual-report.outputs.artifact-url }}
+        run: |
+          web_link='unavailable'
+          android_link='unavailable'
+          ios_link='unavailable'
+          report_link='unavailable'
+          if [ -n "$WEB_EVIDENCE_URL" ]; then web_link="[run artifact]($WEB_EVIDENCE_URL)"; fi
+          if [ -n "$ANDROID_EVIDENCE_URL" ]; then android_link="[run artifact]($ANDROID_EVIDENCE_URL)"; fi
+          if [ -n "$IOS_EVIDENCE_URL" ]; then ios_link="[run artifact]($IOS_EVIDENCE_URL)"; fi
+          if [ -n "$REPORT_URL" ]; then report_link="[report artifact]($REPORT_URL)"; fi
+          {
+            echo '## Visual evidence artifacts'
+            echo '| Target | Raw run evidence | HTML and JSON report |'
+            echo '| --- | --- | --- |'
+            printf '| Web | %s | %s |\n' "$web_link" "$report_link"
+            printf '| Android emulator | %s | %s |\n' "$android_link" "$report_link"
+            printf '| iOS simulator | %s | %s |\n' "$ios_link" "$report_link"
+            echo
+            echo 'Download the report artifact and open `index.html` locally; `manifest.json` contains the validated evidence.'
+          } >> "$GITHUB_STEP_SUMMARY"
