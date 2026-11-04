@@ -92,6 +92,8 @@ npx --no-install nativemason init --dry-run
 npx --no-install nativemason init
 ```
 
+If npm tries to build `sharp` against a globally installed libvips and fails, retry the same install command with `SHARP_IGNORE_GLOBAL_LIBVIPS=1`. See [sharp's installation guide](https://sharp.pixelplumbing.com/install/#building-from-source).
+
 `init` detects standard Expo App and Expo Router roots, preserves existing Babel plugins, configures development instrumentation, and prints MCP configuration. It is idempotent. Unrecognized/computed configuration receives an actionable error instead of an overwrite. Add `--text-probes` to opt into native text-fit probes when initializing a new configuration. Restart Metro after configuration changes.
 
 The transform instruments RN `View`, `Text`, `Pressable`, `TextInput`, `ScrollView`, and `Image` imports and configures the root provider. Prefer screen-unique `testID` values for readable, stable element identities. Generated identities cover unique source sites; ambiguous repeated instances require explicit identities and edit acknowledgment. Third-party component internals are outside automatic instrumentation.

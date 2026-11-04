@@ -19,6 +19,8 @@ npx --no-install nativemason init --dry-run
 npx --no-install nativemason init
 ```
 
+If npm tries to build `sharp` against a globally installed libvips and fails, retry the same install command with `SHARP_IGNORE_GLOBAL_LIBVIPS=1`. See [sharp's installation guide](https://sharp.pixelplumbing.com/install/#building-from-source).
+
 Replace `/checkout` with the real checkout path. Keep tarballs accessible to other developers and CI, or use an authorized internal registry. Rebuild, repack, and reinstall after changes. Do not vendor runtime source.
 
 Match the [compatibility matrix](compatibility.md). NativeWind is optional; its v4 interop requires the consuming app's NativeWind/Metro/Tailwind configuration. `init` preserves existing configuration and enables the bridge adapter when NativeWind is detected.
