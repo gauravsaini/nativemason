@@ -30,3 +30,12 @@ export type NativeSuggestionEvidence=z.infer<typeof NativeSuggestionEvidenceSche
 /** Required callback interaction evidence, checked again after reload and on native. */
 export const InteractionRequirementSchema=z.object({elementId:z.string().min(1),pressed:z.boolean()}).strict();
 export type InteractionRequirement=z.infer<typeof InteractionRequirementSchema>;
+
+/** Bounded native-driver failure output; a failed process is never acceptance evidence. */
+export const NativeScenarioFailureEvidenceSchema=z.object({
+ driver:z.literal('maestro'),message:z.string().max(2048),
+ exitCode:z.union([z.number().int(),z.string().min(1).max(64),z.null()]),
+ signal:z.string().max(64).nullable(),terminated:z.boolean(),
+ stdout:z.string().max(16384),stderr:z.string().max(16384),outputTruncated:z.boolean(),
+}).strict();
+export type NativeScenarioFailureEvidence=z.infer<typeof NativeScenarioFailureEvidenceSchema>;

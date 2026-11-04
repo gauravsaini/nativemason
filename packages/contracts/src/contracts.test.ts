@@ -1,3 +1,5 @@
+import nativeScenarioFailure from '../fixtures/native-scenario-failure.json';
+import {NativeScenarioFailureEvidenceSchema} from './index.js';
 import visualEvidence from '../fixtures/visual-evidence.json';
 import {VisualEvidenceReportSchema} from './index.js';
 import {describe,it,expect} from 'vitest';
@@ -68,4 +70,10 @@ it('keeps deferred native checks opt-in and native proposal evidence explicit',(
  expect(NativeSuggestionEvidenceSchema.safeParse({status:'captured',results:[]}).success).toBe(false);
  expect(NativeSuggestionEvidenceSchema.safeParse({status:'captured',snapshot:visualEvidence.runs[0].before,results:[]}).success).toBe(false);
  expect(NativeSuggestionEvidenceSchema.parse(expansion.nativePending.nativeBaseline).status).toBe('unavailable');
+});
+
+it('bounds native scenario error evidence without treating process failure as a pass',()=>{
+ const parsed=NativeScenarioFailureEvidenceSchema.parse(nativeScenarioFailure);expect(parsed.exitCode).toBe(1);
+ expect(NativeScenarioFailureEvidenceSchema.safeParse({...parsed,stdout:'x'.repeat(16385)}).success).toBe(false);
+ expect(NativeScenarioFailureEvidenceSchema.safeParse({...parsed,signal:'SIGTERM',terminated:true,exitCode:null}).success).toBe(true);
 });

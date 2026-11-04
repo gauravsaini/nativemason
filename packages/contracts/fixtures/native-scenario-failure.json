@@ -1,0 +1,10 @@
+{
+  "driver": "maestro",
+  "message": "Native UI command exited unsuccessfully",
+  "exitCode": 1,
+  "signal": null,
+  "terminated": false,
+  "stdout": "A requested input assertion failed",
+  "stderr": "",
+  "outputTruncated": false
+}
