@@ -34,7 +34,7 @@ function nativeFiles(physical = false, passed = true): { directory: string } {
   const receipt = { commitId: 'receipt-1', path: 'src/App.tsx', oldHash, newHash, diff: '<script>raw receipt diff</script>', nativeStatus: passed ? 'passed' : 'failed' };
   const acceptance = {
     target: { targetId: 'emulator-test', platform: 'android', kind }, preview: {}, applied: {},
-    verified: { receipt, snapshot: after, results: [{ constraintId: 'inside', status: passed ? 'pass' : 'fail', elementIds: ['box'], deviation: 0, tolerance: 2, message: '<img src=x onerror=alert(1)>' }], passed },
+    verified: { receipt, snapshot: after, results: [{ constraintId: 'inside', status: passed ? 'pass' : 'fail', elementIds: ['box'], deviation: 0, tolerance: 2, message: '<img src=x onerror=alert(1)>' }], delta: { added: [], removed: [], changed: [] }, passed },
   };
   writeFileSync(join(directory, 'calibration.json'), JSON.stringify(before));
   writeFileSync(join(directory, 'acceptance.json'), JSON.stringify(acceptance));
@@ -113,7 +113,24 @@ describe('visual evidence report input and rendering', () => {
     const html = renderEvidenceHtml(report);
     expect(report.runs[0].after.nodes).toHaveLength(300);
     expect(html.match(/<rect x=/g)).toHaveLength(500);
-    expect(html).toContain('Tables and notes show at most 250 rows');
+    expect(html).toContain('SVGs show at most 250 boxes');
+  });
+
+  it('places boxes on the window frame with the root origin and keeps element colors stable across node order changes', () => {
+    const before = snapshot('web', oldHash);
+    const after = snapshot('web', newHash);
+    before.profile.root.x = after.profile.root.x = 20;
+    before.profile.root.y = after.profile.root.y = 30;
+    before.nodes = [{ ...before.nodes[0], id: 'z' }, { ...before.nodes[0], id: 'a' }];
+    after.nodes = [{ ...after.nodes[0], id: 'm' }, { ...after.nodes[0], id: 'a' }, { ...after.nodes[0], id: 'z' }];
+    const report = buildEvidenceReport({ repository: 'owner/repo', revision: newHash, webFile: writeRun(webRun({ before, after })) });
+    const svgs = [...renderEvidenceHtml(report).matchAll(/<svg class="layout"[\s\S]*?<\/svg>/g)].map(match => match[0]);
+    expect(svgs[0]).toContain('x="28" y="42"');
+    const color = (svg: string, id: string) => {
+      const title = svg.indexOf(`<title>${id} · registered layout box</title>`);
+      return svg.slice(svg.lastIndexOf('<rect x=', title), title).match(/fill="([^"]+)"/)?.[1];
+    };
+    expect(color(svgs[0], 'z')).toBe(color(svgs[1], 'z'));
   });
 });
 

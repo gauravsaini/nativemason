@@ -1,6 +1,6 @@
 # Visual evidence reports
 
-CI builds a static HTML report and a JSON manifest from measured layout evidence. The report draws **registered measured layout boxes** from the captured rectangles in app-root-relative logical units. It does not contain or imitate native screenshots.
+CI builds a static HTML report and a JSON manifest from measured layout evidence. The SVGs draw **registered measured layout boxes** on the window frame, applying the measured root origin to each app-root-relative rectangle. The measurement tables keep the original app-root-relative logical coordinates. The report does not contain or imitate native screenshots.
 
 The report includes the web run supplied at `artifacts/integration/visual-evidence.json`, plus Android emulator and iOS simulator runs assembled from each platform directory's `calibration.json` and `acceptance.json`. Native before geometry comes from calibration; after geometry, constraint results, and the verified receipt come from `acceptance.json`'s `verified` fields. A native pass is shown only when the frozen evidence schema accepts the stable graph, passing constraints, and receipt revisions.
 
