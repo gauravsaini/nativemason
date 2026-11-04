@@ -3,7 +3,7 @@ import {SourceRefSchema,EditPlanSchema,SourceFile,SourcePort} from './source.js'
 import {RnStylePatchSchema} from './styles.js';
 export const LayoutMutationSchema=z.object({elementId:z.string().min(1),patch:RnStylePatchSchema}).strict();
 export type LayoutMutation=z.infer<typeof LayoutMutationSchema>;
-export const EditScopeSchema=z.object({kind:z.enum(['local','branch','shared','nativewind','pressable-state']),branch:z.enum(['consequent','alternate']).optional(),state:z.enum(['pressed','rest']).optional(),acknowledgeInstances:z.boolean().optional()}).strict();
+export const EditScopeSchema=z.object({kind:z.enum(['local','branch','shared','nativewind','pressable-state']),branch:z.enum(['consequent','alternate']).optional(),state:z.enum(['pressed','rest']).optional(),acknowledgeInstances:z.boolean().optional()}).strict().refine(scope=>(scope.kind==='pressable-state')===(scope.state!==undefined),'Pressable-state scope requires a state; other scopes do not accept state');
 export type EditScope=z.infer<typeof EditScopeSchema>;
 export const SharedConsumerSchema=z.object({source:SourceRefSchema,mountedIds:z.array(z.string()),requiredScenarios:z.array(z.string())}).strict();
 export type SharedConsumer=z.infer<typeof SharedConsumerSchema>;

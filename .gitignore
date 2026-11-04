@@ -12,3 +12,4 @@ ios/
 .yarn/
 .nativemason/
 .DS_Store
+.unlazy/

@@ -1,6 +1,6 @@
 import {DesignIntentSchema,DesignIntentResultSchema} from './design.js';
 import {AccessibilityFindingSchema} from './accessibility.js';
-import {SuggestionProfileSchema,SuggestionProfileEvidenceSchema} from './diagnostics.js';
+import {SuggestionProfilesSchema,SuggestionProfileEvidenceSchema} from './diagnostics.js';
 import {LayoutMutationSchema,EditScopeSchema,TransactionPlanSchema,ScenarioScriptSchema,MatrixCellSchema,RuleFindingSchema,InferenceOptionsSchema,NativeTargetSchema} from './workflow.js';
 import { z } from 'zod';
 import { DeviceProfileSchema,RectSchema } from './geometry.js';
@@ -22,7 +22,7 @@ verify_native_layout:z.object({...session,commitId:z.string()}).strict(),
 revert_commit:z.object({...session,commitId:z.string()}).strict(),
 find_elements:z.object({...session,query:z.string().default('')}).strict(),
 infer_constraints:z.object({...session,snapshotId:z.string(),options:InferenceOptionsSchema.optional()}).strict(),
-suggest_fix:z.object({...session,baselineSnapshotId:z.string(),limit:z.number().int().min(1).max(24).default(8),profiles:z.array(SuggestionProfileSchema).min(1).max(6).optional()}).strict(),
+suggest_fix:z.object({...session,baselineSnapshotId:z.string(),limit:z.number().int().min(1).max(24).default(8),profiles:SuggestionProfilesSchema.optional()}).strict(),
 run_scenario:z.object({...session,script:ScenarioScriptSchema,target:z.enum(['web','native']).default('web')}).strict(),
 run_profile_matrix:z.object({...session,script:ScenarioScriptSchema,profiles:z.array(ProfileOverridesSchema).min(1),target:z.enum(['web','native']).default('web')}).strict(),
 close_session:z.object(session).strict()

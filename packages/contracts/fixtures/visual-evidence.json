@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "repository": "example/mobile",
+  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pullRequest": 1,
+  "runs": [
+    {
+      "id": "web-footer",
+      "title": "Footer trial",
+      "target": "web",
+      "before": {
+        "schemaVersion": 1,
+        "sessionId": "ci",
+        "snapshotId": "before",
+        "scenarioId": "footer",
+        "profile": {
+          "window": {
+            "width": 412,
+            "height": 915
+          },
+          "pixelRatio": 2.625,
+          "fontScale": 1,
+          "insets": {
+            "top": 24,
+            "right": 0,
+            "bottom": 24,
+            "left": 0
+          },
+          "root": {
+            "x": 0,
+            "y": 0,
+            "width": 412,
+            "height": 915
+          },
+          "orientation": "portrait"
+        },
+        "platform": "web",
+        "generation": 1,
+        "status": "stable",
+        "revisions": {},
+        "nodes": []
+      },
+      "after": {
+        "schemaVersion": 1,
+        "sessionId": "ci",
+        "snapshotId": "after",
+        "scenarioId": "footer",
+        "profile": {
+          "window": {
+            "width": 412,
+            "height": 915
+          },
+          "pixelRatio": 2.625,
+          "fontScale": 1,
+          "insets": {
+            "top": 24,
+            "right": 0,
+            "bottom": 24,
+            "left": 0
+          },
+          "root": {
+            "x": 0,
+            "y": 0,
+            "width": 412,
+            "height": 915
+          },
+          "orientation": "portrait"
+        },
+        "platform": "web",
+        "generation": 1,
+        "status": "stable",
+        "revisions": {},
+        "nodes": []
+      },
+      "results": [],
+      "nativeStatus": "pending",
+      "notes": [
+        "Measured registered boxes; native acceptance is pending."
+      ]
+    }
+  ],
+  "notes": []
+}

@@ -1,3 +1,5 @@
+import visualEvidence from '../fixtures/visual-evidence.json';
+import {VisualEvidenceReportSchema} from './index.js';
 import {describe,it,expect} from 'vitest';
 import {DeviceProfileSchema,WireframeSpecSchema,ToolSchemas,ToolOutputSchemas,RnStylePatchSchema,NativeClientMessageSchema,SpatialSnapshotSchema,ProfileOverridesSchema} from './index.js';
 import fixture from '../fixtures/footer.json';
@@ -40,4 +42,20 @@ it('round-trips reviewable design intent, profile requests, and unknown accessib
  for(const [schema,input] of [[DesignIntentSchema,expansion.design],[AccessibilityEvidenceSchema,expansion.accessibility],[SuggestionProfileSchema,expansion.profiles[0]]] as const){const parsed=schema.parse(input);expect(schema.parse(JSON.parse(JSON.stringify(parsed)))).toEqual(parsed);}
  expect(ToolSchemas.import_design_intent.safeParse({sessionId:'s',design:expansion.design}).success).toBe(true);
  expect(ToolSchemas.suggest_fix.safeParse({sessionId:'s',baselineSnapshotId:'b',profiles:expansion.profiles}).success).toBe(true);
+});
+
+it('keeps public visual evidence native acceptance honest and excludes physical targets',()=>{
+ expect(VisualEvidenceReportSchema.parse(visualEvidence).runs[0].nativeStatus).toBe('pending');
+ const report=structuredClone(visualEvidence);report.runs[0].nativeStatus='passed';expect(VisualEvidenceReportSchema.safeParse(report).success).toBe(false);
+ const run={...visualEvidence.runs[0],target:'android-emulator',before:{...visualEvidence.runs[0].before,platform:'android',nativeTarget:{targetId:'private-target',platform:'android',kind:'physical'}},after:{...visualEvidence.runs[0].after,platform:'android',nativeTarget:{targetId:'private-target',platform:'android',kind:'physical'}}};
+ expect(VisualEvidenceReportSchema.safeParse({...visualEvidence,runs:[run]}).success).toBe(false);
+});
+
+it('accepts matching verified native report evidence and rejects revision drift',()=>{
+ const snapshot={...visualEvidence.runs[0].before,platform:'android',nativeTarget:{targetId:'ci-emulator',platform:'android',kind:'emulator'},nodes:[{id:'footer',parentId:null,kind:'View',role:null,rect:{x:0,y:0,width:64,height:48},styles:{},source:null,editable:false,editReason:'fixture'}]};
+ const receipt={commitId:'commit',path:'App.tsx',oldHash:'a'.repeat(64),newHash:'b'.repeat(64),diff:'diff',nativeStatus:'passed'};
+ const run={...visualEvidence.runs[0],target:'android-emulator',before:snapshot,after:{...snapshot,snapshotId:'after',revisions:{'App.tsx':receipt.newHash}},receipt,nativeStatus:'passed',results:[{constraintId:'row',status:'pass',elementIds:['footer'],deviation:0,tolerance:2,message:'Measured condition passed'}]};
+ const report={...visualEvidence,runs:[run]};expect(VisualEvidenceReportSchema.safeParse(report).success).toBe(true);
+ expect(VisualEvidenceReportSchema.safeParse({...report,runs:[{...run,after:{...run.after,revisions:{'App.tsx':'c'.repeat(64)}}}]}).success).toBe(false);
+ expect(VisualEvidenceReportSchema.safeParse({...report,runs:[{...run,results:[{...run.results[0],elementIds:['missing']}]}]}).success).toBe(false);
 });

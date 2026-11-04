@@ -19,7 +19,7 @@ export const DesignIntentSchema=z.discriminatedUnion('kind',[
     logicalUnitsPerDesignUnit:z.number().finite().positive().default(1),
   }).strict(),
   z.object({...common,kind:z.literal('reference-annotations'),
-    image:z.object({sha256:z.string().regex(/^[a-f0-9]{64}$/),width:z.number().positive(),height:z.number().positive()}).strict(),
+    image:z.object({sha256:z.string().regex(/^[a-f0-9]{64}$/),width:z.number().finite().positive(),height:z.number().finite().positive()}).strict(),
     appRootPixels:RectSchema,pixelsPerLogicalUnit:z.number().finite().positive(),
     annotations:z.array(z.object({elementId:z.string().min(1),rectPixels:RectSchema}).strict()).min(1).max(10000),
     assertions:z.array(ConstraintSchema).default([]),
