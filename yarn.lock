@@ -2122,6 +2122,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nativemason/contracts@workspace:packages/contracts"
   dependencies:
+    typescript: "npm:^5.9.3"
     zod: "npm:^3.25.76"
   languageName: unknown
   linkType: soft
@@ -2159,6 +2160,7 @@ __metadata:
     react-native: "npm:0.88.1"
     react-native-safe-area-context: "npm:~5.10.1"
     tailwindcss: "npm:3.4.17"
+    typescript: "npm:^5.9.3"
   peerDependencies:
     nativewind: ^4.2.7
     react: 19.3.0
@@ -6584,6 +6586,7 @@ __metadata:
     playwright: "npm:^1.56.1"
     sharp: "npm:^0.34.5"
     ts-morph: "npm:^27.0.2"
+    typescript: "npm:^5.9.3"
     ws: "npm:^8.18.3"
   bin:
     nativemason: ./bin/nativemason.js
