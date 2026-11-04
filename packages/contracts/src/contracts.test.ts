@@ -67,5 +67,5 @@ it('keeps deferred native checks opt-in and native proposal evidence explicit',(
  expect(ToolSchemas.suggest_fix.parse(expansion.nativePending.suggestionRequest).includeNativeEvidence).toBe(true);
  expect(NativeSuggestionEvidenceSchema.safeParse({status:'captured',results:[]}).success).toBe(false);
  expect(NativeSuggestionEvidenceSchema.safeParse({status:'captured',snapshot:visualEvidence.runs[0].before,results:[]}).success).toBe(false);
- expect(NativeSuggestionEvidenceSchema.safeParse({status:'unavailable',results:[]}).success).toBe(true);
+ expect(NativeSuggestionEvidenceSchema.parse(expansion.nativePending.nativeBaseline).status).toBe('unavailable');
 });
