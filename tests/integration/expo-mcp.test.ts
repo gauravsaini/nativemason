@@ -214,6 +214,20 @@ describe('real Expo + Chromium + MCP',()=>{
    expect(result.baselines.find((row:any)=>row.profileId==='restored')).toMatchObject({scenarioState:'scripted',status:'passed'});
   }finally{await call('close_session',{sessionId});}
  },90000);
+ it('does not verify a pressed callback from a later rest capture',async()=>{
+  const scenarioId='pressable-state',file=path.join(project,'App.tsx'),original=await readFile(file,'utf8');let latest:any,nativePressed=true;
+  const stateApp=new BridgeApplication({artifactsRoot:path.join(root,'artifacts/state-integration'),browser:async options=>{const port=await createBrowserBridge({...options,timeoutMs:90000}),capture=port.capture.bind(port);return {...port,capture:async(profileOverrides?:any)=>{latest=await capture(profileOverrides);return latest;}};},native:async()=>({close:async()=>{},capture:async(revisions:any)=>{if(!latest)throw Error('Web must be captured first');const {webDiagnostics,...nativeSnapshot}=latest;return {...nativeSnapshot,platform:'android',revisions,nodes:latest.nodes.map((node:any)=>node.id==='state-button'?{...node,pressableState:nativePressed?'pressed':'rest'}:node)};}})});
+  try{
+   const {sessionId}=await stateApp.execute('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario='+scenarioId,scenarioId,profile:spec.profile});
+   await stateApp.execute('load_wireframe_spec',{sessionId,spec:{...spec,scenarioId,requiredElementIds:[],constraints:[]}});
+   await stateApp.execute('run_scenario',{sessionId,target:'web',script:{scenarioId,reset:[],actions:[{type:'press',elementId:'state-button',phase:'down'}]}});
+   const baseline=await stateApp.execute('inspect_ui_spatial_graph',{sessionId}),trial=await stateApp.execute('simulate_layout_mutation',{sessionId,baselineSnapshotId:baseline.snapshot.snapshotId,elementId:'state-button',patch:{width:130}});if(!('trialId'in trial))throw Error('Expected callback mutation trial');
+   const applied=await stateApp.execute('commit_rn_ast_patch',{sessionId,trialId:trial.trialId,expectedRevisions:trial.snapshot.revisions,scope:{kind:'pressable-state',state:'pressed'},mode:'apply'});expect(applied.receipt).toBeDefined();
+   await stateApp.execute('run_scenario',{sessionId,target:'web',script:{scenarioId,reset:[],actions:[{type:'press',elementId:'state-button',phase:'up'}]}});
+   const verification=await stateApp.execute('verify_native_layout',{sessionId,commitId:applied.receipt!.commitId});expect(verification.passed).toBe(false);expect(verification.results).toContainEqual(expect.objectContaining({constraintId:'interaction:state-button',status:'unavailable'}));expect(await readFile(file,'utf8')).toContain('width:130');
+   const reverted=await stateApp.execute('revert_commit',{sessionId,commitId:applied.receipt!.commitId});const revertVerification=await stateApp.execute('verify_native_layout',{sessionId,commitId:reverted.receipt.commitId});expect(revertVerification.passed).toBe(false);expect(revertVerification.results).toContainEqual(expect.objectContaining({constraintId:'interaction:state-button',status:'unavailable'}));
+  }finally{await writeFile(file,original);await stateApp.close();}
+ },90000);
  it('uses computed text fill and withholds contrast for stroked or inactive text',async()=>{
   const scenarioId='contrast-evidence',opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario='+scenarioId,scenarioId,profile:spec.profile,nativePort:19491,nativeToken:'nativemason-integration-token'});
   try{
