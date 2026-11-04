@@ -4,11 +4,37 @@ import {mkdtemp,readFile,writeFile,unlink,rmdir,mkdir,open} from 'node:fs/promis
 import {tmpdir,homedir} from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {BridgeFault,ScenarioScriptSchema,type NativeScenarioOptions,type NativeProfilePort,type ScenarioPort,type ScenarioScript} from '@nativemason/contracts';
+import {Buffer} from 'node:buffer';
+import {BridgeFault,NativeScenarioFailureEvidenceSchema,ScenarioScriptSchema,type NativeScenarioOptions,type NativeProfilePort,type ScenarioPort,type ScenarioScript} from '@nativemason/contracts';
 
 const execute=promisify(execFile);
 const quote=(value:string)=>`'${value.replaceAll("'", "'\\''")}'`;
 const regex=(value:string)=>`^${value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}$`;
+const FAILURE_MESSAGE_LIMIT=2048;
+const FAILURE_OUTPUT_LIMIT=16384;
+type ProcessFailure=Error&{code?:unknown;exitCode?:unknown;signal?:unknown;killed?:unknown;stdout?:unknown;stderr?:unknown};
+function textOutput(value:unknown):string {
+  if(typeof value==='string')return value;
+  return Buffer.isBuffer(value)?value.toString('utf8'):'';
+}
+function scenarioFailureEvidence(error:unknown):ReturnType<typeof NativeScenarioFailureEvidenceSchema.parse> {
+  const wrapper=error&&typeof error==='object'?error as {reason?:unknown;stdout?:unknown;stderr?:unknown}:{};
+  const rawError=wrapper.reason??error;
+  const processError=(rawError&&typeof rawError==='object'?rawError:new Error(String(rawError))) as ProcessFailure;
+  const fullMessage=String(processError.message??(error instanceof Error?error.message:error));
+  const rawStdout=textOutput(wrapper.stdout??processError.stdout);
+  const rawStderr=textOutput(wrapper.stderr??processError.stderr);
+  const rawCode=processError.exitCode??processError.code;
+  const exitCode=typeof rawCode==='number'&&Number.isInteger(rawCode)?rawCode:typeof rawCode==='string'&&rawCode?rawCode.slice(0,64):null;
+  const rawSignal=typeof processError.signal==='string'?processError.signal:null;
+  const signal=rawSignal?.slice(0,64)??null;
+  return NativeScenarioFailureEvidenceSchema.parse({
+    driver:'maestro',message:fullMessage.slice(0,FAILURE_MESSAGE_LIMIT),exitCode,signal,
+    terminated:processError.killed===true||signal!==null,
+    stdout:rawStdout.slice(0,FAILURE_OUTPUT_LIMIT),stderr:rawStderr.slice(0,FAILURE_OUTPUT_LIMIT),
+    outputTruncated:fullMessage.length>FAILURE_MESSAGE_LIMIT||rawStdout.length>FAILURE_OUTPUT_LIMIT||rawStderr.length>FAILURE_OUTPUT_LIMIT||String(rawCode??'').length>64||String(rawSignal??'').length>64||rawCode==='ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
+  });
+}
 function safeString(value:string):string {
   if(value.includes('${')||value.includes('\0'))throw new BridgeFault('UNSUPPORTED_ACTION','Maestro interpolation and NUL characters are not accepted in scenario values');
   return value;
@@ -29,12 +55,18 @@ async function maestro(options:NativeScenarioOptions,commands:unknown[]):Promise
   const file=path.join(directory,'flow.yaml');
   try {
     await writeFile(file,flow,{mode:0o600});
-    if(options.ssh){
-      // SSH stdin carries the generated flow; only validated, quoted command arguments enter its shell.
-      const program=`set -e; nm_flow_dir=$(mktemp -d); trap 'rm "$nm_flow_dir/flow.yaml"; rmdir "$nm_flow_dir"' EXIT; cat > "$nm_flow_dir/flow.yaml"; ${[options.maestroPath??'maestro','--device',options.adbSerial??options.target.targetId,'test'].map(quote).join(' ')} "$nm_flow_dir/flow.yaml"`;
-      await new Promise<void>((resolve,reject)=>{const child=execFile('ssh',[...sshArgs(options),program],{timeout:options.timeoutMs??120000,maxBuffer:4*1024*1024},error=>error?reject(error):resolve());child.stdin?.end(flow);});
-    }else await command({...options,timeoutMs:options.timeoutMs??120000},options.maestroPath??'maestro',['--device',options.adbSerial??options.target.targetId,'test',file]);
-  } catch(error){throw new BridgeFault('VERIFICATION_FAILED',`Native scenario command failed: ${error instanceof Error?error.message:String(error)}`);}
+    try {
+      if(options.ssh){
+        // SSH stdin carries the generated flow; only validated, quoted command arguments enter its shell.
+        const program=`set -e; nm_flow_dir=$(mktemp -d); trap 'rm "$nm_flow_dir/flow.yaml"; rmdir "$nm_flow_dir"' EXIT; cat > "$nm_flow_dir/flow.yaml"; ${[options.maestroPath??'maestro','--device',options.adbSerial??options.target.targetId,'test'].map(quote).join(' ')} "$nm_flow_dir/flow.yaml"`;
+        await new Promise<void>((resolve,reject)=>{const child=execFile('ssh',[...sshArgs(options),program],{timeout:options.timeoutMs??120000,maxBuffer:4*1024*1024},(error,stdout,stderr)=>error?reject({reason:error,stdout,stderr}):resolve());child.stdin?.end(flow);});
+      }else await command({...options,timeoutMs:options.timeoutMs??120000},options.maestroPath??'maestro',['--device',options.adbSerial??options.target.targetId,'test',file]);
+    } catch(error){
+      const evidence=scenarioFailureEvidence(error);
+      const reason=evidence.message.slice(0,256);
+      throw new BridgeFault('VERIFICATION_FAILED',reason?`Native scenario command failed: ${reason}`:'Native scenario command failed',evidence);
+    }
+  }
   finally{await unlink(file).catch(()=>undefined);await rmdir(directory).catch(()=>undefined);}
 }
 
