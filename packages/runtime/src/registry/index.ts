@@ -13,6 +13,8 @@ export interface Registration {
   styles: Record<string, unknown>;
   source: SourceRef | null;
   dynamicStyle: boolean;
+  accessibility?:SpatialNode['accessibility'];
+  resolveStyle?:()=>{styles:Record<string,unknown>;pressed:boolean}|undefined;
   authoredTextProps?: SpatialNode['authoredTextProps'];
   measuredLineCount?: number;
   textFit?: TextFitEvidence;
@@ -142,10 +144,11 @@ export function toSpatialNodes(registry: LayoutRegistry, rectangles: Map<string,
   }
   return [...registry.entries.values()].map(entry => {
     const repeated = entry.source && (sites.get(`${entry.source.path}:${entry.source.start}`) ?? 0) > 1;
-    const editReason = !entry.source ? 'Missing build-time source metadata' : entry.dynamicStyle ? 'Dynamic style expression' : repeated ? 'Source site has multiple mounted instances' : null;
+    const editReason = !entry.source ? 'Missing build-time source metadata' : entry.dynamicStyle&&entry.source.styleForm!=='pressable-state' ? 'Dynamic style expression' : repeated ? 'Source site has multiple mounted instances' : null;
     const rect = rectangles.get(entry.id);
     if (!rect) throw new BridgeFault('MISSING_ELEMENT', `No measurement for ${entry.id}`);
-    return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles: { ...entry.styles, ...registry.overrides.get(entry.id) }, source: entry.source, editable: editReason === null, editReason, ...(entry.textFit ? { textFit: entry.textFit } : {}), ...(entry.authoredTextProps ? { authoredTextProps: entry.authoredTextProps } : {}), ...(entry.measuredLineCount === undefined ? {} : { measuredLineCount: entry.measuredLineCount }) };
+    const resolved=entry.resolveStyle?.();
+    return { id: entry.id, parentId: entry.parentId, kind: entry.kind, role: entry.role, rect, styles: { ...(resolved?.styles??entry.styles), ...registry.overrides.get(entry.id) }, source: entry.source, editable: editReason === null, editReason, ...(resolved?{pressableState:resolved.pressed?'pressed' as const:'rest' as const}:{}),...(entry.accessibility?{accessibility:entry.accessibility}:{}), ...(entry.textFit ? { textFit: entry.textFit } : {}), ...(entry.authoredTextProps ? { authoredTextProps: entry.authoredTextProps } : {}), ...(entry.measuredLineCount === undefined ? {} : { measuredLineCount: entry.measuredLineCount }) };
   });
 }
 

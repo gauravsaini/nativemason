@@ -1,5 +1,5 @@
 import React, { createRef } from 'react';
-import type {Text as NativeText} from 'react-native';
+import type {Pressable as NativePressable,Text as NativeText} from 'react-native';
 import TestRenderer, { act, type ReactTestInstance } from 'react-test-renderer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,7 +7,7 @@ vi.mock('react-native', async () => {
   const ReactModule = await import('react');
   const host = (name: string) => ReactModule.forwardRef((props: Record<string, unknown>, ref) => ReactModule.createElement(name, { ...props, ref }));
   return {
-    Platform: { OS: 'android' },
+    Platform: { OS: 'android' }, I18nManager:{isRTL:false},
     View: host('View'), Text: host('Text'), TextInput: host('TextInput'), Image: host('Image'), ScrollView: host('ScrollView'), Pressable: host('Pressable'),
     StyleSheet: { flatten: (style: unknown): Record<string, unknown> | undefined => Array.isArray(style) ? Object.assign({}, ...style.map(item => typeof item === 'object' && item ? item : {})) : style && typeof style === 'object' ? style as Record<string, unknown> : undefined },
     useWindowDimensions: () => ({ width: 400, height: 800, scale: 1, fontScale: 1 }),
@@ -95,12 +95,29 @@ describe('layout component contracts', () => {
 
   it('preserves Pressable style callbacks and their state argument', async () => {
     const authoredStyle = vi.fn(state => ({ opacity: state.pressed ? 0.5 : 1 }));
-    const renderer = await mount(<LayoutPressable layoutId="button" style={authoredStyle} />);
+    const onPress=vi.fn(),ref=createRef<React.ComponentRef<typeof NativePressable>>();
+    const registrations=vi.spyOn(LayoutRegistry.prototype,'register');
+    const renderer = await mount(<LayoutPressable layoutId="button" ref={ref} onPress={onPress} style={authoredStyle} />);
     const host = findHost(renderer, 'Pressable');
     const state = { pressed: true, hovered: false, focused: false };
-    expect(host.props.style).toBe(authoredStyle);
+    expect(host.props.style).not.toBe(authoredStyle);
+    expect(host.props.onPress).toBe(onPress);
+    expect(ref.current).toEqual({type:'Pressable'});
     expect(host.props.style(state)).toEqual({ opacity: 0.5 });
     expect(authoredStyle).toHaveBeenCalledWith(state);
+    expect(registrations.mock.calls.find(([entry])=>entry.id==='button')?.[0].resolveStyle?.()).toEqual({pressed:true,styles:{opacity:0.5}});
+    await act(async()=>renderer.unmount());expect(ref.current).toBeNull();
+  });
+
+  it('keeps the original Pressable callback and disables state capture in production',async()=>{
+    vi.stubEnv('NODE_ENV','production');
+    const authoredStyle=vi.fn(()=>({opacity:1}));
+    const renderer=await mount(<LayoutPressable layoutId="production-button" style={authoredStyle}/>);
+    const host=findHost(renderer,'Pressable');
+    expect(host.props.style).toBe(authoredStyle);
+    host.props.style({pressed:true,hovered:false,focused:false});
+    expect(authoredStyle).toHaveBeenCalledOnce();
+    await act(async()=>renderer.unmount());
   });
 
   it('marks text fitting unavailable until an enabled native probe produces both measurements', async () => {

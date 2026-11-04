@@ -1,5 +1,5 @@
 import React, { createContext, forwardRef, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type PropsWithChildren, type Ref } from 'react';
-import { Platform, Image, ScrollView, TextInput, Pressable, StyleSheet, Text, View, useWindowDimensions, type PressableStateCallbackType, type PressableProps, type TextProps, type ViewProps, type ImageProps, type ScrollViewProps, type TextInputProps } from 'react-native';
+import { Platform, I18nManager, Image, ScrollView, TextInput, Pressable, StyleSheet, Text, View, useWindowDimensions, type PressableStateCallbackType, type PressableProps, type TextProps, type ViewProps, type ImageProps, type ScrollViewProps, type TextInputProps } from 'react-native';
 import { SafeAreaFrameContext, SafeAreaInsetsContext, SafeAreaProvider } from 'react-native-safe-area-context';
 import { BridgeFault, NativeServerMessageSchema, type DeviceProfile, type SourceRef, type NativeTarget } from '@nativemason/contracts';
 import { runScenarioHook } from '../scenario-hooks.js';
@@ -109,7 +109,7 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
   if (ref) ref.current = value;
   return undefined;
 }
-function useRegistration(props: LayoutElementProps & { style?: unknown; accessibilityRole?: unknown; testID?: string }, kind: Registration['kind'], forwarded: Ref<any>, authoredTextProps?: Registration['authoredTextProps'], textSignature?: string) {
+function useRegistration(props: LayoutElementProps & { style?: unknown; accessibilityRole?: unknown; testID?: string; accessibilityLabel?:unknown;accessibilityHint?:unknown;accessible?:unknown;focusable?:unknown;accessibilityElementsHidden?:unknown;importantForAccessibility?:unknown;accessibilityState?:{disabled?:boolean};disabled?:unknown }, kind: Registration['kind'], forwarded: Ref<any>, authoredTextProps?: Registration['authoredTextProps'], textSignature?: string,resolveStyle?:Registration['resolveStyle']) {
   const registry = useContext(RegistryContext);
   const parentId = useContext(ParentContext);
   const instanceId = useId();
@@ -121,7 +121,8 @@ function useRegistration(props: LayoutElementProps & { style?: unknown; accessib
   const forwardedCleanup = useRef<(() => void) | undefined>(undefined);
   const registration = useRef<Omit<Registration, 'host'>>({} as Omit<Registration, 'host'>);
   const dynamicStyle = typeof props.style === 'function';
-  registration.current = { id, parentId, kind,...(props.layoutId||props.testID?{}:{autoIdBase:baseId,autoIdInstance:instanceId}), role: typeof props.accessibilityRole === 'string' ? props.accessibilityRole : kind === 'Pressable' ? 'button' : null, styles: dynamicStyle ? {} : StyleSheet.flatten(props.style as any) ?? {}, source: props.__bridgeSource ?? null, dynamicStyle, ...(textSignature ? { authoredSignature:textSignature,measurementSignature: textSignature + JSON.stringify(registry?.overrides.get(id)) } : {}), ...(authoredTextProps ? { authoredTextProps } : {}) };
+  const accessibility:NonNullable<Registration['accessibility']>={direction:Platform.OS==='web'?'unknown':I18nManager?.isRTL===undefined?'unknown':I18nManager.isRTL?'rtl':'ltr',...(typeof props.accessibilityLabel==='string'?{authoredLabel:props.accessibilityLabel}:{}),...(typeof props.accessibilityHint==='string'?{authoredHint:props.accessibilityHint}:{}),...(typeof props.accessible==='boolean'?{accessible:props.accessible}:{}),...(typeof props.focusable==='boolean'?{focusable:props.focusable}:{}),...(props.accessibilityElementsHidden===true||props.importantForAccessibility==='no-hide-descendants'?{hidden:true}:{}),...(typeof props.disabled==='boolean'?{disabled:props.disabled}:props.accessibilityState?.disabled!==undefined?{disabled:props.accessibilityState.disabled}:{})};
+  registration.current = { id, parentId, kind,accessibility,resolveStyle,...(props.layoutId||props.testID?{}:{autoIdBase:baseId,autoIdInstance:instanceId}), role: typeof props.accessibilityRole === 'string' ? props.accessibilityRole : kind === 'Pressable' ? 'button' : null, styles: dynamicStyle ? {} : StyleSheet.flatten(props.style as any) ?? {}, source: props.__bridgeSource ?? null, dynamicStyle, ...(textSignature ? { authoredSignature:textSignature,measurementSignature: textSignature + JSON.stringify(registry?.overrides.get(id)) } : {}), ...(authoredTextProps ? { authoredTextProps } : {}) };
   const ref = useCallback((host: HostNode | null) => {
     if (hostRef.current && registry) registry.unregister(id, hostRef.current);
     hostRef.current = host;
@@ -182,12 +183,16 @@ export const LayoutText = forwardRef<React.ComponentRef<typeof Text>, TextProps 
   return <ParentContext.Provider value={id}><TextNestingContext.Provider value={true}><Text {...props} onLayout={isDevelopment() ? onLayout : props.onLayout} onTextLayout={isDevelopment() ? onTextLayout : props.onTextLayout} ref={ref} style={override ? [props.style, override] : props.style}>{children}</Text>{probe ? <Text key={signature} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" allowFontScaling={props.allowFontScaling} maxFontSizeMultiplier={props.maxFontSizeMultiplier} textBreakStrategy={props.textBreakStrategy} android_hyphenationFrequency={props.android_hyphenationFrequency} lineBreakStrategyIOS={props.lineBreakStrategyIOS} dynamicTypeRamp={props.dynamicTypeRamp} style={[props.style, override, { position: 'absolute', opacity: 0, width: box.width, height: undefined, minHeight: undefined, maxHeight: undefined, flex: 0 }]} onTextLayout={event => { const lines = event.nativeEvent.lines; const height = lines.reduce((max, line) => Math.max(max, line.y + line.height), 0); setFull({ signature,lineCount: lines.length, height }); }}>{children}</Text> : null}</TextNestingContext.Provider></ParentContext.Provider>;
 });
 export const LayoutPressable = forwardRef<React.ComponentRef<typeof View>, PressableProps & LayoutElementProps>(function LayoutPressable({ layoutId, __bridgeSource, __bridgeId, children, ...props }, forwarded) {
-  const { ref, id, override } = useRegistration({ ...props, layoutId, __bridgeSource, __bridgeId }, 'Pressable', forwarded);
-  let style: PressableProps['style'] = props.style;
-  if (override) {
-    const originalStyle = props.style;
-    style = typeof originalStyle === 'function' ? (state: PressableStateCallbackType) => [originalStyle(state), override] : [originalStyle, override];
-  }
+  const currentStyle=useRef<ReturnType<NonNullable<Registration['resolveStyle']>>>(undefined);
+  const readStyle=useCallback(()=>currentStyle.current,[]);
+  const { ref, id, override } = useRegistration({ ...props, layoutId, __bridgeSource, __bridgeId }, 'Pressable', forwarded,undefined,undefined,readStyle);
+  const originalStyle=props.style;
+  let style: PressableProps['style'] = originalStyle;
+  if(isDevelopment()&&typeof originalStyle==='function')style=(state:PressableStateCallbackType)=>{
+    const resolved=originalStyle(state);currentStyle.current={pressed:state.pressed,styles:StyleSheet.flatten(resolved)??{}};
+    return override?[resolved,override]:resolved;
+  };
+  else if(override)style=typeof originalStyle==='function'?(state:PressableStateCallbackType)=>[originalStyle(state),override]:[originalStyle,override];
   return <ParentContext.Provider value={id}><Pressable {...props} ref={ref} style={style}>{children}</Pressable></ParentContext.Provider>;
 });
 

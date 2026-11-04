@@ -1,3 +1,4 @@
+import {captureAccessibilityEvidence} from './accessibility.js';
 import { performance } from 'node:perf_hooks';
 import { chromium, type Browser, type Page } from 'playwright';
 import {
@@ -90,7 +91,7 @@ function identity(snapshot: SpatialSnapshot): string {
     generation: snapshot.generation,
     profile: snapshot.profile,
     revisions: Object.entries(snapshot.revisions).sort(([a], [b]) => a.localeCompare(b)),
-    nodes: snapshot.nodes.map(node => ({ id: node.id, parentId: node.parentId, source: node.source })).sort((a, b) => a.id.localeCompare(b.id)),
+    nodes: snapshot.nodes.map(node => ({ id: node.id, parentId: node.parentId, source: node.source,pressableState:node.pressableState })).sort((a, b) => a.id.localeCompare(b.id)),
   });
 }
 
@@ -204,6 +205,7 @@ async function collectDiagnostics(cdp: any): Promise<WebDiagnostics> {
 /** Owns one Chromium context. Runtime changes travel through React Native props, never CSS. */
 export async function createBrowserBridge(options: BrowserBridgeOptions): Promise<BrowserBridge> {
   const profile = DeviceProfileSchema.parse(options.profile);
+  if(profile.fontScale!==1)throw new BridgeFault('UNSUPPORTED_PROFILE','Chromium font-scale simulation has no rendered-text proof');
   const timeoutMs = options.timeoutMs ?? 10_000;
   let browser: Browser | undefined;
   try {
@@ -414,13 +416,19 @@ export async function createBrowserBridge(options: BrowserBridgeOptions): Promis
           try{
             const element=handle.asElement();
             if(!element)throw new BridgeFault('MISSING_ELEMENT',`Scenario target ${action.elementId} is unavailable`);
-            if(action.type==='tap')await element.click();
+            if(action.type==='press'){if(action.phase==='down'){await element.scrollIntoViewIfNeeded();const box=await element.boundingBox();if(!box)throw new BridgeFault('MISSING_ELEMENT','Held pointer target has no box');await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();}else await page.mouse.up();}
+            else if(action.type==='tap')await element.click();
             else if(action.type==='input'){if(action.mode==='append'){await element.focus();await element.press('ControlOrMeta+End');await page.keyboard.insertText(action.text);}else await element.fill(action.text);}
             else if(action.type==='swipe')await element.evaluate((node,direction)=>{if(!(node instanceof Element))throw new Error('Swipe target is not an element');node.scrollBy(direction==='LEFT'?node.clientWidth:direction==='RIGHT'?-node.clientWidth:0,direction==='UP'?node.clientHeight:direction==='DOWN'?-node.clientHeight:0);},action.direction);
             else if(action.type==='scroll')await element.evaluate((node,delta)=>{if(!(node instanceof Element))throw new Error('Scroll target is not an element');node.scrollBy(delta.x,delta.y);},action);
           }finally{await handle.dispose();}
         }
         await readStable();
+      },
+      async captureAccessibility(){
+        const snapshot=await readStable(),evidence=await captureAccessibilityEvidence(page,cdp,snapshot),after=await readStable();
+        if(identity(snapshot)!==identity(after)||geometry(snapshot)!==geometry(after))throw new BridgeFault('STALE_SNAPSHOT','Layout changed during accessibility capture');
+        return SpatialSnapshotSchema.parse({...evidence,snapshotId:after.snapshotId});
       },
       async screenshot() {
         ensureOpen();

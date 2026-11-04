@@ -32,6 +32,13 @@ describe('source instrumentation', () => {
     expect(result.match(/__bridgeId="Screen\.tsx#\d+"/g)).toHaveLength(3);
     expect(transformSync(source, { filename: '/project/Screen.tsx', envName: 'production', configFile: false, babelrc: false, parserOpts: { plugins: ['jsx', 'typescript'] }, plugins: [[plugin, { projectRoot: '/project', autoInstrument: true }]] })!.code).not.toContain('__bridgeId');
   });
+  it('marks only statically proven inline Pressable state callbacks',()=>{
+    const supported="import {LayoutPressable} from '@nativemason/runtime';export const A=()=> <LayoutPressable style={({pressed})=>pressed?{opacity:0.5}:{opacity:1}}/>;";
+    const unsupported="import {LayoutPressable} from '@nativemason/runtime';const style=({pressed})=>({opacity:pressed?0.5:1});export const A=()=> <LayoutPressable style={style}/>;";
+    expect(transform(supported)).toContain('styleForm: "pressable-state"');
+    expect(transform(unsupported)).not.toContain('styleForm');
+    expect(transform(supported,'production')).not.toContain('__bridgeSource');
+  });
 });
 
 it('excludes virtual Metro polyfills from module imports and revision registration',()=>{const result=transformSync('global.answer = 42;', {filename:'/project/\0polyfill:external-require',configFile:false,babelrc:false,plugins:[[plugin,{projectRoot:'/project',autoInstrument:true,nativewind:true}]]})!.code!;expect(result).not.toContain('@nativemason/runtime');expect(result).not.toContain('registerSourceRevision');});

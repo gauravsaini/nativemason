@@ -49,6 +49,7 @@ export function createNativeScenarioPort(options:NativeScenarioOptions):Scenario
       // Reject unsupported static actions before executing earlier hooks or UI actions.
       for(const action of [...parsed.reset,...parsed.actions]){
         if(action.type==='hook'&&!options.runHook)throw new BridgeFault('UNSUPPORTED_ACTION','Native application hooks require an explicitly registered runtime hook transport');
+        if(action.type==='press')throw new BridgeFault('UNSUPPORTED_ACTION','Held pointer phases are supported in Chromium only; native state requires an app scenario hook');
         if(action.type==='scroll')throw new BridgeFault('UNSUPPORTED_ACTION','Native exact scroll offsets are unavailable; use the explicit swipe action');
         if(action.type==='keyboard'&&action.visible)throw new BridgeFault('UNSUPPORTED_ACTION','Show the native keyboard by tapping an input; visibility must be measured by the application');
         if('elementId' in action)safeString(action.elementId);

@@ -1,3 +1,5 @@
+import {importDesignIntent} from '../core/design-intent.js';
+import {inspectAccessibility} from '../core/accessibility.js';
 import {createNativeScenarioPort,createNativeProfilePort} from '../scenario/index.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir,writeFile } from 'node:fs/promises';
@@ -17,13 +19,13 @@ interface Dependencies {
   artifactsRoot:string;
 }
 interface Session {
-  id:string;browser:BrowserPort;native:ClosableNative;source:SourcePort;scenarioId:string;profile:DeviceProfile;
+  id:string;webUrl:string;browser:BrowserPort;native:ClosableNative;source:SourcePort;scenarioId:string;profile:DeviceProfile;
   spec?:WireframeSpec;baseline?:SpatialSnapshot;baselineSpec?:WireframeSpec;baselineOverrideKey?:string;baselineOverrides?:ToolInput<'inspect_ui_spatial_graph'>['profileOverrides'];trial?:Trial;
   snapshots:Map<string,SpatialSnapshot>;commits:Map<string,{receipt:CommitReceipt;web:SpatialSnapshot|null;plan:EditPlan;transactionPlan?:TransactionPlan;trialId:string;spec:WireframeSpec}>;
   nativeScenario?:ScenarioPort;nativeProfiles?:NativeProfilePort;busy:boolean;nativeTarget?:ToolInput<'open_session'>['nativeTarget'];
 }
 function allPass(results:ReturnType<typeof evaluateConstraints>):boolean {return results.every(r=>r.status==='pass');}
-function fingerprint(s:SpatialSnapshot):string {return JSON.stringify({profile:s.profile,scenario:s.scenarioId,generation:s.generation,revisions:Object.entries(s.revisions).sort()});}
+function fingerprint(s:SpatialSnapshot):string {return JSON.stringify({profile:s.profile,scenario:s.scenarioId,generation:s.generation,states:s.nodes.filter(n=>n.pressableState!==undefined).map(n=>[n.id,n.pressableState]).sort(),revisions:Object.entries(s.revisions).sort()});}
 function overrideKey(value:ToolInput<'inspect_ui_spatial_graph'>['profileOverrides']):string{return JSON.stringify(value??{});}
 function specForProfile(spec:WireframeSpec,snapshot:SpatialSnapshot):WireframeSpec{return {...spec,profile:snapshot.profile};}
 
@@ -47,6 +49,8 @@ export class BridgeApplication {
     s.busy=true;
     try {
       switch(name) {
+        case 'import_design_intent': {const {design}=ToolSchemas.import_design_intent.parse(input);if(design.scenarioId!==s.scenarioId||!profilesMatch(design.profile,s.profile))throw new BridgeFault('INVALID_INPUT','Design target must match the session scenario and profile');return importDesignIntent(design);}
+        case 'inspect_accessibility': {const {target}=ToolSchemas.inspect_accessibility.parse(input);let snapshot:SpatialSnapshot;if(target==='native')snapshot=await s.native.capture((await this.capture(s)).revisions);else snapshot=s.browser.captureAccessibility?await s.browser.captureAccessibility():await this.capture(s);s.snapshots.set(snapshot.snapshotId,snapshot);return {snapshot,findings:inspectAccessibility(snapshot)};}
         case 'load_wireframe_spec': {
           const {spec}=ToolSchemas.load_wireframe_spec.parse(input);
           if(spec.scenarioId!==s.scenarioId||!profilesMatch(spec.profile,s.profile))throw new BridgeFault('INVALID_INPUT','Spec scenario and profile must match the session');
@@ -127,29 +131,54 @@ export class BridgeApplication {
     if(!baseline||baseline.snapshotId!==input.baselineSnapshotId)throw new BridgeFault('STALE_SNAPSHOT','Inspect again');
     await this.assertRevisions(s,baseline);
     const candidates:ToolOutput<'suggest_fix'>['candidates']=[];
-    const baselinePasses=new Set(evaluateConstraints(baseline,s.baselineSpec??this.spec(s)).filter(result=>result.status==='pass').map(result=>result.constraintId));
+    const primarySpec=s.baselineSpec??this.spec(s);
+    if(new Set(input.profiles?.map(p=>p.id)).size!==(input.profiles?.length??0)||input.profiles?.some(p=>p.id==='baseline'))throw new BridgeFault('INVALID_INPUT','Profile IDs must be unique; baseline is reserved');
+    type Evidence=NonNullable<ToolOutput<'suggest_fix'>['candidates'][number]['profiles']>[number];
+    const contexts:{id:string;profile:DeviceProfile;port?:BrowserPort;snapshot?:SpatialSnapshot;spec?:WireframeSpec;error?:Evidence['error']}[]=[{id:'baseline',profile:baseline.profile,port:s.browser,snapshot:baseline,spec:primarySpec}];
+    const opened:BrowserPort[]=[];
+    const errorValue=(error:unknown):NonNullable<Evidence['error']>=>({code:error instanceof BridgeFault?error.code:'INTERNAL_ERROR',message:error instanceof Error?error.message:String(error)});
     s.trial=undefined;
     try {
-      for(const candidate of generateFixCandidates(baseline,s.baselineSpec??this.spec(s),input.limit)) {
-        try {
-          if(candidate.mutations.length>1&&!s.browser.trialBatch)throw new BridgeFault('UNSUPPORTED_EDIT','Browser adapter does not support a batch candidate');
-          const snapshot=s.browser.trialBatch?await s.browser.trialBatch(candidate.mutations,s.baselineOverrides):await s.browser.trial(candidate.mutations[0].elementId,candidate.mutations[0].patch,s.baselineOverrides);
-          const results=[...evaluateConstraints(snapshot,s.baselineSpec??this.spec(s))];
-          const warnings=snapshot.webDiagnostics?.warnings.filter(w=>w.severity==='confirmed').length??0;
-          candidates.push({...candidate,results,warnings,score:results.filter(r=>r.status!=='pass').length*1000+warnings*100+candidate.mutations.reduce((n,m)=>n+Object.keys(m.patch).length,0)});
-        } catch(error) {
-          if(error instanceof BridgeFault&&['STALE_SOURCE','STALE_SNAPSHOT','SESSION_NOT_FOUND'].includes(error.code))throw error;
-          candidates.push({...candidate,results:[],warnings:0,score:100000,error:{code:error instanceof BridgeFault?error.code:'INTERNAL_ERROR' as const,message:error instanceof Error?error.message:String(error)}});
-        }
+      for(const requested of input.profiles??[]){
+        const context:typeof contexts[number]={id:requested.id,profile:requested.profile};contexts.push(context);
+        try{
+          if(requested.profile.fontScale!==1)throw new BridgeFault('UNSUPPORTED_PROFILE','Chromium font-scale simulation has no rendered-text proof');
+          const port=await this.deps.browser({sessionId:s.id,scenarioId:s.scenarioId,webUrl:s.webUrl,profile:requested.profile});opened.push(port);context.port=port;
+          context.snapshot=await port.capture();await this.assertRevisions(s,context.snapshot);context.spec=specForProfile(primarySpec,context.snapshot);
+        }catch(error){context.error=errorValue(error);}
       }
-    } finally { await s.browser.resetTrial(); }
+      const proposals=new Map<string,ReturnType<typeof generateFixCandidates>[number]>();
+      for(const context of contexts)if(context.snapshot&&context.spec)for(const proposal of generateFixCandidates(context.snapshot,context.spec,input.limit)){const key=JSON.stringify(proposal.mutations);if(!proposals.has(key))proposals.set(key,proposal);}
+      for(const candidate of [...proposals.values()].slice(0,input.limit)) {
+        const evidence:Evidence[]=[];
+        for(const context of contexts){
+          try{
+            if(context.error)throw new BridgeFault(context.error.code,context.error.message);
+            const port=context.port!;
+            if(candidate.mutations.length>1&&!port.trialBatch)throw new BridgeFault('UNSUPPORTED_EDIT','Browser adapter does not support a batch candidate');
+            const overrides=context.id==='baseline'?s.baselineOverrides:undefined;
+            const snapshot=port.trialBatch?await port.trialBatch(candidate.mutations,overrides):await port.trial(candidate.mutations[0].elementId,candidate.mutations[0].patch,overrides);
+            await this.assertRevisions(s,snapshot);
+            const results=[...evaluateConstraints(snapshot,context.spec!)],passes=new Set(evaluateConstraints(context.snapshot!,context.spec!).filter(r=>r.status==='pass').map(r=>r.constraintId));
+            evidence.push({profileId:context.id,platform:'web',profile:snapshot.profile,snapshotId:snapshot.snapshotId,status:results.length&&allPass(results)?'passed':'failed',results,regressions:results.filter(r=>r.status!=='pass'&&passes.has(r.constraintId)).length,warnings:snapshot.webDiagnostics?.warnings.filter(w=>w.severity==='confirmed').length??0});
+          }catch(error){
+            if(error instanceof BridgeFault&&['STALE_SOURCE','STALE_SNAPSHOT','SESSION_NOT_FOUND'].includes(error.code))throw error;
+            evidence.push({profileId:context.id,platform:'web',profile:context.profile,status:error instanceof BridgeFault&&error.code==='UNSUPPORTED_PROFILE'?'unsupported':'unavailable',results:[],regressions:0,warnings:0,error:errorValue(error)});
+          }
+        }
+        const primary=evidence[0];candidates.push({...candidate,results:primary.results,warnings:primary.warnings,score:0,profiles:evidence,...(primary.error?{error:primary.error}:{})});
+      }
+    } finally {try{await s.browser.resetTrial();}finally{await Promise.allSettled(opened.map(port=>port.close()));}}
     const restored=await this.capture(s,s.baselineOverrides);
     if(fingerprint(restored)!==fingerprint(baseline)||JSON.stringify(restored.nodes.map(n=>n.rect))!==JSON.stringify(baseline.nodes.map(n=>n.rect))){s.baseline=undefined;throw new BridgeFault('STALE_SNAPSHOT','Candidate reset changed the baseline');}
-    const regressions=(candidate:typeof candidates[number])=>candidate.results.filter(result=>result.status!=='pass'&&baselinePasses.has(result.constraintId)).length;
-    const remaining=(candidate:typeof candidates[number])=>candidate.results.filter(result=>result.status!=='pass').length;
+    const unavailable=(candidate:typeof candidates[number])=>candidate.profiles?.filter(p=>p.status==='unavailable'||p.status==='unsupported').length??0;
+    const regressions=(candidate:typeof candidates[number])=>candidate.profiles?.reduce((sum,p)=>sum+p.regressions,0)??0;
+    const warnings=(candidate:typeof candidates[number])=>candidate.profiles?.reduce((sum,p)=>sum+p.warnings,0)??0;
+    const remaining=(candidate:typeof candidates[number])=>candidate.profiles?.reduce((sum,p)=>sum+p.results.filter(result=>result.status!=='pass').length,0)??0;
     const editSize=(candidate:typeof candidates[number])=>candidate.mutations.reduce((count,mutation)=>count+Object.keys(mutation.patch).length,0);
-    candidates.sort((a,b)=>Number('error' in a)-Number('error' in b)||regressions(a)-regressions(b)||a.warnings-b.warnings||remaining(a)-remaining(b)||editSize(a)-editSize(b));
-    return {candidates:candidates.map((candidate,index)=>({...candidate,score:index+1})),baselineSnapshotId:input.baselineSnapshotId};
+    candidates.sort((a,b)=>Number('error' in a)-Number('error' in b)||unavailable(a)-unavailable(b)||regressions(a)-regressions(b)||warnings(a)-warnings(b)||remaining(a)-remaining(b)||editSize(a)-editSize(b));
+    const result={candidates:candidates.map((candidate,index)=>({...candidate,score:index+1})),baselineSnapshotId:input.baselineSnapshotId};
+    await this.artifact(s.id,'suggestions.json',JSON.stringify(result,null,2));return result;
   }
   private async open(input:ToolInput<'open_session'>) {
     if((input.nativePort===undefined)!==(input.nativeToken===undefined))throw new BridgeFault('INVALID_INPUT','nativePort and nativeToken must be supplied together');
@@ -160,7 +189,7 @@ export class BridgeApplication {
     try {browser=await this.deps.browser({...input,sessionId:id});}catch(e){await native.close();throw e;}
     let nativeScenario:ScenarioPort|undefined,nativeProfiles:NativeProfilePort|undefined;
     if(input.nativeScenario){if(!input.nativeTarget){await Promise.allSettled([browser.close(),native.close()]);throw new BridgeFault('INVALID_INPUT','nativeScenario requires nativeTarget');}const options={...input.nativeScenario,target:input.nativeTarget,projectRoot:input.projectRoot,runHook:native.runHook?.bind(native),readProfile:async()=>(await native.capture({})).profile};nativeScenario=createNativeScenarioPort(options);nativeProfiles=createNativeProfilePort(options);try{await nativeProfiles.recover();}catch(error){await Promise.allSettled([browser.close(),native.close(),nativeScenario.close()]);throw error;}}
-    this.sessions.set(id,{id,browser,native,source,scenarioId:input.scenarioId,profile:input.profile,snapshots:new Map(),commits:new Map(),busy:false,nativeTarget:input.nativeTarget,nativeScenario,nativeProfiles});
+    this.sessions.set(id,{id,webUrl:input.webUrl,browser,native,source,scenarioId:input.scenarioId,profile:input.profile,snapshots:new Map(),commits:new Map(),busy:false,nativeTarget:input.nativeTarget,nativeScenario,nativeProfiles});
     return {sessionId:id,native:{port,token},capabilities:{trial:'rn-style-props',sourceEdits:'scoped-transactions',batchTrials:Boolean(browser.trialBatch),nativePlatforms:['android','ios'],nativeScenario:Boolean(nativeScenario),nativeVerification:'required'}};
   }
   private spec(s:Session):WireframeSpec {if(!s.spec)throw new BridgeFault('INVALID_INPUT','Load a wireframe specification first');return s.spec;}
@@ -204,11 +233,12 @@ export class BridgeApplication {
     await this.assertRevisions(s,s.baseline);
     const mutations=trial.mutations??[{elementId:trial.elementId,patch:trial.patch}];
     const source=s.source as TransactionSourcePort;
-    const sourceMutations=mutations.map(m=>{const node=trial.snapshot.nodes.find(n=>n.id===m.elementId);if(!node?.source)throw new BridgeFault('UNSUPPORTED_EDIT','Source metadata missing');if(node.editReason==='Dynamic style expression')throw new BridgeFault('UNSUPPORTED_EDIT','Style callbacks are not source-editable');if(input.expectedRevisions?.[node.source.path]!==undefined&&input.expectedRevisions[node.source.path]!==node.source.hash)throw new BridgeFault('STALE_SOURCE','Expected revision differs');if(input.expectedSourceHash&&input.expectedSourceHash!==node.source.hash)throw new BridgeFault('STALE_SOURCE','Expected hash differs');const instances=trial.snapshot.nodes.filter(n=>n.source?.path===node.source!.path&&n.source.start===node.source!.start);if(instances.length>1&&!input.scope?.acknowledgeInstances)throw new BridgeFault('UNSUPPORTED_EDIT','Repeated site requires acknowledgment');return {source:node.source,patch:m.patch,scope:input.scope??{kind:'local' as const}};});
+    const sourceMutations=mutations.map(m=>{const node=trial.snapshot.nodes.find(n=>n.id===m.elementId);if(!node?.source)throw new BridgeFault('UNSUPPORTED_EDIT','Source metadata missing');if(node.editReason==='Dynamic style expression')throw new BridgeFault('UNSUPPORTED_EDIT','Style callbacks are not source-editable');if(node.source.styleForm==='pressable-state'){if(input.scope?.kind!=='pressable-state'||!input.scope.state)throw new BridgeFault('UNSUPPORTED_EDIT','A supported callback requires explicit pressable-state scope and state');const active=current.nodes.find(n=>n.id===m.elementId)?.pressableState;if(node.pressableState!==input.scope.state||active!==input.scope.state)throw new BridgeFault('STALE_SNAPSHOT','Requested Pressable state is not the currently measured trial state');}if(input.expectedRevisions?.[node.source.path]!==undefined&&input.expectedRevisions[node.source.path]!==node.source.hash)throw new BridgeFault('STALE_SOURCE','Expected revision differs');if(input.expectedSourceHash&&input.expectedSourceHash!==node.source.hash)throw new BridgeFault('STALE_SOURCE','Expected hash differs');const instances=trial.snapshot.nodes.filter(n=>n.source?.path===node.source!.path&&n.source.start===node.source!.start);if(instances.length>1&&!input.scope?.acknowledgeInstances)throw new BridgeFault('UNSUPPORTED_EDIT','Repeated site requires acknowledgment');return {source:node.source,patch:m.patch,scope:input.scope??{kind:'local' as const}};});
     if(!input.expectedSourceHash&&!input.expectedRevisions)throw new BridgeFault('INVALID_INPUT','Expected source revisions are required');
     const files=source.readProject?await source.readProject():await Promise.all([...new Set(sourceMutations.map(m=>m.source.path))].map(p=>source.read(p)));
     const planned=planTransaction(files,sourceMutations);
     if(!planned.ok)throw new BridgeFault(planned.error.code,planned.error.message,planned.error.details);
+    if(input.expectedSourceHash&&!input.expectedRevisions&&planned.value.files.some(file=>!sourceMutations.some(mutation=>mutation.source.path===file.source.path)))throw new BridgeFault('INVALID_INPUT','An imported style edit changes another file; supply expectedRevisions for every changed file');
     planned.value.intentId=trial.trialId;
     for(const consumer of planned.value.blastRadius.consumers){consumer.mountedIds=trial.snapshot.nodes.filter(n=>n.source?.path===consumer.source.path&&n.source.start===consumer.source.start).map(n=>n.id);consumer.requiredScenarios=consumer.mountedIds.length?[s.scenarioId]:[];}
     if(input.mode==='preview')return {plan:planned.value.files[0],transactionPlan:planned.value};

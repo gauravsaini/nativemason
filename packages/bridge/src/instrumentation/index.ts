@@ -5,8 +5,18 @@ import { createHash } from 'node:crypto';
 import { dirname,relative, resolve, sep } from 'node:path';
 
 interface Options { projectRoot?: string; autoInstrument?: boolean; rootComponent?: string; textProbes?: boolean; nativewind?: boolean }
-type State = PluginPass & { opts: Options; bridgeHosts?: Map<string, t.Identifier>; bridgeRoot?: t.Identifier; bridgeRevision?: t.Identifier; bridgeBindings?:Map<string,unknown>;bridgeStyleImports?:Map<string,{file:string;binding:unknown}>;bridgeDependencyCache?:Map<string,string[]>;bridgeOrdinal?: number };
+type State = PluginPass & { opts: Options; bridgeHosts?: Map<string, t.Identifier>;bridgeKinds?:Map<string,string>; bridgeRoot?: t.Identifier; bridgeRevision?: t.Identifier; bridgeBindings?:Map<string,unknown>;bridgeStyleImports?:Map<string,{file:string;binding:unknown}>;bridgeDependencyCache?:Map<string,string[]>;bridgeOrdinal?: number };
 const hosts = new Set(['View', 'Text', 'Pressable', 'TextInput', 'ScrollView', 'Image']);
+function staticCallback(expression:t.Node|null|undefined):boolean {
+  if(!expression||(!t.isArrowFunctionExpression(expression)&&!t.isFunctionExpression(expression))||expression.async||expression.generator||expression.params.length!==1)return false;
+  const parameter=expression.params[0];if(!t.isObjectPattern(parameter)||parameter.properties.length!==1)return false;
+  const pressed=parameter.properties[0];if(!t.isObjectProperty(pressed)||!t.isIdentifier(pressed.key,{name:'pressed'})||!t.isIdentifier(pressed.value))return false;
+  const body=t.isBlockStatement(expression.body)?expression.body.body.length===1&&t.isReturnStatement(expression.body.body[0])?expression.body.body[0].argument:null:expression.body;
+  if(!t.isConditionalExpression(body))return false;
+  const test=t.isUnaryExpression(body.test,{operator:'!'})?body.test.argument:body.test;
+  if(!t.isIdentifier(test,{name:pressed.value.name}))return false;
+  return [body.consequent,body.alternate].every(arm=>t.isObjectExpression(arm)&&arm.properties.every(property=>t.isObjectProperty(property)&&!property.computed&&!property.shorthand&&(t.isIdentifier(property.key)||t.isStringLiteral(property.key))&&(t.isStringLiteral(property.value)||t.isNumericLiteral(property.value)||t.isBooleanLiteral(property.value)||t.isNullLiteral(property.value)||(t.isUnaryExpression(property.value)&&['+','-'].includes(property.value.operator)&&t.isNumericLiteral(property.value.argument)))));
+}
 function development(state: State) { const caller=state.file.opts.caller;if(caller&&'dev' in caller&&caller.dev===false)return false;const filename=state.filename??state.file.opts.filename??''; if(filename.includes('\0')||! /\.[cm]?[jt]sx?$/.test(filename))return false; return process.env.NODE_ENV !== 'production' && state.file.opts.envName !== 'production' && !state.filename?.split(/[\\/]/).includes('node_modules'); }
 function physicalPath(path:string){try{return realpathSync(path);}catch{return resolve(path);}}
 function filePath(state: State) {
@@ -40,7 +50,7 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
           if (!projectPath || projectPath.startsWith('../')) return;
           state.bridgeRevision = path.scope.generateUidIdentifier("registerSourceRevision");
           state.bridgeOrdinal = 0;
-          state.bridgeHosts = new Map();state.bridgeBindings=new Map();state.bridgeStyleImports=new Map();state.bridgeDependencyCache=new Map();
+          state.bridgeHosts = new Map();state.bridgeKinds=new Map();state.bridgeBindings=new Map();state.bridgeStyleImports=new Map();state.bridgeDependencyCache=new Map();
           for(const statement of path.node.body){if(!t.isImportDeclaration(statement)||statement.importKind==='type')continue;const file=localModule(state.filename??state.file.opts.filename!,statement.source.value);if(file)for(const specifier of statement.specifiers)state.bridgeStyleImports.set(specifier.local.name,{file,binding:path.scope.getBinding(specifier.local.name)});}
           const imports: t.ImportSpecifier[] = [t.importSpecifier(state.bridgeRevision, t.identifier("registerSourceRevision"))];
           if (state.opts.nativewind) path.unshiftContainer("body", t.importDeclaration([], t.stringLiteral("@nativemason/runtime/nativewind")));
@@ -50,7 +60,7 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
               if (t.isImportNamespaceSpecifier(specifier)) {
                 for (const host of hosts) {
                   const alias = path.scope.generateUidIdentifier('NativeMason' + host);
-                  state.bridgeHosts.set(specifier.local.name + '.' + host, alias);state.bridgeBindings.set(specifier.local.name+'.'+host,path.scope.getBinding(specifier.local.name));
+                  state.bridgeHosts.set(specifier.local.name + '.' + host, alias);state.bridgeKinds.set(specifier.local.name+'.'+host,host);state.bridgeBindings.set(specifier.local.name+'.'+host,path.scope.getBinding(specifier.local.name));
                   imports.push(t.importSpecifier(alias, t.identifier('Layout' + host)));
                 }
                 continue;
@@ -59,7 +69,7 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
               const name = t.isIdentifier(specifier.imported) ? specifier.imported.name : specifier.imported.value;
               if (!hosts.has(name)) continue;
               const alias = path.scope.generateUidIdentifier(`NativeMason${name}`);
-              state.bridgeHosts.set(specifier.local.name, alias);state.bridgeBindings.set(specifier.local.name,path.scope.getBinding(specifier.local.name));
+              state.bridgeHosts.set(specifier.local.name, alias);state.bridgeKinds.set(specifier.local.name,name);state.bridgeBindings.set(specifier.local.name,path.scope.getBinding(specifier.local.name));
               imports.push(t.importSpecifier(alias, t.identifier(`Layout${name}`)));
             }
           }
@@ -98,12 +108,13 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
         const binding=path.scope.getBinding(localName);
         const lookupName=member?localName+'.'+member.property.name:localName;
         const automatic=Boolean(binding&&state.opts.autoInstrument&&state.bridgeHosts?.has(lookupName)&&state.bridgeBindings?.get(lookupName)===binding);
-        let explicit=false;
+        let explicit=false;let explicitKind:string|undefined;
         if(!automatic){
           if(!binding?.path.isImportSpecifier())return;
           const imported=binding.path.node.imported;
           const originalName=t.isIdentifier(imported)?imported.name:imported.value;
           const declaration=binding.path.parentPath;
+          explicitKind=originalName.slice(6);
           explicit=Boolean(declaration?.isImportDeclaration()&&declaration.node.source.value==='@nativemason/runtime'&&originalName.startsWith('Layout')&&hosts.has(originalName.slice(6)));
         }
         if(!automatic&&!explicit)return;
@@ -124,7 +135,9 @@ export default function bridgeSourcePlugin(): PluginObj<State> {
           expression.traverse({ReferencedIdentifier:inspectIdentifier});
         };
         for(const attribute of path.get('attributes'))if(attribute.isJSXAttribute()&&t.isJSXIdentifier(attribute.node.name)&&['style','className'].includes(attribute.node.name.name)){const value=attribute.get('value');if(value.isJSXExpressionContainer()){const expression=value.get('expression');if(expression.node)inspectExpression(expression);}}
-        const source = { path: projectPath,...(dependencies.size?{dependencies:[...dependencies].sort()}:{}), hash: createHash('sha256').update(state.file.code).digest('hex'), start: element.start, end: element.end, line: element.loc.start.line, column: element.loc.start.column };
+        const styleAttribute=path.node.attributes.find(attribute=>t.isJSXAttribute(attribute)&&t.isJSXIdentifier(attribute.name,{name:'style'}));
+        const callback=(automatic?state.bridgeKinds?.get(lookupName):explicitKind)==='Pressable'&&t.isJSXAttribute(styleAttribute)&&t.isJSXExpressionContainer(styleAttribute.value)&&staticCallback(styleAttribute.value.expression)&&!path.node.attributes.some(attribute=>t.isJSXSpreadAttribute(attribute));
+        const source = { path: projectPath,...(callback?{styleForm:'pressable-state'}:{}),...(dependencies.size?{dependencies:[...dependencies].sort()}:{}), hash: createHash('sha256').update(state.file.code).digest('hex'), start: element.start, end: element.end, line: element.loc.start.line, column: element.loc.start.column };
         if (automatic) {
           const alias = state.bridgeHosts?.get(lookupName);
           if (!alias) return;

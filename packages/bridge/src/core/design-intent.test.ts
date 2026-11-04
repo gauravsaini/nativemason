@@ -8,16 +8,21 @@ const profile = {
   root: { x: 0, y: 0, width: 100, height: 60 }, orientation: 'landscape' as const,
 };
 const hash = 'a'.repeat(64);
-const reference = (overrides: Partial<DesignIntent> = {}): DesignIntent => ({
+type ReferenceInput = Extract<DesignIntent, { kind: 'reference-annotations' }>;
+const reference = (overrides: Partial<ReferenceInput> = {}): ReferenceInput => {
+  const { tolerance, assertions, ...rest } = overrides;
+  return {
   kind: 'reference-annotations', scenarioId: 'screen', profile,
   image: { sha256: hash, width: 400, height: 300 },
   appRootPixels: { x: 40, y: 30, width: 200, height: 120 }, pixelsPerLogicalUnit: 2,
   annotations: [{ elementId: 'card', rectPixels: { x: 60, y: 50, width: 100, height: 40 } }],
-  ...overrides,
-} as DesignIntent);
+  ...rest, tolerance: tolerance ?? 2, assertions: assertions ?? [],
+  };
+};
 
-const figma = (overrides: Record<string, unknown> = {}) => ({
-  kind: 'figma-auto-layout' as const, scenarioId: 'screen', profile,
+type FigmaInput = Extract<DesignIntent, { kind: 'figma-auto-layout' }>;
+const figma = (overrides: Partial<FigmaInput> = {}): FigmaInput => ({
+  kind: 'figma-auto-layout', scenarioId: 'screen', profile, tolerance: 2,
   frame: { id: 'frame', type: 'FRAME', absoluteBoundingBox: { x: 10, y: 20, width: 100, height: 60 },
     layoutMode: 'HORIZONTAL' as const, itemSpacing: 4, children: [
       { id: 'a', type: 'FRAME', absoluteBoundingBox: { x: 10, y: 20, width: 20, height: 20 } },
@@ -43,20 +48,20 @@ describe('importDesignIntent', () => {
   });
 
   it('rejects duplicate element IDs, duplicate and malformed Figma node IDs, and missing mapped nodes', () => {
-    expect(() => importDesignIntent(figma({ elementMap: { a: 'same', b: 'same' } } as any))).toThrow(BridgeFault);
-    expect(() => importDesignIntent(figma({ frame: { ...figma().frame, children: [figma().frame.children[0], figma().frame.children[0]] } } as any))).toThrow(/Duplicate Figma node ID/);
-    expect(() => importDesignIntent(figma({ frame: { ...figma().frame, children: [{ type: 'FRAME' }] } } as any))).toThrow(/Malformed Figma node/);
-    expect(() => importDesignIntent(figma({ elementMap: { absent: 'missing' } } as any))).toThrow(/missing or has no bounds/);
+    expect(() => importDesignIntent(figma({ elementMap: { a: 'same', b: 'same' } }))).toThrow(BridgeFault);
+    expect(() => importDesignIntent(figma({ frame: { ...figma().frame, children: [{ id: 'a', type: 'FRAME' }, { id: 'a', type: 'FRAME' }] } }))).toThrow(/Duplicate Figma node ID/);
+    expect(() => importDesignIntent(figma({ frame: { ...figma().frame, children: [{ type: 'FRAME' }] } }))).toThrow(/Malformed Figma node/);
+    expect(() => importDesignIntent(figma({ elementMap: { absent: 'missing' } }))).toThrow(/missing or has no bounds/);
   });
 
   it('rejects unsafe reference scales and crops', () => {
-    expect(() => importDesignIntent(reference({ pixelsPerLogicalUnit: 0 } as Partial<DesignIntent>))).toThrow(BridgeFault);
-    expect(() => importDesignIntent(reference({ appRootPixels: { x: 250, y: 0, width: 200, height: 120 } } as Partial<DesignIntent>))).toThrow(/crop must fit/);
-    expect(() => importDesignIntent(reference({ pixelsPerLogicalUnit: 3 } as Partial<DesignIntent>))).toThrow(/scale disagree/);
+    expect(() => importDesignIntent(reference({ pixelsPerLogicalUnit: 0 }))).toThrow(BridgeFault);
+    expect(() => importDesignIntent(reference({ appRootPixels: { x: 250, y: 0, width: 200, height: 120 } }))).toThrow(/crop must fit/);
+    expect(() => importDesignIntent(reference({ pixelsPerLogicalUnit: 3 }))).toThrow(/scale disagree/);
   });
 
   it('does not mutate the input and preserves assertions while keeping review required', () => {
-    const input = reference({ assertions: [{ id: 'assert:inside', type: 'insideSafeArea', elementId: 'other' }] } as Partial<DesignIntent>);
+    const input = reference({ assertions: [{ id: 'assert:inside', type: 'insideSafeArea', elementId: 'other', tolerance: 2 }] });
     const before = structuredClone(input);
     const result = importDesignIntent(input);
     expect(input).toEqual(before);

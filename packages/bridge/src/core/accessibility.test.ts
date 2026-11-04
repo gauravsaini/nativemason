@@ -48,6 +48,12 @@ describe('inspectAccessibility', () => {
     expect(findings.find(item => item.code === 'FOCUS_ORDER' && item.elementIds[0] === 'unknown')?.status).toBe('unavailable');
   });
 
+  it('retains an advisory DOM focus estimate for a tabbable control hidden from the accessibility tree',()=>{
+    const findings=inspectAccessibility(snapshot([node({id:'hidden-tabbable',accessibility:{direction:'ltr',hidden:true,browser:{name:null,focusOrder:1,focusOrderSource:'dom-sequential-estimate',contrast:{status:'unavailable'}}}})]));
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({code:'FOCUS_ORDER',status:'advisory',elementIds:['hidden-tabbable']});
+  });
+
   it('reports unavailable, passing, and failing measured text contrast', () => {
     const findings = inspectAccessibility(snapshot([
       node({ id: 'unavailable', kind: 'Text', accessibility: { direction: 'ltr', browser: { name: null, focusOrder: null, focusOrderSource: 'dom-sequential-estimate', contrast: { status: 'unavailable', reason: 'Background is translucent' } } } }),
