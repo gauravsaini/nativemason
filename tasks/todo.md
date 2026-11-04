@@ -8,8 +8,8 @@
 - [x] Package allowlists and separate-consumer install smoke.
 - [x] Luna unit-test pass, including callback/ref and profile-restoration regressions.
 - [x] Basic browser transaction workflow and physical Android edit/revert evidence.
-- [ ] Expanded stateful/NativeWind/multi-file browser acceptance.
-- [ ] Native text-fit and font-scale acceptance on the current implementation.
+- [x] Expanded stateful/NativeWind/multi-file browser acceptance.
+- [x] Native text-fit and font-scale acceptance on the current implementation.
 - [ ] Linux Android emulator and macOS iOS simulator CI evidence.
 - [ ] Clean-checkout README walkthrough and final package smoke.
 - [ ] Squash published history after final gates; repeat checks on final SHA.

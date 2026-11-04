@@ -27,3 +27,9 @@
 ## NativeMason 0.2
 
 Migrated to Yarn and NativeMason package names, froze workflow contracts, and integrated parallel editor/runtime/browser work. Added journaled transactions and revert, automatic instrumentation, native target protocol, text probes, scenario profiles, MCP adoption tools, and release packaging. Unit and live workflow validation is in progress; native platform evidence and clean-checkout acceptance remain release gates. Physical target identity is retained only in ignored local artifacts.
+
+### Acceptance checkpoint — automatic roots and packed consumers
+
+Validated the existing measurement/instrumentation contracts against a real development runtime. Fixed Expo React Refresh ordering, canonical source paths, measurable automatic roots, and nested safe-area environment emulation. Fractional measured geometry remains unchanged; CDP environment inset inputs use its required integer units.
+
+The expanded Chromium suite passes six workflows, including stateful checkout, two-file apply/revert, NativeWind conditional edits, and orientation invalidation. Physical Android acceptance passes source apply, matching revisions, text-fit evidence, an actual font-scale run with restoration, and explicit revert. Packed packages install in a separate Expo project and provide automatic host capture through MCP. Remote emulator/simulator evidence and the clean-checkout walkthrough remain release gates.
