@@ -22,6 +22,6 @@
 - [x] Frozen design-import, accessibility, profile-ranking, and explicit native-pending contracts.
 - [x] Parent-reviewed measured before/after report generator and CI artifact wiring.
 - [x] README begins with copyable LLM integration instructions.
-- [ ] Parent-reviewed broad multi-profile suggestions and post-reload interaction evidence.
-- [ ] Public-app workflows documented with exact upstream revisions and compatibility limits.
+- [x] Parent-reviewed broad multi-profile suggestions and post-reload interaction evidence.
+- [x] Public-app workflows documented with exact upstream revisions and compatibility limits.
 - [ ] Final native and CI report evidence collected; unavailable targets remain incomplete.

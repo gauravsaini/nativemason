@@ -177,6 +177,8 @@ Transactions preflight source hashes, stage replacements, and persist a recovery
 
 A successful source write remains **native verification pending**. Browser failure or a native regression retains the edit and returns evidence. No automatic rollback is implied. Required constraints must pass on matching committed web and native scenarios before acceptance.
 
+Native-only `textFits` checks remain unavailable in Chromium. For present elements, an explicit `allowNativePending: true` on preview/apply permits that evidence to remain pending; other unavailable or failed checks still block. `suggest_fix.includeNativeEvidence` can seed proposals from a fresh native baseline, while candidates remain browser trials. Callback edits require the intended interaction state to be measured again on committed web and native captures.
+
 ## Native runtime and scenario profiles
 
 Set development pairing values before starting Metro:
@@ -216,6 +218,7 @@ CDP provides browser measurements and diagnostics; it does not interpret images.
 - Minimum-box constraints describe measured dimensions, not effective touchability. Default overlap findings are advisory until design intent is explicit.
 - Browser clipping, center hit tests, paint order, overflow, and font records remain browser diagnostics. Confirmed clipping, occlusion, or font-load failure blocks apply; uncertainty remains visible.
 - `textFits` requires settled, equivalent native text-probe evidence. Rich/inherited or otherwise unproven text configurations return unavailable. A reported line count alone does not prove text fits.
+- Exploratory [public-app web workflows](docs/public-app-validation.md) record one apply/revert pass, one preview/reset pass, and an unavailable app, with exact versions and compatibility workarounds. They do not expand the supported native matrix.
 - CI publishes downloadable HTML/JSON [visual evidence reports](docs/evidence.md) with measured before/after boxes and raw-run links. The box diagrams are not native screenshots.
 - Generated outputs under ignored `artifacts/` include profiles, source hashes, diffs, receipts, constraints, overlays, and measured browser timings. Device identities belong in local evidence, not compatibility claims.
 
