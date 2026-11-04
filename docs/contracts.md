@@ -51,3 +51,9 @@ Safe single-consumer literals fold in place under local scope; shared, dynamic, 
 Accessibility evidence distinguishes authored labels/hints and native layout direction from browser-computed names, estimated sequential focus order, and contrast evidence. Unknown evidence stays unavailable. DOM focus estimates do not prove assistive-technology order, and browser evidence is forbidden in native snapshots. RTL physical-spacing findings are advisory because physical offsets can be intentional.
 
 `pressable-state` edits require an explicit `pressed` or `rest` state and a bounded, independently validated static callback branch. Unsupported dynamic callbacks remain rejected. `SourceRef.styleForm` identifies instrumented callback capability, not permission to bypass AST checks. Browser held-pointer actions are separate from native scenario hooks.
+
+### Explicit pending-native checks
+
+By default, source application requires every browser constraint to pass. An explicit `allowNativePending: true` request may defer unavailable `textFits` constraints for present elements; missing elements, invalid capture context, other unavailable constraints, and confirmed browser failures remain blocking. Deferred IDs remain visible as `pendingNativeConstraints` and `native-checks-pending`, and acceptance still requires matching native proof for every constraint. Unavailable results never become browser passes.
+
+`suggest_fix.includeNativeEvidence` requests a fresh matching native baseline to seed proposals for native-only failures. Its `nativeBaseline` is separate from candidate profile evidence: candidates run in Chromium and receive no invented native-trial results. Callback edits retain interaction requirements across reload; committed web and native measurements must observe the intended state before verification can pass. Missing state is reported as pending interaction evidence.

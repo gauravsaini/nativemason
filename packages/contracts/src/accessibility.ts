@@ -11,7 +11,7 @@ export type BrowserAccessibilitySample=z.infer<typeof BrowserAccessibilitySample
 export const AccessibilityEvidenceSchema=z.object({
   authoredLabel:z.string().optional(),authoredHint:z.string().optional(),
   accessible:z.boolean().optional(),focusable:z.boolean().optional(),hidden:z.boolean().optional(),disabled:z.boolean().optional(),
-  direction:z.enum(['ltr','rtl','unknown']),
+  direction:z.enum(['ltr','rtl','unknown']),directionSource:z.enum(['authored','native-global','browser-computed','unknown']).optional(),
   browser:z.object({name:z.string().nullable(),focusOrder:z.number().int().nonnegative().nullable(),
     focusOrderSource:z.literal('dom-sequential-estimate'),contrast:ContrastEvidenceSchema,
   }).strict().optional(),

@@ -99,5 +99,26 @@
         "reason": "No proven opaque background"
       }
     }
+  },
+  "nativePending": {
+    "request": {
+      "sessionId": "session",
+      "trialId": "trial",
+      "mode": "preview",
+      "allowNativePending": true
+    },
+    "suggestionRequest": {
+      "sessionId": "session",
+      "baselineSnapshotId": "baseline",
+      "includeNativeEvidence": true
+    },
+    "nativeBaseline": {
+      "status": "unavailable",
+      "results": [],
+      "error": {
+        "code": "NATIVE_DISCONNECTED",
+        "message": "Connect a matching runtime to seed native text-fit candidates"
+      }
+    }
   }
 }

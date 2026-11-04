@@ -4,7 +4,7 @@ import {describe,it,expect} from 'vitest';
 import {DeviceProfileSchema,WireframeSpecSchema,ToolSchemas,ToolOutputSchemas,RnStylePatchSchema,NativeClientMessageSchema,SpatialSnapshotSchema,ProfileOverridesSchema} from './index.js';
 import fixture from '../fixtures/footer.json';
 import expansion from '../fixtures/design-diagnostics.json';
-import {DesignIntentSchema,AccessibilityEvidenceSchema,SuggestionProfileSchema} from './index.js';
+import {DesignIntentSchema,AccessibilityEvidenceSchema,SuggestionProfileSchema,NativeSuggestionEvidenceSchema} from './index.js';
 describe('boundary contracts',()=>{
  it('round-trips the authoritative fixture and applies default tolerance',()=>{const s=WireframeSpecSchema.parse(fixture);expect(WireframeSpecSchema.parse(JSON.parse(JSON.stringify(s)))).toEqual(s);const c={...fixture,constraints:[{type:'insideSafeArea',id:'safe',elementId:'submit'}]};expect(WireframeSpecSchema.parse(c).constraints[0].tolerance).toBe(2)});
  it('rejects nonfinite geometry, duplicate IDs and unknown properties',()=>{expect(DeviceProfileSchema.safeParse({...fixture.profile,fontScale:Infinity}).success).toBe(false);expect(WireframeSpecSchema.safeParse({...fixture,requiredElementIds:['a','a']}).success).toBe(false);expect(RnStylePatchSchema.safeParse({width:2,transform:'none'}).success).toBe(false)});
@@ -58,4 +58,14 @@ it('accepts matching verified native report evidence and rejects revision drift'
  const report={...visualEvidence,runs:[run]};expect(VisualEvidenceReportSchema.safeParse(report).success).toBe(true);
  expect(VisualEvidenceReportSchema.safeParse({...report,runs:[{...run,after:{...run.after,revisions:{'App.tsx':'c'.repeat(64)}}}]}).success).toBe(false);
  expect(VisualEvidenceReportSchema.safeParse({...report,runs:[{...run,results:[{...run.results[0],elementIds:['missing']}]}]}).success).toBe(false);
+});
+
+it('keeps deferred native checks opt-in and native proposal evidence explicit',()=>{
+ expect(ToolSchemas.commit_rn_ast_patch.parse({sessionId:'s',trialId:'t',mode:'preview'}).allowNativePending).toBe(false);
+ expect(ToolSchemas.suggest_fix.parse({sessionId:'s',baselineSnapshotId:'b'}).includeNativeEvidence).toBe(false);
+ expect(ToolSchemas.commit_rn_ast_patch.parse(expansion.nativePending.request).allowNativePending).toBe(true);
+ expect(ToolSchemas.suggest_fix.parse(expansion.nativePending.suggestionRequest).includeNativeEvidence).toBe(true);
+ expect(NativeSuggestionEvidenceSchema.safeParse({status:'captured',results:[]}).success).toBe(false);
+ expect(NativeSuggestionEvidenceSchema.safeParse({status:'captured',snapshot:visualEvidence.runs[0].before,results:[]}).success).toBe(false);
+ expect(NativeSuggestionEvidenceSchema.safeParse({status:'unavailable',results:[]}).success).toBe(true);
 });

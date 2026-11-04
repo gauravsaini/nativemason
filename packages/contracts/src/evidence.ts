@@ -33,3 +33,7 @@ export const VisualEvidenceReportSchema=z.object({
   runs:z.array(VisualEvidenceRunSchema).max(20),notes:z.array(z.string()),
 }).strict();
 export type VisualEvidenceReport=z.infer<typeof VisualEvidenceReportSchema>;
+export const EvidenceInputsSchema=VisualEvidenceReportSchema.pick({repository:true,revision:true,pullRequest:true}).extend({
+  webFile:z.string().min(1).optional(),androidDirectory:z.string().min(1).optional(),iosDirectory:z.string().min(1).optional(),
+}).strict();
+export type EvidenceInputs=z.infer<typeof EvidenceInputsSchema>;
