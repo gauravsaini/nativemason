@@ -75,3 +75,12 @@ describe('native profile settings restoration',()=>{
     expect(settings).toEqual({font_scale:'1.0',user_rotation:'0',accelerometer_rotation:'1'});
   });
 });
+
+it('waits for runtime reconnection after applying and restoring font scale',async()=>{
+ const {BridgeFault}=await import('@nativemason/contracts');
+ let reads=0;
+ const readProfile=vi.fn(async()=>{reads++;if(reads===2||reads===4)throw new BridgeFault('NATIVE_DISCONNECTED','Activity is restarting');return {fontScale:Number(settings.font_scale),orientation:'portrait'} as never;});
+ const port=createNativeProfilePort({...base,readProfile});
+ await expect(port.withProfile({fontScale:1.3},async()=>{expect(settings.font_scale).toBe('1.3');return 'measured';})).resolves.toBe('measured');
+ expect(reads).toBe(5);expect(settings.font_scale).toBe('1.0');
+});

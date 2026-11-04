@@ -94,6 +94,21 @@ export function createNativeProfilePort(options:NativeScenarioOptions):NativePro
   let active=false;
   const adb=(args:string[])=>command(options,'adb',['-s',options.adbSerial??options.target.targetId,...args]);
   const settings=(operation:string,key:string,value?:string)=>adb(['shell','settings',operation,'system',key,...(value===undefined?[]:[value])]);
+  async function waitForProfile(expected:{fontScale?:number;orientation?:'portrait'|'landscape'}){
+    if(!options.readProfile)return;
+    const started=Date.now();let lastError:unknown;
+    while(true){
+      try{
+        const actual=await options.readProfile();lastError=undefined;
+        if((expected.fontScale===undefined||Math.abs(actual.fontScale-expected.fontScale)<0.01)&&(expected.orientation===undefined||actual.orientation===expected.orientation))return;
+      }catch(error){
+        if(!(error instanceof BridgeFault)||!['NATIVE_DISCONNECTED','TIMEOUT','UNSTABLE_LAYOUT','STALE_SOURCE','STALE_SNAPSHOT'].includes(error.code))throw error;
+        lastError=error;
+      }
+      if(Date.now()-started> (options.timeoutMs??30000))throw lastError??new BridgeFault('UNSUPPORTED_PROFILE','Native runtime did not report the requested font scale and orientation');
+      await new Promise(resolve=>setTimeout(resolve,100));
+    }
+  }
   async function restore(saved:SavedSettings){
     if(saved.platform==='android'){
       for(const [key,value]of [['font_scale',saved.fontScale],['user_rotation',saved.rotation],['accelerometer_rotation',saved.accelerometer]] as const)if(value!==undefined){await settings(value==='null'?'delete':'put',key,value==='null'?undefined:value);if(await settings('get',key)!==value)throw new BridgeFault('RECOVERY_CONFLICT',`Android did not restore ${key}`);}
@@ -121,10 +136,12 @@ export function createNativeProfilePort(options:NativeScenarioOptions):NativePro
       active=true;profileOperations.add(journal);
       let saved:SavedSettings|undefined;
       let journalOwned=false;
+      let originalProfile:Awaited<ReturnType<NonNullable<NativeScenarioOptions['readProfile']>>>|undefined;
       try{
         await recover(true);
         if(options.target.platform==='ios'&&options.target.kind!=='simulator')throw new BridgeFault('UNSUPPORTED_PROFILE','iOS profile overrides require a simulator');
         if(options.target.platform==='ios'&&profile.orientation!==undefined&&!options.readProfile)throw new BridgeFault('UNSUPPORTED_PROFILE','iOS orientation changes require measured orientation capability');
+        if(options.readProfile)originalProfile=await options.readProfile();
         const category=profile.fontScale===undefined?undefined:iosSizes[String(profile.fontScale)];
         if(options.target.platform==='ios'&&profile.fontScale!==undefined&&!category)throw new BridgeFault('UNSUPPORTED_PROFILE','The requested iOS scale has no supported Dynamic Type category');
         saved=options.target.platform==='android'?{pid:process.pid,platform:'android',fontScale:await settings('get','font_scale'),rotation:await settings('get','user_rotation'),accelerometer:await settings('get','accelerometer_rotation')}:{pid:process.pid,platform:'ios',contentSize:await command(options,'xcrun',['simctl','ui',options.target.targetId,'content_size']),...(profile.orientation!==undefined?{orientation:(await options.readProfile!()).orientation}:{})};
@@ -139,13 +156,10 @@ export function createNativeProfilePort(options:NativeScenarioOptions):NativePro
           if(category)await command(options,'xcrun',['simctl','ui',options.target.targetId,'content_size',category]);
           if(profile.orientation!==undefined)await maestro(options,[{setOrientation:profile.orientation==='portrait'?'PORTRAIT':'LANDSCAPE_LEFT'}]);
         }
-        if(options.readProfile){
-          const started=Date.now();
-          while(true){const actual=await options.readProfile();if((profile.fontScale===undefined||Math.abs(actual.fontScale-profile.fontScale)<0.01)&&(profile.orientation===undefined||actual.orientation===profile.orientation))break;if(Date.now()-started>10000)throw new BridgeFault('UNSUPPORTED_PROFILE','Native runtime did not report the requested font scale and orientation');await new Promise(resolve=>setTimeout(resolve,100));}
-        }
+        await waitForProfile(profile);
         return await work();
       }finally{
-        try{if(saved&&journalOwned)await restore(saved);}finally{active=false;profileOperations.delete(journal);}
+        try{if(saved&&journalOwned){await restore(saved);if(originalProfile)await waitForProfile(originalProfile);}}finally{active=false;profileOperations.delete(journal);}
       }
     },
   };
