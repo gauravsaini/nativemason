@@ -38,6 +38,17 @@ beforeAll(async()=>{
 },90000);
 afterAll(async()=>{await client?.close();await server?.close();await app?.close();if(metro?.pid){try{process.kill(-metro.pid,'SIGTERM');}catch{ /* Retry until Metro is ready or deadline expires. */ }}if(project)await rm(project,{recursive:true,force:true});},30000);
 describe('real Expo + Chromium + MCP',()=>{
+ it('keeps checkout scrolling above the measured bottom safe area',async()=>{
+  const scenarioId='scroll-checkout',profile={...spec.profile,window:{width:384,height:832},root:{x:0,y:0,width:384,height:832},insets:{top:34.13333511352539,right:0,bottom:48,left:0},orientation:'portrait'};
+  const {sessionId}=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario='+scenarioId,scenarioId,profile,nativePort:19492,nativeToken:'nativemason-integration-token'});
+  try{
+   const inspected=await call('inspect_ui_spatial_graph',{sessionId});
+   const viewport=inspected.snapshot.nodes.find((node:any)=>node.id==='checkout-scroll');
+   expect(viewport).toBeDefined();
+   expect(viewport.rect.y).toBeGreaterThanOrEqual(profile.insets.top);
+   expect(viewport.rect.y+viewport.rect.height).toBeLessThanOrEqual(profile.window.height-profile.insets.bottom+0.01);
+  }finally{await call('close_session',{sessionId});}
+ },90000);
  it('inspects, trials, previews, commits, reloads and exposes native-disconnect honestly',async()=>{
   expect((await client.listTools()).tools).toHaveLength(Object.keys(ToolSchemas).length);
   const opened=await call('open_session',{projectRoot:project,webUrl:'http://localhost:18081/?scenario=broken-footer',scenarioId:spec.scenarioId,profile:spec.profile,nativePort:19483,nativeToken:'nativemason-integration-token'});const sessionId=opened.sessionId;const primaryBrowser=browser;

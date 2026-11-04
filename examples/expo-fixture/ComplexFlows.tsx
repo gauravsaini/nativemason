@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, ScrollView, Pressable, Keyboard } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { registerScenarioHook } from '@nativemason/runtime';
 import { checkoutStyles, spacing } from './theme';
 import {OrderSummary} from './OrderSummary';
 
 /** Uses unmodified RN host components; Babel instruments this development source. */
 export function ComplexFlow({ scenarioId }: { scenarioId: string }) {
+  const insets = useSafeAreaInsets();
   const [expanded, setExpanded] = useState(false);
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   useEffect(() => registerScenarioHook('resetCheckout', () => { setEmail(''); setExpanded(false); setSubmitted(false); Keyboard.dismiss(); }), []);
-  return <View testID="screen" style={checkoutStyles.screen}>
+  return <View testID="screen" style={[checkoutStyles.screen, { paddingTop: Math.max(48, insets.top), paddingBottom: Math.max(spacing.comfortable, insets.bottom) }]}>
     <Text testID="checkout-heading" style={checkoutStyles.text}>Checkout details</Text>
     <ScrollView testID="checkout-scroll" keyboardShouldPersistTaps="handled" style={{ flex: 1 }}>
       <TextInput testID="checkout-email" accessibilityLabel="Email address" placeholder="Email address" keyboardType="email-address" value={email} onChangeText={setEmail} style={checkoutStyles.input} />
