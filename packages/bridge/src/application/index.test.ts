@@ -29,7 +29,7 @@ describe('session commit invariants',()=>{
  it.each(['confirmed','uncertain'] as const)('rechecks %s browser diagnostics immediately before source application',async severity=>{
   const h=harness();try{
    const input=await h.ready(),capture=h.browser.capture.bind(h.browser);
-   h.browser.capture=vi.fn(async(...args)=>({...await capture(...args),webDiagnostics:{nodes:{},warnings:[{elementId:'footer',code:'OCCLUDED',severity,message:'Fresh center-point evidence'}]}}));
+   h.browser.capture=vi.fn(async(...args):Promise<SpatialSnapshot>=>({...await capture(...args),webDiagnostics:{nodes:{},warnings:[{elementId:'footer',code:'OCCLUDED',severity,message:'Fresh center-point evidence'}]}}));
    if(severity==='confirmed'){
     await expect(h.app.execute('commit_rn_ast_patch',{...input,mode:'apply'})).rejects.toMatchObject({code:'VERIFICATION_FAILED'});
     expect(h.source.applyTransaction).not.toHaveBeenCalled();
