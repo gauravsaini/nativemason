@@ -25,7 +25,7 @@ yarn test:integration
 yarn test:packages
 ```
 
-`yarn test:integration` starts an isolated Expo fixture and Chromium. `yarn test:packages` packs the three public packages, installs them into a separate npm-managed Expo project, initializes it, and checks MCP discovery. These checks do not publish packages.
+`yarn test:integration` starts an isolated Expo fixture and Chromium. `yarn test:packages` packs the three public packages, installs them into a separate npm-managed Expo project, checks initialization and MCP discovery, and captures its automatically instrumented UI. These checks do not publish packages.
 
 Start the included fixture on an available port:
 
