@@ -83,6 +83,20 @@ function rejectRepeatedSite(target: Target): void {
   }
 }
 
+function splitNativeWindVariant(token: string): { hasVariant: boolean; utility: string } {
+  let bracketDepth = 0;
+  let variantSeparator = -1;
+  for (let i = 0; i < token.length; i++) {
+    if (token[i] === '\\') { i++; continue; }
+    if (token[i] === '[') bracketDepth++;
+    else if (token[i] === ']') bracketDepth = Math.max(0, bracketDepth - 1);
+    else if (token[i] === ':' && bracketDepth === 0) variantSeparator = i;
+  }
+  return variantSeparator < 0
+    ? { hasVariant: false, utility: token }
+    : { hasVariant: true, utility: token.slice(variantSeparator + 1) };
+}
+
 function pressableStateObject(opening: ReturnType<JsxElement['getOpeningElement']> | JsxSelfClosingElement, state: EditScope['state']): ObjectLiteralExpression {
   if (!state) reject('Pressable callback edits require an explicit pressed or rest state');
   const tag = opening.getTagNameNode();
@@ -103,6 +117,7 @@ function pressableStateObject(opening: ReturnType<JsxElement['getOpeningElement'
   if (!expression || (!Node.isArrowFunction(expression) && !Node.isFunctionExpression(expression)) || expression.isAsync() || (Node.isFunctionExpression(expression) && expression.isGenerator())) reject('Only synchronous inline Pressable callbacks are supported');
   const parameters = expression.getParameters();
   if (parameters.length !== 1) reject('Pressable callback needs one destructured pressed parameter');
+  if (parameters[0].getInitializer() || parameters[0].getDotDotDotToken()) reject('Default and rest callback parameters are unsupported');
   const parameter = parameters[0].getNameNode();
   if (!Node.isObjectBindingPattern(parameter) || parameter.getElements().length !== 1) reject('Pressable callback needs one destructured pressed parameter');
   const binding = parameter.getElements()[0];
@@ -250,13 +265,14 @@ function planNativeWind(text: string, source: SourceRef, patch: RnStylePatch, op
       if(typeof value!=='string'||! /^[A-Za-z][A-Za-z0-9]*(?:[ _-][A-Za-z0-9]+)*$/.test(value))reject('NativeWind font families must be literal names without CSS expressions');
       const weights=new Set(['thin','extralight','light','normal','medium','semibold','bold','extrabold','black']);
       const family=(candidate:string)=>/^font-(?:sans|serif|mono)$/.test(candidate)||/^font-\[family-name:[A-Za-z][A-Za-z0-9]*(?:(?:_|\\_|-)[A-Za-z0-9]+)*\]$/.test(candidate);
-      for(const existing of tokens){const base=existing.slice(existing.lastIndexOf(':')+1);if(base.startsWith('font-')&&!weights.has(base.slice(5))&&!/^font-\[\d+\]$/.test(base)&&!family(base))reject('Configured or dynamic font utilities require explicit static theme evidence');}
+      for(const existing of tokens){const base=splitNativeWindVariant(existing).utility;if(base.startsWith('font-')&&!weights.has(base.slice(5))&&!/^font-\[\d+\]$/.test(base)&&!family(base))reject('Configured or dynamic font utilities require explicit static theme evidence');}
       token='font-[family-name:'+value.replaceAll('_','\\_').replaceAll(' ','_')+']';matches=family;
     }
     else if (fixed[key]) { token = fixed[key][String(value)]; if (!token) reject('Unsupported NativeWind value for '+key); const values = Object.values(fixed[key]); matches = s=>values.includes(s); }
     else { const prefix=utility[key]; if (!prefix) reject('Unsupported NativeWind property '+key); token=prefix+'-['+String(value)+(typeof value === 'number'&&!['flexGrow','flexShrink','aspectRatio','flex'].includes(key)?'px':'')+']'; matches=s=>s.startsWith(prefix+'-')&&!s.startsWith(prefix+'-x-')&&!s.startsWith(prefix+'-y-')&&(key!=='fontSize'||/^text-(?:\[[-.\d]|xs$|sm$|base$|lg$|[2-9]?xl$)/.test(s)); }
-    if(tokens.some(s=>s.includes(':') && matches(s.slice(s.lastIndexOf(':')+1))))reject('Conflicting variant utilities require an explicit variant-specific edit');
-    tokens = tokens.filter(s=>s.includes(':') || !matches(s)); tokens.push(token);
+    const splitTokens = tokens.map(splitNativeWindVariant);
+    if(splitTokens.some(({hasVariant,utility:base})=>hasVariant&&matches(base)))reject('Conflicting variant utilities require an explicit variant-specific edit');
+    tokens = tokens.filter((_,index)=>splitTokens[index].hasVariant||!matches(splitTokens[index].utility)); tokens.push(token);
   }
   const updatedText=text.slice(0,init!.getStart())+valueText(tokens.join(' '),opening.getSourceFile(),init)+text.slice(init!.getEnd());
   return {ok:true,value:{source,expectedHash:source.hash,updatedText,diff:createTwoFilesPatch(source.path,source.path,text,updatedText)}};

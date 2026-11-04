@@ -65,6 +65,8 @@ describe('Pressable state style edits', () => {
     ['import {Pressable} from "react-native";const A=()=> <Pressable style={({pressed})=> pressed ? {...base,gap:4}:{gap:8}}/>;', { kind: 'pressable-state', state: 'pressed' } as EditScope],
     ['import {Pressable} from "react-native";const A=()=> <Pressable style={({pressed})=> pressed ? {gap:getGap()}:{gap:8}}/>;', { kind: 'pressable-state', state: 'pressed' } as EditScope],
     ['import {Pressable} from "react-native";const A=()=> <Pressable style={async ({pressed})=> pressed ? {gap:4}:{gap:8}}/>;', { kind: 'pressable-state', state: 'pressed' } as EditScope],
+    ['import {Pressable} from "react-native";const A=()=> <Pressable style={({pressed = audit()})=> pressed ? {gap:4}:{gap:8}}/>;', { kind: 'pressable-state', state: 'pressed' } as EditScope],
+    ['import {Pressable} from "react-native";const A=()=> <Pressable style={({pressed} = audit())=> pressed ? {gap:4}:{gap:8}}/>;', { kind: 'pressable-state', state: 'pressed' } as EditScope],
     ['import {Pressable} from "react-native";const A=()=> <Pressable style={({pressed})=> { audit(); return pressed ? {gap:4}:{gap:8}; }}/>;', { kind: 'pressable-state', state: 'pressed' } as EditScope],
   ])('rejects unsafe or incorrectly targeted state callbacks: %s', (text, scope) => expectRejected(text, scope));
 
@@ -81,6 +83,18 @@ describe('NativeWind state style utilities', () => {
     expect(updated(text, { fontFamily: 'Avenir Next' }, { kind: 'nativewind' })).toBe('const A=()=> <Text className="text-sm font-bold text-red-500 font-[family-name:Avenir_Next]" />;');
     expect(updated(text, { fontFamily: 'Inter UI' }, { kind: 'nativewind' })).toContain('font-[family-name:Inter_UI]');
     expect(updated(text, { fontFamily: 'Noto_Sans' }, { kind: 'nativewind' })).toContain(String.raw`font-[family-name:Noto\\_Sans]`);
+  });
+
+  it('replaces a typed family once, stays idempotent, and preserves unrelated weight utilities', () => {
+    const text = 'const A=()=> <Text className="font-[family-name:Inter] font-semibold md:font-bold text-sm" />;';
+    const once = updated(text, { fontFamily: 'Open Sans' }, { kind: 'nativewind' });
+    expect(once).toBe('const A=()=> <Text className="font-semibold md:font-bold text-sm font-[family-name:Open_Sans]" />;');
+    expect(updated(once, { fontFamily: 'Open Sans' }, { kind: 'nativewind' })).toBe(once);
+  });
+
+  it('rejects a variant-specific typed family edit without removing its family colon', () => {
+    const text = 'const A=()=> <Text className="font-semibold md:font-[family-name:Inter]" />;';
+    expectRejected(text, { kind: 'nativewind' }, undefined, { fontFamily: 'Open Sans' });
   });
 
   it('maps added font weight, logical spacing, aspect ratio and alignSelf utilities', () => {
