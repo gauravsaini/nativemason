@@ -123,13 +123,15 @@ The server uses stdio. It returns structured results and a `layout-workflow` pro
 | Tool | Purpose |
 | --- | --- |
 | `open_session` | Connect managed Chromium and the selected native runtime. |
+| `import_design_intent` | Propose reviewed constraints from mapped Figma JSON or agent-supplied screenshot annotations. |
+| `inspect_accessibility` | Inspect authored native metadata or browser name, focus estimate, contrast, and RTL evidence. |
 | `load_wireframe_spec` | Load reviewed JSON constraints for the scenario/profile. |
 | `inspect_ui_spatial_graph` | Capture registered elements, source revisions, measurements, constraints, and browser diagnostics. |
 | `find_elements` | Search IDs, roles, kinds, and source paths. |
 | `infer_constraints` | Propose constraints and advisory default findings from a known-good snapshot. |
 | `capture_annotated_overlay` | Return a numbered image and artifact metadata. |
 | `simulate_layout_mutation` | Replace the active candidate with one or multiple RN style patches; `patch: null` resets it. |
-| `suggest_fix` | Trial and rank deterministic alignment/gap candidates without source writes. |
+| `suggest_fix` | Trial bounded gap, alignment, minimum-box, safe-area, explicit overlap, text-fit, and wrapping candidates across requested profiles; never write source. |
 | `commit_rn_ast_patch` | Preview or apply the active passing trial as a source transaction. |
 | `revert_commit` | Hash-check and reverse a recorded transaction; native verification becomes pending. |
 | `verify_native_layout` | Evaluate matching committed revisions on the selected Android/iOS runtime. |
@@ -165,9 +167,11 @@ Preview with `trialId`, `expectedRevisions` from the snapshot, and `mode: "previ
 
 Suggestion scores are ranks within one response; they do not establish native acceptance.
 
-Local overrides preserve existing array, conditional, imported-style, and theme-token expressions. Explicit branch edits select a conditional arm. Shared-definition edits require `scope: { "kind": "shared" }`, static consumer discovery, and measured coverage; unresolved/escaping consumers are rejected. Repeated source instances require `acknowledgeInstances: true` and passing constraints for affected instances.
+Safe, single-consumer literals are rewritten in place using the source’s quote convention. Local overrides preserve other array, conditional, imported-style, and theme-token expressions. Explicit branch edits select a conditional arm. Shared-definition edits require `scope: { "kind": "shared" }`, static consumer discovery, and measured coverage; unresolved/escaping consumers are rejected. Repeated source instances require `acknowledgeInstances: true` and passing constraints for affected instances.
 
-NativeWind source edits use `scope: { "kind": "nativewind", "branch": "alternate" }` for a selected literal conditional arm. Supported literal layout/typography utilities preserve unrelated classes. Dynamic class construction, arbitrary custom plugins, style callbacks, transforms, animations, and arbitrary code evaluation are outside automatic editing.
+NativeWind source edits use `scope: { "kind": "nativewind", "branch": "alternate" }` for a selected literal conditional arm. Supported literal layout/typography utilities preserve unrelated classes. Typed literal font-family utilities are supported alongside bounded layout/typography utilities. Dynamic class construction, arbitrary custom plugins, transforms, animations, and arbitrary code evaluation remain unsupported.
+
+Pressable callbacks support an explicit `scope: { "kind": "pressable-state", "state": "pressed" }` (or `"rest"`) for a synchronous inline callback with a simple `{ pressed }` parameter and two static literal branches. The selected branch must match captured interaction state. Dynamic callbacks, side effects, spreads, and more complex branch expressions are rejected; this is not general callback evaluation.
 
 Transactions preflight source hashes, stage replacements, and persist a recovery journal under ignored `.nativemason/`. Successful completion means every file applied; operating systems do not offer one instantaneous rename across multiple files. Recovery and revert preserve intervening external edits and return conflicts rather than overwriting them.
 
@@ -199,6 +203,12 @@ Native scenario automation additionally requires Maestro and `nativeScenario` co
 
 Native profile runs measure the actual scale/orientation and restore changed settings using a recovery journal. iOS Dynamic Type supports documented scale mappings; arbitrary numerical scales remain unsupported. Chromium font-scale simulation remains unsupported until rendered-text evidence proves it works.
 
+## Design intent and accessibility
+
+CDP provides browser measurements and diagnostics; it does not interpret images. `import_design_intent` accepts Figma auto-layout JSON with an explicit node-to-element map, or screenshot rectangles annotated by your AI agent with the image hash, root crop, and scale. It returns a review-required specification. Review it before calling `load_wireframe_spec`; imported geometry is design intent, not measured app evidence. See the [contract example](packages/contracts/fixtures/design-diagnostics.json).
+
+`inspect_accessibility` separates authored labels/hints and layout direction from browser-computed accessible names, estimated DOM focus order, and provable opaque-color contrast. Missing or complex contrast evidence stays unavailable. These diagnostics do not certify native screen-reader order or native contrast. RTL findings about physical spacing are advisory because that spacing may be intentional.
+
 ## Evidence and limitations
 
 - Coordinates are app-root-relative logical units. Screenshot scaling is separate. Safe-area intersection applies insets once.
@@ -206,6 +216,7 @@ Native profile runs measure the actual scale/orientation and restore changed set
 - Minimum-box constraints describe measured dimensions, not effective touchability. Default overlap findings are advisory until design intent is explicit.
 - Browser clipping, center hit tests, paint order, overflow, and font records remain browser diagnostics. Confirmed clipping, occlusion, or font-load failure blocks apply; uncertainty remains visible.
 - `textFits` requires settled, equivalent native text-probe evidence. Rich/inherited or otherwise unproven text configurations return unavailable. A reported line count alone does not prove text fits.
+- CI publishes downloadable HTML/JSON [visual evidence reports](docs/evidence.md) with measured before/after boxes and raw-run links. The box diagrams are not native screenshots.
 - Generated outputs under ignored `artifacts/` include profiles, source hashes, diffs, receipts, constraints, overlays, and measured browser timings. Device identities belong in local evidence, not compatibility claims.
 
 Apache 2.0. See [LICENSE](LICENSE). npm publication remains subject to release approval and registry access.
