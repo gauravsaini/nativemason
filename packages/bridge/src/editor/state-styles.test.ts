@@ -52,6 +52,12 @@ describe('Pressable state style edits', () => {
     expect(updated(block, { gap: 12 }, { kind: 'pressable-state', state: 'pressed' })).toBe(block.replace('{gap:4}', '{gap:12}'));
   });
 
+  it('keeps the selected arm in place and preserves its JavaScript quote convention', () => {
+    const text = "import {Pressable} from 'react-native';const A=()=> <Pressable style={({pressed}) => pressed ? {fontFamily: 'Old'} : {fontFamily: 'Keep'}}/>;";
+    expect(updated(text, { fontFamily: 'Avenir Next' }, { kind: 'pressable-state', state: 'pressed' }))
+      .toBe(text.replace("fontFamily: 'Old'", "fontFamily: 'Avenir Next'"));
+  });
+
   it.each([
     ['const A=()=> <Pressable style={({pressed})=> pressed ? {gap:4}:{gap:8}}/>;', { kind: 'pressable-state', state: 'pressed' } as EditScope],
     ['import {View} from "react-native";const A=()=> <View style={({pressed})=> pressed ? {gap:4}:{gap:8}}/>;', { kind: 'pressable-state', state: 'pressed' } as EditScope],
@@ -72,8 +78,9 @@ describe('Pressable state style edits', () => {
 describe('NativeWind state style utilities', () => {
   it('writes literal font family names with spaces as safe arbitrary utilities', () => {
     const text = 'const A=()=> <Text className="text-sm font-bold text-red-500" />;';
-    expect(updated(text, { fontFamily: 'Avenir Next' }, { kind: 'nativewind' })).toBe('const A=()=> <Text className="text-sm font-bold text-red-500 font-[Avenir_Next]" />;');
-    expect(updated(text, { fontFamily: 'Inter UI' }, { kind: 'nativewind' })).toContain('font-[Inter_UI]');
+    expect(updated(text, { fontFamily: 'Avenir Next' }, { kind: 'nativewind' })).toBe('const A=()=> <Text className="text-sm font-bold text-red-500 font-[family-name:Avenir_Next]" />;');
+    expect(updated(text, { fontFamily: 'Inter UI' }, { kind: 'nativewind' })).toContain('font-[family-name:Inter_UI]');
+    expect(updated(text, { fontFamily: 'Noto_Sans' }, { kind: 'nativewind' })).toContain(String.raw`font-[family-name:Noto\\_Sans]`);
   });
 
   it('maps added font weight, logical spacing, aspect ratio and alignSelf utilities', () => {

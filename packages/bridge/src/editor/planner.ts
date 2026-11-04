@@ -83,6 +83,55 @@ function rejectRepeatedSite(target: Target): void {
   }
 }
 
+function pressableStateObject(opening: ReturnType<JsxElement['getOpeningElement']> | JsxSelfClosingElement, state: EditScope['state']): ObjectLiteralExpression {
+  if (!state) reject('Pressable callback edits require an explicit pressed or rest state');
+  const tag = opening.getTagNameNode();
+  let supported = false;
+  if (Node.isIdentifier(tag)) {
+    const imported = tag.getSymbol()?.getDeclarations().find(Node.isImportSpecifier);
+    supported = Boolean(imported && ((imported.getName() === 'Pressable' && imported.getImportDeclaration().getModuleSpecifierValue() === 'react-native') || (imported.getName() === 'LayoutPressable' && imported.getImportDeclaration().getModuleSpecifierValue() === '@nativemason/runtime')));
+  } else if (Node.isPropertyAccessExpression(tag)) {
+    const imported = tag.getExpression().getSymbol()?.getDeclarations().find(Node.isNamespaceImport);
+    supported = Boolean(imported && ((tag.getName() === 'Pressable' && imported.getFirstAncestorByKindOrThrow(SyntaxKind.ImportDeclaration).getModuleSpecifierValue() === 'react-native') || (tag.getName() === 'LayoutPressable' && imported.getFirstAncestorByKindOrThrow(SyntaxKind.ImportDeclaration).getModuleSpecifierValue() === '@nativemason/runtime')));
+  }
+  if (!supported) reject('State callback editing requires an imported RN Pressable or LayoutPressable');
+  const attributes = opening.getAttributes().filter(attribute => Node.isJsxAttribute(attribute) && attribute.getNameNode().getText() === 'style');
+  if (attributes.length !== 1 || !Node.isJsxAttribute(attributes[0])) reject('State callback editing requires one style attribute');
+  const initializer = attributes[0].getInitializer();
+  if (!initializer || !Node.isJsxExpression(initializer)) reject('Style callback must be a JSX expression');
+  const expression = initializer.getExpression();
+  if (!expression || (!Node.isArrowFunction(expression) && !Node.isFunctionExpression(expression)) || expression.isAsync() || (Node.isFunctionExpression(expression) && expression.isGenerator())) reject('Only synchronous inline Pressable callbacks are supported');
+  const parameters = expression.getParameters();
+  if (parameters.length !== 1) reject('Pressable callback needs one destructured pressed parameter');
+  const parameter = parameters[0].getNameNode();
+  if (!Node.isObjectBindingPattern(parameter) || parameter.getElements().length !== 1) reject('Pressable callback needs one destructured pressed parameter');
+  const binding = parameter.getElements()[0];
+  const name = binding.getNameNode();
+  if ((binding.getPropertyNameNode()?.getText() ?? name.getText()) !== 'pressed' || !Node.isIdentifier(name) || binding.getInitializer() || binding.getDotDotDotToken()) reject('Unsupported pressed parameter binding');
+  const unwrap = (node: Node): Node => Node.isParenthesizedExpression(node) ? unwrap(node.getExpression()) : node;
+  let body: Node = expression.getBody();
+  if (Node.isBlock(body)) {
+    const statements = body.getStatements();
+    if (statements.length !== 1 || !Node.isReturnStatement(statements[0]) || !statements[0].getExpression()) reject('Callback body must contain only a static conditional return');
+    body = statements[0].getExpression()!;
+  }
+  body = unwrap(body);
+  if (!Node.isConditionalExpression(body)) reject('Callback must return pressed ? literal : literal');
+  let condition = unwrap(body.getCondition());
+  let negated = false;
+  if (Node.isPrefixUnaryExpression(condition) && condition.getOperatorToken() === SyntaxKind.ExclamationToken) {
+    condition = unwrap(condition.getOperand());
+    negated = true;
+  }
+  if (!Node.isIdentifier(condition) || condition.getText() !== name.getText()) reject('Callback condition must be the pressed binding');
+  const whenTrue = unwrap(body.getWhenTrue());
+  const whenFalse = unwrap(body.getWhenFalse());
+  if (!Node.isObjectLiteralExpression(whenTrue) || !Node.isObjectLiteralExpression(whenFalse)) reject('Callback arms must be static inline style literals');
+  validateObject(whenTrue);
+  validateObject(whenFalse);
+  return (state === 'pressed') !== negated ? whenTrue : whenFalse;
+}
+
 /** Pure planning: parses in memory and returns text; never writes the source tree. */
 export function planSourcePatch(sourceText: string, sourceRef: SourceRef, patch: RnStylePatch, scope?: EditScope): Result<EditPlan> {
   const parsedSource = SourceRefSchema.safeParse(sourceRef);
@@ -101,7 +150,7 @@ export function planSourcePatch(sourceText: string, sourceRef: SourceRef, patch:
     const opening = Node.isJsxElement(target) ? target.getOpeningElement() : target;
     if (opening.getAttributes().some(Node.isJsxSpreadAttribute)) reject('JSX spread attributes could override the trial styles');
     if (scope?.kind === 'nativewind') return planNativeWind(sourceText, sourceRef, parsedPatch.data, opening, scope);
-    let foldedObject: ObjectLiteralExpression | undefined;
+    let foldedObject: ObjectLiteralExpression | undefined=scope?.kind==='pressable-state'?pressableStateObject(opening,scope.state):undefined;
     if (scope?.kind === 'local' || scope?.kind === 'branch') {
       const attrs = opening.getAttributes().filter(a => Node.isJsxAttribute(a) && a.getNameNode().getText() === 'style');
       if (attrs.length > 1) reject('Duplicate style attributes are unsupported');
@@ -190,15 +239,22 @@ function planNativeWind(text: string, source: SourceRef, patch: RnStylePatch, op
   if (init && Node.isStringLiteral(init)) classes = init.getLiteralValue();
   else if (init && Node.isJsxExpression(init) && init.getExpression() && Node.isStringLiteral(init.getExpression())) classes = (init.getExpression() as import('ts-morph').StringLiteral).getLiteralValue();
   else reject('Dynamic class construction is unsupported');
-  const utility: Record<string,string> = {width:'w',height:'h',minWidth:'min-w',maxWidth:'max-w',minHeight:'min-h',maxHeight:'max-h',gap:'gap',rowGap:'gap-y',columnGap:'gap-x',padding:'p',paddingHorizontal:'px',paddingVertical:'py',paddingTop:'pt',paddingBottom:'pb',paddingLeft:'pl',paddingRight:'pr',margin:'m',marginHorizontal:'mx',marginVertical:'my',marginTop:'mt',marginBottom:'mb',marginLeft:'ml',marginRight:'mr',fontSize:'text',lineHeight:'leading',top:'top',bottom:'bottom',left:'left',right:'right',flexGrow:'grow',flexShrink:'shrink'};
-  const fixed: Record<string,Record<string,string>> = {flexDirection:{row:'flex-row',column:'flex-col','row-reverse':'flex-row-reverse','column-reverse':'flex-col-reverse'},justifyContent:{'flex-start':'justify-start','flex-end':'justify-end',center:'justify-center','space-between':'justify-between','space-around':'justify-around','space-evenly':'justify-evenly'},alignItems:{'flex-start':'items-start','flex-end':'items-end',center:'items-center',stretch:'items-stretch',baseline:'items-baseline'},flexWrap:{wrap:'flex-wrap',nowrap:'flex-nowrap','wrap-reverse':'flex-wrap-reverse'},position:{relative:'relative',absolute:'absolute',static:'static'}};
+  const utility: Record<string,string> = {width:'w',height:'h',minWidth:'min-w',maxWidth:'max-w',minHeight:'min-h',maxHeight:'max-h',gap:'gap',rowGap:'gap-y',columnGap:'gap-x',padding:'p',paddingHorizontal:'px',paddingVertical:'py',paddingTop:'pt',paddingBottom:'pb',paddingLeft:'pl',paddingRight:'pr',margin:'m',marginHorizontal:'mx',marginVertical:'my',marginTop:'mt',marginBottom:'mb',marginLeft:'ml',marginRight:'mr',fontSize:'text',lineHeight:'leading',top:'top',bottom:'bottom',left:'left',right:'right',flexGrow:'grow',flexShrink:'shrink',paddingStart:'ps',paddingEnd:'pe',marginStart:'ms',marginEnd:'me',start:'start',end:'end',aspectRatio:'aspect',flex:'flex'};
+  const fixed: Record<string,Record<string,string>> = {flexDirection:{row:'flex-row',column:'flex-col','row-reverse':'flex-row-reverse','column-reverse':'flex-col-reverse'},justifyContent:{'flex-start':'justify-start','flex-end':'justify-end',center:'justify-center','space-between':'justify-between','space-around':'justify-around','space-evenly':'justify-evenly'},alignItems:{'flex-start':'items-start','flex-end':'items-end',center:'items-center',stretch:'items-stretch',baseline:'items-baseline'},flexWrap:{wrap:'flex-wrap',nowrap:'flex-nowrap','wrap-reverse':'flex-wrap-reverse'},position:{relative:'relative',absolute:'absolute',static:'static'},alignSelf:{auto:'self-auto','flex-start':'self-start','flex-end':'self-end',center:'self-center',stretch:'self-stretch',baseline:'self-baseline'},alignContent:{'flex-start':'content-start','flex-end':'content-end',center:'content-center',stretch:'content-stretch','space-between':'content-between','space-around':'content-around'},fontWeight:{normal:'font-normal',bold:'font-bold','100':'font-thin','200':'font-extralight','300':'font-light','400':'font-normal','500':'font-medium','600':'font-semibold','700':'font-bold','800':'font-extrabold','900':'font-black'}};
   let tokens = classes.split(/\s+/).filter(Boolean);
   for (const [key,value] of Object.entries(patch)) {
     if (value === undefined) continue;
     let token: string;
     let matches: (s:string)=>boolean;
-    if (fixed[key]) { token = fixed[key][String(value)]; if (!token) reject('Unsupported NativeWind value for '+key); const values = Object.values(fixed[key]); matches = s=>values.includes(s); }
-    else { const prefix=utility[key]; if (!prefix) reject('Unsupported NativeWind property '+key); token=prefix+'-['+String(value)+(typeof value === 'number'&&!['flexGrow','flexShrink'].includes(key)?'px':'')+']'; matches=s=>s.startsWith(prefix+'-')&&!s.startsWith(prefix+'-x-')&&!s.startsWith(prefix+'-y-')&&(key!=='fontSize'||/^text-(?:\[[-.\d]|xs$|sm$|base$|lg$|[2-9]?xl$)/.test(s)); }
+    if(key==='fontFamily'){
+      if(typeof value!=='string'||! /^[A-Za-z][A-Za-z0-9]*(?:[ _-][A-Za-z0-9]+)*$/.test(value))reject('NativeWind font families must be literal names without CSS expressions');
+      const weights=new Set(['thin','extralight','light','normal','medium','semibold','bold','extrabold','black']);
+      const family=(candidate:string)=>/^font-(?:sans|serif|mono)$/.test(candidate)||/^font-\[family-name:[A-Za-z][A-Za-z0-9]*(?:(?:_|\\_|-)[A-Za-z0-9]+)*\]$/.test(candidate);
+      for(const existing of tokens){const base=existing.slice(existing.lastIndexOf(':')+1);if(base.startsWith('font-')&&!weights.has(base.slice(5))&&!/^font-\[\d+\]$/.test(base)&&!family(base))reject('Configured or dynamic font utilities require explicit static theme evidence');}
+      token='font-[family-name:'+value.replaceAll('_','\\_').replaceAll(' ','_')+']';matches=family;
+    }
+    else if (fixed[key]) { token = fixed[key][String(value)]; if (!token) reject('Unsupported NativeWind value for '+key); const values = Object.values(fixed[key]); matches = s=>values.includes(s); }
+    else { const prefix=utility[key]; if (!prefix) reject('Unsupported NativeWind property '+key); token=prefix+'-['+String(value)+(typeof value === 'number'&&!['flexGrow','flexShrink','aspectRatio','flex'].includes(key)?'px':'')+']'; matches=s=>s.startsWith(prefix+'-')&&!s.startsWith(prefix+'-x-')&&!s.startsWith(prefix+'-y-')&&(key!=='fontSize'||/^text-(?:\[[-.\d]|xs$|sm$|base$|lg$|[2-9]?xl$)/.test(s)); }
     if(tokens.some(s=>s.includes(':') && matches(s.slice(s.lastIndexOf(':')+1))))reject('Conflicting variant utilities require an explicit variant-specific edit');
     tokens = tokens.filter(s=>s.includes(':') || !matches(s)); tokens.push(token);
   }
