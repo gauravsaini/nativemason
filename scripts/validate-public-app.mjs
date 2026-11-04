@@ -4,16 +4,28 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { setTimeout } from 'node:timers/promises';
+import { URL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 function options(args) {
   const values = {};
+  const allowed = new Set(['project-root', 'web-url', 'source-path', 'kind', 'ready-timeout-ms', 'output', 'scenario', 'native-port']);
+  const seen = new Set();
   for (let i = 2; i < args.length; i++) {
     const key = args[i];
-    if (key === '--apply-revert') { values.applyRevert = true; continue; }
-    if (!key.startsWith('--') || !args[i + 1]) throw new Error(`Expected a value after ${key}`);
-    values[key.slice(2)] = args[++i];
+    if (key === '--apply-revert') {
+      if (seen.has(key)) throw new Error(`Duplicate option ${key}`);
+      seen.add(key);
+      values.applyRevert = true;
+      continue;
+    }
+    const name = key.startsWith('--') ? key.slice(2) : '';
+    if (!allowed.has(name)) throw new Error(`Unsupported option ${key}`);
+    if (seen.has(key)) throw new Error(`Duplicate option ${key}`);
+    seen.add(key);
+    if (!args[i + 1] || args[i + 1].startsWith('--')) throw new Error(`Expected a value after ${key}`);
+    values[name] = args[++i];
   }
   for (const key of ['project-root', 'web-url', 'source-path']) if (!values[key]) throw new Error(`Missing --${key}`);
   return values;
@@ -21,12 +33,18 @@ function options(args) {
 
 const args = options(process.argv);
 const projectRoot = path.resolve(args['project-root']);
-const sourcePath = args['source-path'].replaceAll('\\', '/');
+const sourcePath = path.posix.normalize(args['source-path'].replaceAll('\\', '/'));
+if (path.posix.isAbsolute(sourcePath) || sourcePath === '..' || sourcePath.startsWith('../')) throw new Error('--source-path must be project-relative');
 const sourceFile = path.resolve(projectRoot, sourcePath);
 if (!sourceFile.startsWith(`${projectRoot}${path.sep}`)) throw new Error('--source-path must stay inside --project-root');
 const kind = args.kind ?? 'Text';
+if (kind !== 'Text') throw new Error('--kind must be Text because this runner applies a fontSize mutation');
+const webUrl = new URL(args['web-url']);
+if (!['http:', 'https:'].includes(webUrl.protocol) || webUrl.username || webUrl.password) throw new Error('--web-url must be an absolute http(s) URL without credentials');
 const deadlineMs = Number(args['ready-timeout-ms'] ?? 30000);
 if (!Number.isInteger(deadlineMs) || deadlineMs < 1 || deadlineMs > 300000) throw new Error('--ready-timeout-ms must be 1..300000');
+const nativePort = Number(args['native-port'] ?? 19500);
+if (!Number.isInteger(nativePort) || nativePort < 1024 || nativePort > 65535) throw new Error('--native-port must be an integer in 1024..65535');
 const outputDir = path.resolve(args.output ?? 'artifacts/public-app-validation/runs');
 const stamp = `${new Date().toISOString().replaceAll(/[-:.]/g, '')}-${randomUUID().slice(0, 8)}`;
 const outputFile = path.join(outputDir, `${path.basename(projectRoot)}-${stamp}.json`);
@@ -52,12 +70,13 @@ let trialId;
 let trialBaselineSnapshotId;
 
 async function call(tool, input) {
-  const output = await client.callTool({ name: tool, arguments: input }, undefined, { timeout: 15000 });
+  const mutating = ['commit_rn_ast_patch', 'simulate_layout_mutation', 'revert_commit'].includes(tool);
+  const output = await client.callTool({ name: tool, arguments: input }, undefined, { timeout: mutating ? 120000 : 15000 });
   if (output.isError) throw new Error(`${tool}: ${JSON.stringify(output.content)}`);
   return output.structuredContent ?? JSON.parse(output.content.find(item => item.type === 'text').text);
 }
 
-async function captureReady(required = true) {
+async function captureReady() {
   const end = Date.now() + deadlineMs;
   let latest;
   while (Date.now() < end) {
@@ -66,7 +85,6 @@ async function captureReady(required = true) {
     if (targets.length) return { ...latest, targets };
     await setTimeout(300);
   }
-  if (!required) return latest;
   throw new Error(`No editable ${kind} node from ${sourcePath} appeared within ${deadlineMs}ms`);
 }
 
@@ -80,8 +98,8 @@ try {
   result.sourceBeforeHash = hash(original);
   await client.connect(transport);
   const opened = await call('open_session', {
-    projectRoot, webUrl: args['web-url'], scenarioId: args.scenario ?? 'public-validation', profile,
-    nativePort: Number(args['native-port'] ?? 19500), nativeToken: 'public-app-validation',
+    projectRoot, webUrl: webUrl.href, scenarioId: args.scenario ?? 'public-validation', profile,
+    nativePort, nativeToken: 'public-app-validation',
   });
   sessionId = opened.sessionId;
   result.steps.push('open');
@@ -172,7 +190,7 @@ try {
     const current = await readFile(sourceFile);
     result.sourceAfterHash = hash(current);
     result.sourceRestored = result.sourceAfterHash === result.sourceBeforeHash;
-    if (result.status === 'passed' && !result.sourceRestored) {
+    if (!result.sourceRestored) {
       result.errors.push('Source hash differs from its starting value; no direct file overwrite was attempted');
       result.status = 'failed';
     }
