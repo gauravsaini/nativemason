@@ -1,7 +1,7 @@
-# Parallel implementation
+# Implementation and release gates
 
-Contracts are frozen in packages/contracts/src. No leaf edits contracts, manifests, lockfile, root config, or another leaf. TypeScript strict, Node 24, yarn 10, zsh. Schemas validate external inputs; BridgeFault provides consistent errors. Runtime/browser/editor READY after contracts build. Integrator owns core/application/MCP/docs/tests. Root integration gates: GATES.md.
+NativeMason uses TypeScript, Node 24 and Yarn 4.18.1. Shared Zod contracts live in `packages/contracts/src`; effectful adapters validate boundary data and return typed faults. The integrator owns contracts, configuration, dependencies, application orchestration and MCP dispatch. Runtime, browser and editor work is reviewed before integration into `main`.
 
-Runtime: IN-FLIGHT. Browser: IN-FLIGHT. Editor: IN-FLIGHT.
+The implementation and follow-up feature work are integrated. Remaining release work is tracked in `tasks/todo.md`: verify the final tree on native targets, complete the clean-checkout README and packed-consumer walkthrough, then squash published history and rerun the gates against that exact commit. npm publication requires approval and registry access.
 
-Build the accepted Expo Android/web bridge with JSON constraints, RN-prop trials, source-hash-checked edits, and measured native acceptance. Native verification is required; never replace it with a mock.
+Android and iOS measurements establish acceptance for their respective platforms. Browser trials and diagnostics provide candidate evidence. Missing native evidence keeps verification incomplete. Development-machine emulators are never launched automatically; use selected devices or CI targets.
