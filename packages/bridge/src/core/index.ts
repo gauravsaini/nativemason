@@ -121,45 +121,95 @@ export function buildOverlayScene(snapshot: SpatialSnapshot, spec: WireframeSpec
 }
 
 
-/** Bounded deterministic proposals; only a browser trial can establish whether they help. */
+/** Bounded deterministic proposals; trial evidence, never predicted acceptance. */
 export function generateFixCandidates(snapshot: SpatialSnapshot, spec: WireframeSpec, limit = 12): readonly SuggestionCandidate[] {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Candidate limit must be an integer from 1 to 100');
   const nodes = new Map(snapshot.nodes.map(node => [node.id, node]));
   const failed = new Set(evaluateConstraints(snapshot, spec).filter(result => result.status === 'fail').map(result => result.constraintId));
   const candidates: SuggestionCandidate[] = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
   const add = (candidate: SuggestionCandidate) => {
-    const key = JSON.stringify(candidate.mutations);
-    if (!seen.has(key)) { seen.add(key); candidates.push(candidate); }
+    if (!candidate.mutations.length || candidate.mutations.some(mutation => !nodes.get(mutation.elementId)?.editable || !RnStylePatchSchema.safeParse(mutation.patch).success)) return;
+    const key = JSON.stringify(candidate.mutations), existing = seen.get(key);
+    if (existing !== undefined) {
+      candidates[existing].constraintIds = [...new Set([...candidates[existing].constraintIds, ...candidate.constraintIds])];
+      return;
+    }
+    seen.set(key, candidates.length); candidates.push(candidate);
+  };
+  const numeric = (value: unknown, fallback = 0): number => typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  const margin = (node: SpatialSnapshot['nodes'][number], axis: 'x'|'y') => numeric(node.styles[axis === 'x' ? 'marginLeft' : 'marginTop'], numeric(node.styles[axis === 'x' ? 'marginHorizontal' : 'marginVertical'], numeric(node.styles.margin)));
+  const offerWrapping = (parent: SpatialSnapshot['nodes'][number] | undefined, constraintId: string) => {
+    if (!parent?.editable || !String(parent.styles.flexDirection ?? 'column').startsWith('row') || parent.rect.width <= 0) return;
+    const children = snapshot.nodes.filter(node => node.parentId === parent.id);
+    const padding = numeric(parent.styles.paddingLeft, numeric(parent.styles.paddingHorizontal, numeric(parent.styles.padding))) + numeric(parent.styles.paddingRight, numeric(parent.styles.paddingHorizontal, numeric(parent.styles.padding)));
+    const availableWidth = Math.max(0, parent.rect.width - padding);
+    const gap = numeric(parent.styles.columnGap, numeric(parent.styles.gap));
+    const totalWidth = children.reduce((total, child) => total + child.rect.width, 0) + Math.max(0, children.length - 1) * gap;
+    if (children.length > 1 && totalWidth > availableWidth) add({mutations:[{elementId:parent.id,patch:{flexWrap:'wrap'}}],reason:'Trial sibling wrapping where measured row contents exceed the available parent width',constraintIds:[constraintId]});
   };
   for (const rule of spec.constraints) {
     if (!failed.has(rule.id)) continue;
-    if (rule.type !== 'gap' && rule.type !== 'align') continue;
     const selected = idsFor(rule).map(id => nodes.get(id));
     if (selected.some(node => !node)) continue;
     const members = selected as NonNullable<typeof selected[number]>[];
     const parentId = members[0].parentId;
     const parent = parentId && members.every(node => node.parentId === parentId) ? nodes.get(parentId) : undefined;
-    if (rule.type === 'gap') {
+    const [first, second] = members;
+    if (rule.type === 'minTouchTarget' && first.editable) {
+      const patch = {minWidth:Math.max(numeric(first.styles.minWidth),rule.width),minHeight:Math.max(numeric(first.styles.minHeight),rule.height),...(typeof first.styles.maxWidth === 'number' && first.styles.maxWidth < rule.width ? {maxWidth:rule.width} : {}),...(typeof first.styles.maxHeight === 'number' && first.styles.maxHeight < rule.height ? {maxHeight:rule.height} : {})};
+      add({mutations:[{elementId:first.id,patch}],reason:'Increase measured layout-box minimum dimensions; effective touchability still needs separate evidence',constraintIds:[rule.id]});
+    } else if (rule.type === 'insideSafeArea') {
+      const safe = safeAreaRect(snapshot.profile);
+      if (first.editable && safe.width > 0 && safe.height > 0) {
+        const width = Math.min(first.rect.width,safe.width), height = Math.min(first.rect.height,safe.height);
+        const targetX = Math.max(safe.x,Math.min(first.rect.x,safe.x+safe.width-width));
+        const targetY = Math.max(safe.y,Math.min(first.rect.y,safe.y+safe.height-height));
+        const dx = targetX-first.rect.x, dy = targetY-first.rect.y;
+        add({mutations:[{elementId:first.id,patch:{...(first.rect.width>safe.width?{width:safe.width}:{}),...(first.rect.height>safe.height?{height:safe.height}:{}),...(dx!==0?{marginLeft:margin(first,'x')+dx}:{}),...(dy!==0?{marginTop:margin(first,'y')+dy}:{})}}],reason:'Trial measured box bounds and spacing within the root-relative safe area',constraintIds:[rule.id]});
+      }
+      offerWrapping(parent || undefined,rule.id);
+    } else if (rule.type === 'disjoint') {
+      if (parent?.editable) for (const direction of ['row','column'] as const) add({mutations:[{elementId:parent.id,patch:{flexDirection:direction,gap:Math.max(0,numeric(parent.styles.gap))}}],reason:'Trial non-overlapping sibling flow for an explicit disjoint constraint',constraintIds:[rule.id]});
+      if (second.editable) for (const axis of ['x','y'] as const) {
+        const property = axis === 'x' ? 'marginLeft' : 'marginTop';
+        const shift = axisValue(first.rect,axis,'end')-axisValue(second.rect,axis,'start');
+        if (shift > 0) add({mutations:[{elementId:second.id,patch:{[property]:margin(second,axis)+shift}}],reason:'Move the second measured box beyond the first on one axis; trial checks regressions',constraintIds:[rule.id]});
+      }
+      offerWrapping(parent || undefined,rule.id);
+    } else if (rule.type === 'textFits') {
+      // A failing textFits result already requires supported, equivalent full-text evidence.
+      // We never infer an authored numberOfLines prop or fabricate font metrics.
+      const evidence = first.textFit!;
+      if (first.editable) {
+        if (evidence.fullHeight! > evidence.availableHeight!) add({mutations:[{elementId:first.id,patch:{height:evidence.fullHeight!,minHeight:evidence.fullHeight!}}],reason:'Trial enough box height for the measured unconstrained text; authored line limits remain unchanged',constraintIds:[rule.id]});
+        if (parent && parent.rect.width > first.rect.width) add({mutations:[{elementId:first.id,patch:{width:parent.rect.width,flexShrink:0}}],reason:'Trial additional measured parent width to reduce text wrapping without shrinking the font',constraintIds:[rule.id]});
+        if (numeric(first.styles.flexShrink) > 0) add({mutations:[{elementId:first.id,patch:{flexShrink:0}}],reason:'Trial preserving text width instead of allowing sibling flex shrink',constraintIds:[rule.id]});
+      }
+      offerWrapping(parent || undefined,rule.id);
+    } else if (rule.type === 'rect' && first.editable) {
+      add({mutations:[{elementId:first.id,patch:{width:rule.target.width,height:rule.target.height,...(first.rect.x!==rule.target.x?{marginLeft:margin(first,'x')+rule.target.x-first.rect.x}:{}),...(first.rect.y!==rule.target.y?{marginTop:margin(first,'y')+rule.target.y-first.rect.y}:{})}}],reason:'Trial explicit target dimensions and measured spacing correction',constraintIds:[rule.id]});
+      offerWrapping(parent || undefined,rule.id);
+    } else if (rule.type === 'gap') {
       if (parent?.editable) {
         const property = rule.axis === 'x' ? 'columnGap' : 'rowGap';
         add({mutations:[{elementId:parent.id,patch:{[property]:rule.value}}],reason:'Set the shared parent spacing on the requested axis',constraintIds:[rule.id]});
         add({mutations:[{elementId:parent.id,patch:{flexDirection:rule.axis === 'x'?'row':'column',[property]:rule.value}}],reason:'Arrange siblings on the requested axis with explicit spacing',constraintIds:[rule.id]});
       }
-      const [first,second] = members;
       if (second.editable) {
         const property = rule.axis === 'x' ? 'marginLeft' : 'marginTop';
-        const current = typeof second.styles[property] === 'number' ? second.styles[property] as number : 0;
         const correction = axisValue(first.rect,rule.axis,'end') + rule.value - axisValue(second.rect,rule.axis,'start');
-        add({mutations:[{elementId:second.id,patch:{[property]:current+correction}}],reason:'Adjust the second element spacing by the measured gap error',constraintIds:[rule.id]});
+        add({mutations:[{elementId:second.id,patch:{[property]:margin(second,rule.axis)+correction}}],reason:'Adjust the second element spacing by the measured gap error',constraintIds:[rule.id]});
       }
-    } else {
+      offerWrapping(parent || undefined,rule.id);
+    } else if (rule.type === 'align') {
       const alignment: 'flex-start'|'flex-end'|'center' = rule.edge === 'start' ? 'flex-start' : rule.edge === 'end' ? 'flex-end' : 'center';
       const crossAxis = parent && (String(parent.styles.flexDirection ?? 'column').startsWith('row') ? 'y':'x');
       if (parent?.editable && crossAxis === rule.axis) add({mutations:[{elementId:parent.id,patch:{alignItems:alignment}}],reason:'Align siblings along their parent cross axis',constraintIds:[rule.id]});
       if (parent?.editable && crossAxis !== rule.axis) add({mutations:[{elementId:parent.id,patch:{flexDirection:rule.axis==='y'?'row':'column',alignItems:alignment}}],reason:'Arrange siblings so the requested alignment is on the parent cross axis',constraintIds:[rule.id]});
       const mutations = members.filter(node => node.editable).map(node => ({elementId:node.id,patch:{alignSelf:alignment}}));
       if (mutations.length && crossAxis === rule.axis) add({mutations,reason:'Align the selected siblings without changing the parent default',constraintIds:[rule.id]});
+      offerWrapping(parent || undefined,rule.id);
     }
     if (candidates.length >= limit) break;
   }

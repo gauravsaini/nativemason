@@ -65,3 +65,49 @@ describe('layout suggestions, inference, text fit, and default rules', () => {
     expect(unstable).toEqual([{ code: 'UNSTABLE_LAYOUT', severity: 'unavailable', elementIds: [], message: 'Default rules require a settled capture' }]);
   });
 });
+
+it('offers minimum box dimensions without claiming effective touchability',()=>{
+ const s=snapshot();s.nodes[0].styles={maxWidth:44,maxHeight:45};
+ const input={...spec,requiredElementIds:['a'],constraints:[{id:'minimum',type:'minTouchTarget' as const,elementId:'a',width:48,height:48,tolerance:0}]};
+ const candidates=generateFixCandidates(s,input);
+ expect(candidates).toHaveLength(1);expect(candidates[0].mutations).toEqual([{elementId:'a',patch:{minWidth:48,minHeight:48,maxWidth:48,maxHeight:48}}]);
+ expect(candidates[0].reason).toContain('effective touchability');
+ s.nodes[0].editable=false;expect(generateFixCandidates(s,input)).toEqual([]);
+});
+
+it('uses root-relative safe bounds and proposes wrapping for measured row overflow',()=>{
+ const s=snapshot();s.nodes[0].rect={x:350,y:30,width:40,height:40};s.nodes[1].rect={x:390,y:30,width:40,height:40};s.nodes[2].rect={x:350,y:24,width:70,height:100};s.nodes[2].styles={flexDirection:'row'};
+ const input={...spec,requiredElementIds:['b'],constraints:[{id:'safe',type:'insideSafeArea' as const,elementId:'b',tolerance:0}]};
+ const before=JSON.stringify(s);const candidates=generateFixCandidates(s,input);
+ expect(candidates.map(candidate=>candidate.mutations)).toContainEqual([{elementId:'b',patch:{marginLeft:-18}}]);
+ expect(candidates.map(candidate=>candidate.mutations)).toContainEqual([{elementId:'parent',patch:{flexWrap:'wrap'}}]);
+ expect(JSON.stringify(s)).toBe(before);
+ expect(generateFixCandidates(s,input,1)).toEqual(candidates.slice(0,1));
+});
+
+it('offers overlap corrections only when disjointness is explicitly required',()=>{
+ const s=snapshot();s.nodes[1].rect.x=20;
+ expect(generateFixCandidates(s,{...spec,requiredElementIds:[],constraints:[]})).toEqual([]);
+ const input={...spec,requiredElementIds:['a','b'],constraints:[{id:'separate',type:'disjoint' as const,first:'a',second:'b',tolerance:0}]};
+ const candidates=generateFixCandidates(s,input);
+ expect(candidates.map(candidate=>candidate.mutations)).toContainEqual([{elementId:'b',patch:{marginLeft:20}}]);
+ expect(candidates.map(candidate=>candidate.mutations)).toContainEqual([{elementId:'parent',patch:{flexDirection:'column',gap:0}}]);
+});
+
+it('uses supported full-text evidence without fabricating a line limit or shrinking typography',()=>{
+ const s=snapshot();s.platform='android';s.nodes[0]={...s.nodes[0],kind:'Text',styles:{flexShrink:1,fontSize:16},textFit:{status:'supported',fullLineCount:3,fullHeight:60,availableHeight:40},authoredTextProps:{numberOfLines:2}};
+ const input={...spec,requiredElementIds:['a'],constraints:[{id:'fit',type:'textFits' as const,elementId:'a',tolerance:0}]};
+ const candidates=generateFixCandidates(s,input);
+ expect(candidates.map(candidate=>candidate.mutations)).toContainEqual([{elementId:'a',patch:{height:60,minHeight:60}}]);
+ expect(candidates.map(candidate=>candidate.mutations)).toContainEqual([{elementId:'a',patch:{width:100,flexShrink:0}}]);
+ expect(candidates.every(candidate=>candidate.mutations.every(mutation=>!('fontSize' in mutation.patch)&&!('numberOfLines' in mutation.patch)))).toBe(true);
+ s.nodes[0].textFit={status:'unavailable',reason:'Probe does not match this text'};expect(generateFixCandidates(s,input)).toEqual([]);
+});
+
+it('merges equivalent proposals across constraints and ignores empty safe areas',()=>{
+ const s=snapshot();const rule={id:'one',type:'minTouchTarget' as const,elementId:'a',width:48,height:48,tolerance:0};
+ const candidates=generateFixCandidates(s,{...spec,requiredElementIds:['a'],constraints:[rule,{...rule,id:'two'}]});
+ expect(candidates).toHaveLength(1);expect(candidates[0].constraintIds).toEqual(['one','two']);
+ s.profile.insets={top:s.profile.window.height,right:0,bottom:0,left:0};
+ expect(generateFixCandidates(s,{...spec,profile:s.profile,requiredElementIds:['a'],constraints:[{id:'safe',type:'insideSafeArea',elementId:'a',tolerance:0}]})).toEqual([]);
+});
