@@ -23,7 +23,7 @@
     "@nativemason/contracts": "workspace:*",
     "@types/babel__core": "^7.20.5",
     "@types/diff": "^7.0.2",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@types/react-test-renderer": "^19.1.0",
