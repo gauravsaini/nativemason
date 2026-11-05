@@ -18,7 +18,7 @@
     "nativemason": "workspace:*",
     "nativewind": "4.2.7",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "react-dom": "19.3.1",
     "react-native": "0.88.1",
     "react-native-reanimated": "4.7.1",
     "react-native-safe-area-context": "5.10.1",
