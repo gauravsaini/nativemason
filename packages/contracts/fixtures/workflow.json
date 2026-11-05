@@ -1,0 +1,46 @@
+{
+  "mutations": [
+    {
+      "elementId": "footer",
+      "patch": {
+        "flexDirection": "row",
+        "gap": 12
+      }
+    }
+  ],
+  "scope": {
+    "kind": "local"
+  },
+  "textFit": {
+    "status": "unavailable",
+    "reason": "Probe disabled"
+  },
+  "target": {
+    "targetId": "fixture-ios",
+    "platform": "ios",
+    "kind": "simulator"
+  },
+  "script": {
+    "scenarioId": "checkout",
+    "reset": [
+      {
+        "type": "navigate",
+        "url": "/checkout"
+      }
+    ],
+    "actions": [
+      {
+        "type": "tap",
+        "elementId": "submit"
+      }
+    ]
+  },
+  "matrixCell": {
+    "targetId": "fixture-ios",
+    "scenarioId": "checkout",
+    "orientation": "portrait",
+    "fontScale": 1,
+    "status": "unavailable",
+    "message": "No runtime connected"
+  }
+}

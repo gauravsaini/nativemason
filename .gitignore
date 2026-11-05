@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.expo/
+artifacts/
+.unlazy/
+.env*
+android/
+ios/
+*.bak
+
+
+.yarn/
+.nativemason/
+.DS_Store
+.unlazy/

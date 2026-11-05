@@ -1,0 +1,49 @@
+{
+  "name": "nativemason",
+  "version": "0.3.0",
+  "type": "module",
+  "bin": {
+    "nativemason": "./bin/nativemason.js",
+    "rn-layout-bridge": "./bin/nativemason.js"
+  },
+  "exports": {
+    ".": "./dist/mcp/index.js",
+    "./babel": "./dist/instrumentation/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/types": "^7.28.5",
+    "@modelcontextprotocol/sdk": "^1.24.0",
+    "@nativemason/contracts": "workspace:*",
+    "diff": "^8.0.2",
+    "playwright": "^1.56.1",
+    "sharp": "^0.35.5",
+    "ts-morph": "^27.0.2",
+    "ws": "^8.18.3"
+  },
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "bin",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gauravsaini/nativemason.git",
+    "directory": "packages/bridge"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "intentional-overlap",
+  "profile": {
+    "window": {
+      "width": 412,
+      "height": 915
+    },
+    "pixelRatio": 2.625,
+    "fontScale": 1,
+    "insets": {
+      "top": 24,
+      "right": 0,
+      "bottom": 24,
+      "left": 0
+    },
+    "root": {
+      "x": 0,
+      "y": 0,
+      "width": 412,
+      "height": 915
+    },
+    "orientation": "portrait"
+  },
+  "requiredElementIds": [
+    "overlap-a",
+    "overlap-b"
+  ],
+  "constraints": [
+    {
+      "id": "back-safe",
+      "type": "insideSafeArea",
+      "elementId": "overlap-a",
+      "tolerance": 2
+    },
+    {
+      "id": "front-safe",
+      "type": "insideSafeArea",
+      "elementId": "overlap-b",
+      "tolerance": 2
+    }
+  ]
+}

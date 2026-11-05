@@ -1,0 +1,124 @@
+{
+  "profiles": [
+    {
+      "id": "phone",
+      "profile": {
+        "window": {
+          "width": 412,
+          "height": 915
+        },
+        "pixelRatio": 2.625,
+        "fontScale": 1,
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 24,
+          "left": 0
+        },
+        "root": {
+          "x": 0,
+          "y": 0,
+          "width": 412,
+          "height": 915
+        },
+        "orientation": "portrait"
+      }
+    }
+  ],
+  "design": {
+    "kind": "figma-auto-layout",
+    "scenarioId": "footer",
+    "profile": {
+      "window": {
+        "width": 412,
+        "height": 915
+      },
+      "pixelRatio": 2.625,
+      "fontScale": 1,
+      "insets": {
+        "top": 24,
+        "right": 0,
+        "bottom": 24,
+        "left": 0
+      },
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 412,
+        "height": 915
+      },
+      "orientation": "portrait"
+    },
+    "frame": {
+      "id": "frame",
+      "type": "FRAME",
+      "absoluteBoundingBox": {
+        "x": 20,
+        "y": 30,
+        "width": 412,
+        "height": 915
+      },
+      "layoutMode": "HORIZONTAL",
+      "itemSpacing": 12,
+      "children": [
+        {
+          "id": "cancel",
+          "type": "FRAME",
+          "absoluteBoundingBox": {
+            "x": 36,
+            "y": 100,
+            "width": 160,
+            "height": 48
+          }
+        },
+        {
+          "id": "submit",
+          "type": "FRAME",
+          "absoluteBoundingBox": {
+            "x": 208,
+            "y": 100,
+            "width": 160,
+            "height": 48
+          }
+        }
+      ]
+    },
+    "elementMap": {
+      "cancel": "cancel",
+      "submit": "submit"
+    }
+  },
+  "accessibility": {
+    "direction": "unknown",
+    "browser": {
+      "name": null,
+      "focusOrder": null,
+      "focusOrderSource": "dom-sequential-estimate",
+      "contrast": {
+        "status": "unavailable",
+        "reason": "No proven opaque background"
+      }
+    }
+  },
+  "nativePending": {
+    "request": {
+      "sessionId": "session",
+      "trialId": "trial",
+      "mode": "preview",
+      "allowNativePending": true
+    },
+    "suggestionRequest": {
+      "sessionId": "session",
+      "baselineSnapshotId": "baseline",
+      "includeNativeEvidence": true
+    },
+    "nativeBaseline": {
+      "status": "unavailable",
+      "results": [],
+      "error": {
+        "code": "NATIVE_DISCONNECTED",
+        "message": "Connect a matching runtime to seed native text-fit candidates"
+      }
+    }
+  }
+}

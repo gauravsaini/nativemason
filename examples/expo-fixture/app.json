@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "NativeMason Fixture",
+    "slug": "rn-layout-bridge-fixture",
+    "version": "0.1.0",
+    "orientation": "default",
+    "android": {
+      "package": "dev.rnlayout.fixture"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "ios": {
+      "bundleIdentifier": "dev.nativemason.fixture"
+    },
+    "scheme": "nativemason-fixture",
+    "userInterfaceStyle": "automatic"
+  }
+}

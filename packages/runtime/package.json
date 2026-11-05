@@ -1,0 +1,57 @@
+{
+  "name": "@nativemason/runtime",
+  "version": "0.3.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./nativewind": {
+      "types": "./dist/nativewind.d.ts",
+      "default": "./dist/nativewind.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@nativemason/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "nativewind": "^4.2.7",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.10.1"
+  },
+  "devDependencies": {
+    "nativewind": "4.2.7",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.10.1",
+    "tailwindcss": "3.4.17",
+    "typescript": "^5.9.3"
+  },
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "bin",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gauravsaini/nativemason.git",
+    "directory": "packages/runtime"
+  },
+  "peerDependenciesMeta": {
+    "nativewind": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

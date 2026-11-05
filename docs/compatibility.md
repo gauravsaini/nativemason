@@ -1,0 +1,38 @@
+# Compatibility and verification
+
+NativeMason 0.3 uses a pinned Expo development fixture. Install `yarn.lock` with `yarn install --immutable`; package dependency ranges do not broaden the verified matrix.
+
+| Component | Fixture/toolchain |
+| --- | --- |
+| Node.js | 24 |
+| Yarn | 4.18.1, `nodeLinker: node-modules` |
+| Expo | 58.0.22 |
+| React / React DOM | 19.3.0 |
+| React Native | 0.88.1 |
+| React Native Web | 0.21.4 |
+| Safe-area context | 5.10.1 |
+| NativeWind / Tailwind | 4.2.7 / 3.4.17 |
+| Reanimated / Worklets | 4.7.1 / 0.13.0, from Expo's bundled-module matrix |
+| Playwright | Locked version and its matching Chromium |
+
+Public package names are `nativemason`, `@nativemason/runtime`, and `@nativemason/contracts`. Use matching versions from npm or local tarballs. The root workspace is private. Exported contract schemas use Zod 4; schema composition requires Zod 4.
+
+## What the checks establish
+
+- Unit tests cover schemas, deterministic geometry, style planning, transaction recovery/revert, callbacks/refs, native protocol, and scenario-setting restoration.
+- Browser integration runs real Expo/Chromium/MCP workflows, including source changes and reloads. Browser-only findings do not establish native correctness.
+- Physical Android acceptance records matching committed web/native revisions and constraints, then verifies an explicit revert. Profiles and identities remain in ignored local evidence; compatibility claims are platform-level.
+- CI defines Android emulator acceptance on Linux and iOS simulator acceptance on macOS. A configured job is not passing evidence: inspect its artifacts and conclusion before release.
+- Additional app versions, devices, scenarios, font scales, and third-party integrations need their own measurements.
+
+## Supported boundaries
+
+Measurement targets and automation targets differ. Both Android and iOS runtimes accept physical-device measurements from compatible Expo Go or development builds. Physical iOS needs explicit LAN pairing (`nativeHost`) and manual scenario activation or registered app hooks; Maestro UI actions and automatic iOS profile changes require a simulator. The iOS fixture helper/CI uses a simulator development build. Physical iOS Expo Go has not been acceptance-tested here; runtime compatibility depends on the consumer SDK and native libraries. See [iOS device setup](ios-device.md).
+
+Development instrumentation covers imported RN View, Text, Pressable, TextInput, ScrollView, and Image hosts in project JS/TS modules. Standard Expo App and Expo Router roots can be configured by `init`. Explicit runtime components remain supported. Production and dependency modules are excluded.
+
+Styles support scoped local overrides of arrays/conditionals/imports/theme expressions, statically discoverable shared definitions, and a bounded NativeWind v4 literal-utility vocabulary. Bounded static Pressable callback branches support explicit pressed/rest scope; other callback forms, dynamic class construction, unresolved shared consumers, transforms, animations, and arbitrary evaluation are rejected. Shared apply requires measured coverage for discovered consumers. Unknown scenario coverage is not inferred.
+
+Native text fitting requires an enabled equivalent probe, explicit supported typography, settled measurements, and a current text/style/width/font-scale signature. Nested/rich or otherwise unproven cases remain unavailable. Chromium font scaling remains unsupported. Android and iOS Simulator font-scale mutations restore settings through a recovery journal; simulator numeric scales are limited to supported Dynamic Type mappings. Physical iOS reads the current profile and requires manual setting changes.
+
+Native scenarios use Maestro for device UI interactions and explicitly registered runtime hooks for app state. Native exact scroll offsets and unsupported keyboard operations report errors; use explicit swipe gestures and input taps. Design imports accept mapped Figma auto-layout JSON or agent-supplied screenshot annotations for review; image interpretation remains external. External Chrome attachment, bare RN integration, WebViews/Expo DOM, and custom native modules are outside this release.

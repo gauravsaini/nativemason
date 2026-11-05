@@ -1,0 +1,29 @@
+{
+  "name": "@nativemason/expo-fixture",
+  "private": true,
+  "version": "0.1.0",
+  "main": "index.ts",
+  "scripts": {
+    "web": "expo start --web --port 8081",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "dependencies": {
+    "@babel/core": "^7.28.5",
+    "@expo/metro-runtime": "58.0.16",
+    "@nativemason/contracts": "workspace:*",
+    "@nativemason/runtime": "workspace:*",
+    "@react-native/metro-config": "0.88.1",
+    "expo": "58.0.22",
+    "nativemason": "workspace:*",
+    "nativewind": "4.2.7",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-reanimated": "4.7.1",
+    "react-native-safe-area-context": "5.10.1",
+    "react-native-web": "0.21.4",
+    "react-native-worklets": "0.13.0",
+    "tailwindcss": "3.4.17"
+  }
+}

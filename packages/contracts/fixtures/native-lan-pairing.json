@@ -1,0 +1,6 @@
+{
+  "nativeHost": "192.168.1.20",
+  "nativePort": 19482,
+  "nativeToken": "fixture-pairing-token-at-least-16",
+  "nativeTarget": { "targetId": "ios-phone", "platform": "ios", "kind": "physical" }
+}
