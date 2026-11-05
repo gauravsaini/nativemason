@@ -21,13 +21,13 @@
   },
   "peerDependencies": {
     "nativewind": "^4.2.7",
-    "react": "19.3.0",
+    "react": "19.3.1",
     "react-native": "0.88.1",
     "react-native-safe-area-context": "~5.10.1"
   },
   "devDependencies": {
     "nativewind": "4.2.7",
-    "react": "19.3.0",
+    "react": "19.3.1",
     "react-native": "0.88.1",
     "react-native-safe-area-context": "~5.10.1",
     "tailwindcss": "3.4.17",

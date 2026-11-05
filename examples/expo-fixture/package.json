@@ -17,7 +17,7 @@
     "expo": "58.0.22",
     "nativemason": "workspace:*",
     "nativewind": "4.2.7",
-    "react": "19.3.0",
+    "react": "19.3.1",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
     "react-native-reanimated": "4.7.1",
