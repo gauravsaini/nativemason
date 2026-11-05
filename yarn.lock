@@ -6566,7 +6566,7 @@ __metadata:
     playwright: "npm:^1.56.1"
     react: "npm:19.3.0"
     react-dom: "npm:19.3.0"
-    react-test-renderer: "npm:19.3.0"
+    react-test-renderer: "npm:19.3.1"
     tsx: "npm:^4.20.6"
     typescript: "npm:^5.9.3"
     typescript-eslint: "npm:^8.46.0"
@@ -7296,7 +7296,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-is@npm:^19.3.0":
+"react-is@npm:^19.3.1":
   version: 19.3.1
   resolution: "react-is@npm:19.3.1"
   checksum: 10c0/428e02d986d56f1859c57756084489f6d2900fd686905003c405b32f1168738b78772bfa4bb6c706f5ac821199171522c28bf6434281f524f901459390a19606
@@ -7461,15 +7461,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-test-renderer@npm:19.3.0":
-  version: 19.3.0
-  resolution: "react-test-renderer@npm:19.3.0"
+"react-test-renderer@npm:19.3.1":
+  version: 19.3.1
+  resolution: "react-test-renderer@npm:19.3.1"
   dependencies:
-    react-is: "npm:^19.3.0"
+    react-is: "npm:^19.3.1"
     scheduler: "npm:^0.28.0"
   peerDependencies:
-    react: ^19.3.0
-  checksum: 10c0/40b64160bbc42d72e9ab60327cc3646865656f314a28a31a7496460d19a1a1af89c0785573010fe758f2deeca362185cec6304b15e22c4770fde3736f56716fe
+    react: ^19.3.1
+  checksum: 10c0/5c777dfad9c35011f0618ff854a3bc755e2f4ff168573cc91fea784b3c156258fca57e900f13ed9bdbb7fb144e4a2d82efe05c6abba2359675f0f6a91523b511
   languageName: node
   linkType: hard
 
