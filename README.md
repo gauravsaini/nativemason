@@ -41,7 +41,9 @@ Integrate NativeMason into this Expo React Native app and verify one real UI flo
     artifact locations. Keep collection, probes, and networking disabled in production.
 ```
 
-**Status:** 0.2.0 release preparation. Packages are not yet published to npm. Use the checkout or packed packages below. Publishing follows native acceptance and explicit release approval.
+**Status:** 0.3.0 security release prepared; the current npm registry version remains 0.2.0. Version 0.3.0 is not yet published. Use the checkout or packed packages below. Publishing follows native acceptance and explicit release approval.
+
+**Migration:** Exported contract schemas now use Zod 4. Consumers composing them with other schemas must use Zod 4.
 
 ## Build the checkout
 
@@ -76,18 +78,18 @@ Build and pack from this checkout:
 
 ```sh
 mkdir -p artifacts/packs
-yarn workspace @nativemason/contracts pack --out ../../artifacts/packs/nativemason-contracts-0.2.0.tgz
-yarn workspace @nativemason/runtime pack --out ../../artifacts/packs/nativemason-runtime-0.2.0.tgz
-yarn workspace nativemason pack --out ../../artifacts/packs/nativemason-0.2.0.tgz
+yarn workspace @nativemason/contracts pack --out ../../artifacts/packs/nativemason-contracts-0.3.0.tgz
+yarn workspace @nativemason/runtime pack --out ../../artifacts/packs/nativemason-runtime-0.3.0.tgz
+yarn workspace nativemason pack --out ../../artifacts/packs/nativemason-0.3.0.tgz
 ```
 
 In a separate Expo app, install all three tarballs together. Replace `/absolute/path/to/nativemason` with your checkout:
 
 ```sh
 npm install \
-  /absolute/path/to/nativemason/artifacts/packs/nativemason-contracts-0.2.0.tgz \
-  /absolute/path/to/nativemason/artifacts/packs/nativemason-runtime-0.2.0.tgz \
-  /absolute/path/to/nativemason/artifacts/packs/nativemason-0.2.0.tgz
+  /absolute/path/to/nativemason/artifacts/packs/nativemason-contracts-0.3.0.tgz \
+  /absolute/path/to/nativemason/artifacts/packs/nativemason-runtime-0.3.0.tgz \
+  /absolute/path/to/nativemason/artifacts/packs/nativemason-0.3.0.tgz
 npx --no-install nativemason init --dry-run
 npx --no-install nativemason init
 ```

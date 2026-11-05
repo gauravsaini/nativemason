@@ -12,7 +12,7 @@ async function main(){
   try{
     const names=['@nativemason/contracts','@nativemason/runtime','nativemason'];const tarballs:string[]=[];
     for(const name of names){
-      const output=path.join(packs,name.replace('@','').replace('/','-')+'-0.2.0.tgz');
+      const output=path.join(packs,name.replace('@','').replace('/','-')+'-0.3.0.tgz');
       await exec('yarn',['workspace',name,'pack','--out',output],{cwd:root,maxBuffer:4*1024*1024});tarballs.push(output);
       const files=(await exec('tar',['-tzf',output])).stdout.split('\n');
       assert.ok(files.some(file=>file==='package/LICENSE'),'Package must include its license');

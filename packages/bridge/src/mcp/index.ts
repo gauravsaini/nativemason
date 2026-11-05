@@ -20,7 +20,7 @@ const descriptions:Record<ToolName,string>={
  close_session:'Close Chromium and native transport and discard session state.',
 };
 export function createMcpServer(application=new BridgeApplication()):McpServer {
- const server=new McpServer({name:'nativemason',version:'0.2.0'});
+ const server=new McpServer({name:'nativemason',version:'0.3.0'});
  server.registerPrompt('layout-workflow',{description:'Measured layout correction workflow'},async()=>({messages:[{role:'user',content:{type:'text',text:'Open a session for the same named scenario on web and native. Inspect measurements and diagnostics; load or infer and review constraints. Use suggest_fix or batch trials, preview the transaction and blast radius, then apply only an accepted candidate. Verify matching committed revisions on the selected native target. Report unavailable evidence; use revert_commit when requested and verify the revert. Close the session.'}}]}));
  for(const name of Object.keys(ToolSchemas) as ToolName[]) {
   server.registerTool(name,{description:descriptions[name],inputSchema:ToolSchemas[name].shape,outputSchema:ToolMcpOutputSchemas[name]},async (input:unknown)=>{

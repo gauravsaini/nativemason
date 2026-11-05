@@ -1,20 +1,20 @@
 # Install into a separate Expo project
 
-The three public packages are not yet published. Build and pack from the checkout using Node 24 and Yarn 4.18.1:
+The three public packages have 0.2.0 on npm; the prepared 0.3.0 security release is not yet published. Build and pack from the checkout using Node 24 and Yarn 4.18.1:
 
 ```sh
 yarn install --immutable
 yarn build
 mkdir -p artifacts/packs
-yarn workspace @nativemason/contracts pack --out ../../artifacts/packs/nativemason-contracts-0.2.0.tgz
-yarn workspace @nativemason/runtime pack --out ../../artifacts/packs/nativemason-runtime-0.2.0.tgz
-yarn workspace nativemason pack --out ../../artifacts/packs/nativemason-0.2.0.tgz
+yarn workspace @nativemason/contracts pack --out ../../artifacts/packs/nativemason-contracts-0.3.0.tgz
+yarn workspace @nativemason/runtime pack --out ../../artifacts/packs/nativemason-runtime-0.3.0.tgz
+yarn workspace nativemason pack --out ../../artifacts/packs/nativemason-0.3.0.tgz
 ```
 
 Install all three tarballs together in the consumer, using absolute paths:
 
 ```sh
-npm install /checkout/artifacts/packs/nativemason-contracts-0.2.0.tgz /checkout/artifacts/packs/nativemason-runtime-0.2.0.tgz /checkout/artifacts/packs/nativemason-0.2.0.tgz
+npm install /checkout/artifacts/packs/nativemason-contracts-0.3.0.tgz /checkout/artifacts/packs/nativemason-runtime-0.3.0.tgz /checkout/artifacts/packs/nativemason-0.3.0.tgz
 npx --no-install nativemason init --dry-run
 npx --no-install nativemason init
 ```

@@ -1,6 +1,6 @@
 {
   "name": "@nativemason/contracts",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "exports": {
     ".": {
@@ -12,7 +12,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "zod": "^3.25.76"
+    "zod": "^4.6.6"
   },
   "license": "Apache-2.0",
   "files": [

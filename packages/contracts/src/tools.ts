@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { DeviceProfileSchema,RectSchema } from './geometry.js';
 import { WireframeSpecSchema,ConstraintResultSchema } from './constraints.js';
 import { RnStylePatchSchema } from './styles.js';
-import { SpatialSnapshotSchema,SpatialDeltaSchema,ProfileOverridesSchema,WebDiagnosticsSchema } from './graph.js';
+import { SpatialSnapshotSchema,SpatialDeltaSchema,SpatialNodeSchema,ProfileOverridesSchema,WebDiagnosticsSchema } from './graph.js';
 import { CommitReceiptSchema,EditPlanSchema,BridgeErrorSchema } from './source.js';
 const session={sessionId:z.string().min(1)};
 export const ToolSchemas={
@@ -34,6 +34,8 @@ export type Trial=z.infer<typeof TrialSchema>;
 export const NativeVerificationSchema=z.object({receipt:CommitReceiptSchema,snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),delta:SpatialDeltaSchema,passed:z.boolean()}).strict();
 export type NativeVerification=z.infer<typeof NativeVerificationSchema>;
 
+const CommitRnAstPatchOutputBaseSchema=z.object({plan:EditPlanSchema.optional(),transactionPlan:TransactionPlanSchema.optional(),receipt:CommitReceiptSchema.optional(),snapshot:SpatialSnapshotSchema.nullable().optional(),results:z.array(ConstraintResultSchema).optional(),webStatus:z.enum(['passed','failed','reload-timeout','capture-failed','native-checks-pending','interaction-pending']).optional(),nativeStatus:z.literal('pending').optional(),pendingNativeConstraints:z.array(z.string()).optional(),pendingInteractions:z.array(InteractionRequirementSchema).optional(),message:z.string().optional()}).strict();
+
 /** Every JSON tool result is validated here before reaching an MCP client. */
 export const ToolOutputSchemas={
  open_session:z.object({sessionId:z.string(),native:z.object({port:z.number().int(),token:z.string()}).strict(),capabilities:z.object({trial:z.literal('rn-style-props'),sourceEdits:z.enum(['static-local-styles','scoped-transactions']),batchTrials:z.boolean().optional(),nativePlatforms:z.array(z.enum(['android','ios'])).optional(),nativeScenario:z.boolean().optional(),nativeVerification:z.literal('required')}).strict()}).strict(),
@@ -43,10 +45,10 @@ export const ToolOutputSchemas={
  inspect_ui_spatial_graph:z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),webDiagnostics:WebDiagnosticsSchema.optional()}).strict(),
  capture_annotated_overlay:z.object({image:z.string(),mimeType:z.literal('image/png'),artifact:z.string(),marks:z.array(z.object({label:z.number(),id:z.string(),rect:RectSchema}).strict())}).strict(),
  simulate_layout_mutation:z.union([TrialSchema.extend({webDiagnostics:WebDiagnosticsSchema.optional()}),z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),webDiagnostics:WebDiagnosticsSchema.optional()}).strict()]),
- commit_rn_ast_patch:z.object({plan:EditPlanSchema.optional(),transactionPlan:TransactionPlanSchema.optional(),receipt:CommitReceiptSchema.optional(),snapshot:SpatialSnapshotSchema.nullable().optional(),results:z.array(ConstraintResultSchema).optional(),webStatus:z.enum(['passed','failed','reload-timeout','capture-failed','native-checks-pending','interaction-pending']).optional(),nativeStatus:z.literal('pending').optional(),pendingNativeConstraints:z.array(z.string()).optional(),pendingInteractions:z.array(InteractionRequirementSchema).optional(),message:z.string().optional()}).strict().refine(o=>(o.plan!==undefined)!==(o.receipt!==undefined),'Result must contain either a preview plan or an applied receipt'),
+ commit_rn_ast_patch:CommitRnAstPatchOutputBaseSchema.refine(o=>(o.plan!==undefined)!==(o.receipt!==undefined),'Result must contain either a preview plan or an applied receipt'),
  verify_native_layout:NativeVerificationSchema,
  revert_commit:z.object({receipt:CommitReceiptSchema,snapshot:SpatialSnapshotSchema.nullable(),nativeStatus:z.literal('pending')}).strict(),
- find_elements:z.object({nodes:z.array(SpatialSnapshotSchema.innerType().shape.nodes.element)}).strict(),
+ find_elements:z.object({nodes:z.array(SpatialNodeSchema)}).strict(),
  infer_constraints:z.object({spec:WireframeSpecSchema,findings:z.array(RuleFindingSchema)}).strict(),
  suggest_fix:z.object({candidates:z.array(z.object({mutations:z.array(LayoutMutationSchema),reason:z.string(),constraintIds:z.array(z.string()),results:z.array(ConstraintResultSchema),score:z.number(),warnings:z.number(),profiles:z.array(SuggestionProfileEvidenceSchema).optional(),error:BridgeErrorSchema.optional()})),baselineSnapshotId:z.string(),baselines:z.array(SuggestionProfileEvidenceSchema).optional(),nativeBaseline:NativeSuggestionEvidenceSchema.optional()}).strict(),
  run_scenario:z.object({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema)}).strict(),
@@ -56,4 +58,4 @@ export const ToolOutputSchemas={
 export type ToolOutput<K extends ToolName>=z.infer<(typeof ToolOutputSchemas)[K]>;
 /** MCP's object-root output schema describes both existing trial and reset wire shapes.
  * ToolOutputSchemas still enforces the complete union before any response is sent. */
-export const ToolMcpOutputSchemas={...ToolOutputSchemas,commit_rn_ast_patch:ToolOutputSchemas.commit_rn_ast_patch.innerType(),simulate_layout_mutation:TrialSchema.partial().extend({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),webDiagnostics:WebDiagnosticsSchema.optional()}).strict()} as const;
+export const ToolMcpOutputSchemas={...ToolOutputSchemas,commit_rn_ast_patch:CommitRnAstPatchOutputBaseSchema,simulate_layout_mutation:TrialSchema.partial().extend({snapshot:SpatialSnapshotSchema,results:z.array(ConstraintResultSchema),webDiagnostics:WebDiagnosticsSchema.optional()}).strict()} as const;
