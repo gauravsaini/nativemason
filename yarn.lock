@@ -2143,7 +2143,7 @@ __metadata:
     react-dom: "npm:19.3.0"
     react-native: "npm:0.88.1"
     react-native-reanimated: "npm:4.7.1"
-    react-native-safe-area-context: "npm:5.10.1"
+    react-native-safe-area-context: "npm:5.11.0"
     react-native-web: "npm:0.21.4"
     react-native-worklets: "npm:0.13.0"
     tailwindcss: "npm:3.4.17"
@@ -2158,14 +2158,14 @@ __metadata:
     nativewind: "npm:4.2.7"
     react: "npm:19.3.0"
     react-native: "npm:0.88.1"
-    react-native-safe-area-context: "npm:~5.10.1"
+    react-native-safe-area-context: "npm:~5.11.0"
     tailwindcss: "npm:3.4.17"
     typescript: "npm:^5.9.3"
   peerDependencies:
     nativewind: ^4.2.7
     react: 19.3.0
     react-native: 0.88.1
-    react-native-safe-area-context: ~5.10.1
+    react-native-safe-area-context: ~5.11.0
   peerDependenciesMeta:
     nativewind:
       optional: true
@@ -7351,13 +7351,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-safe-area-context@npm:5.10.1, react-native-safe-area-context@npm:~5.10.1":
-  version: 5.10.1
-  resolution: "react-native-safe-area-context@npm:5.10.1"
+"react-native-safe-area-context@npm:5.11.0, react-native-safe-area-context@npm:~5.11.0":
+  version: 5.11.0
+  resolution: "react-native-safe-area-context@npm:5.11.0"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/8aebfa832d483e385f9848b5ea92ce3e525a44cad5b3b363b5b190c1f559f3f01176f745ff7a2ad0e2191cb3fb2d0be26c8650956640f086562440c869713ec5
+  checksum: 10c0/b36141e17a5cf307a2eb1720b65c161035ac13e0c2e62bdac4dc2639346e9721649f9ae8c0e7a66a8f525cb1c580b3ea73f892167a97df8fea6cd80212703e00
   languageName: node
   linkType: hard
 
