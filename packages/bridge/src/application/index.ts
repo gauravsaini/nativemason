@@ -205,9 +205,10 @@ export class BridgeApplication {
   }
   private async open(input:ToolInput<'open_session'>) {
     if((input.nativePort===undefined)!==(input.nativeToken===undefined))throw new BridgeFault('INVALID_INPUT','nativePort and nativeToken must be supplied together');
+    if(input.nativeHost&&!input.nativeHost.startsWith('127.')&&!input.nativeToken)throw new BridgeFault('INVALID_INPUT','LAN pairing requires explicit nativePort and nativeToken');
     const id=randomUUID(),token=input.nativeToken??randomUUID(),port=input.nativePort??19482;
     const source=this.deps.source(input.projectRoot);
-    const native=await this.deps.native({port,token,scenarioId:input.scenarioId,sessionId:id,targetId:input.nativeTarget?.targetId,platform:input.nativeTarget?.platform});
+    const native=await this.deps.native({port,token,host:input.nativeHost,scenarioId:input.scenarioId,sessionId:id,targetId:input.nativeTarget?.targetId,platform:input.nativeTarget?.platform});
     let browser:BrowserPort;
     try {browser=await this.deps.browser({...input,sessionId:id});}catch(e){await native.close();throw e;}
     let nativeScenario:ScenarioPort|undefined,nativeProfiles:NativeProfilePort|undefined;

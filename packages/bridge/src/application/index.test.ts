@@ -7,6 +7,17 @@ import { BridgeFault,type BrowserPort,type SourceRef,type SpatialSnapshot,type C
 import fixture from '../../../contracts/fixtures/footer.json';
 import { BridgeApplication } from './index.js';
 const hash=(text:string)=>createHash('sha256').update(text).digest('hex');
+it('requires explicit LAN pairing and forwards the selected listener to the native adapter',async()=>{
+ const h=harness(),native=vi.fn(async()=>h.native);
+ const app=new BridgeApplication({browser:async()=>h.browser,native,source:()=>h.source});
+ const input={projectRoot:'/tmp',webUrl:'http://localhost:18082',scenarioId:'broken-footer',profile:h.spec.profile,nativeHost:'192.168.1.20',nativeTarget:{targetId:'ios-phone',platform:'ios',kind:'physical'}};
+ try{
+  await expect(app.execute('open_session',input)).rejects.toMatchObject({code:'INVALID_INPUT'});
+  expect(native).not.toHaveBeenCalled();
+  await app.execute('open_session',{...input,nativePort:19482,nativeToken:'test-token-at-least-16'});
+  expect(native).toHaveBeenCalledWith(expect.objectContaining({host:'192.168.1.20',platform:'ios',targetId:'ios-phone',port:19482,token:'test-token-at-least-16'}));
+ }finally{await app.close();}
+});
 function harness(artifactsRoot='/tmp/nativemason-app-tests') {
  let text=`import { LayoutView } from '@nativemason/runtime';\nconst app = <LayoutView layoutId="footer" style={{ flexDirection: 'column' }} />;`;const originalText=text;
  let override=false,sessionId='',failCapture=false,nativeBroken=false,nativeFit=false,nativeFitPass=false,shift=0;

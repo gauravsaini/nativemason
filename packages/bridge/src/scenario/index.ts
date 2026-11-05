@@ -78,6 +78,7 @@ export function createNativeScenarioPort(options:NativeScenarioOptions):Scenario
     async run(script:ScenarioScript){
       if(closed)throw new BridgeFault('SESSION_NOT_FOUND','Native scenario driver is closed');
       const parsed=ScenarioScriptSchema.parse(script);
+      if(options.target.platform==='ios'&&options.target.kind==='physical'&&[...parsed.reset,...parsed.actions].some(action=>action.type!=='hook'))throw new BridgeFault('UNSUPPORTED_ACTION','Physical iOS supports registered app hooks; Maestro UI actions require an iOS simulator. Navigate manually before capture.');
       // Reject unsupported static actions before executing earlier hooks or UI actions.
       for(const action of [...parsed.reset,...parsed.actions]){
         if(action.type==='hook'&&!options.runHook)throw new BridgeFault('UNSUPPORTED_ACTION','Native application hooks require an explicitly registered runtime hook transport');
@@ -167,6 +168,14 @@ export function createNativeProfilePort(options:NativeScenarioOptions):NativePro
   return {
     recover:()=>recover(),
     async withProfile(profile,work){
+      if(options.target.platform==='ios'&&options.target.kind==='physical'){
+        if(profile.fontScale!==undefined||profile.orientation!==undefined){
+          if(!options.readProfile)throw new BridgeFault('UNSUPPORTED_PROFILE','Physical iOS profile checks require runtime measurements');
+          const actual=await options.readProfile();
+          if((profile.fontScale!==undefined&&Math.abs(actual.fontScale-profile.fontScale)>0.01)||(profile.orientation!==undefined&&actual.orientation!==profile.orientation))throw new BridgeFault('UNSUPPORTED_PROFILE','Change font scale or orientation manually on the iOS device, then capture its measured profile');
+        }
+        return work();
+      }
       if(active||profileOperations.has(journal))throw new BridgeFault('RECOVERY_CONFLICT','Native profile operations must be serialized');
       active=true;profileOperations.add(journal);
       let saved:SavedSettings|undefined;

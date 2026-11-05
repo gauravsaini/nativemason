@@ -195,7 +195,9 @@ export EXPO_PUBLIC_LAYOUT_TARGET_KIND=physical
 export EXPO_PUBLIC_LAYOUT_SCENARIO=broken-footer
 ```
 
-Use the same target ID and token in `open_session`. Android uses ADB reverse for Metro and the bridge port. iOS simulator apps connect to the host loopback address. A compatible Expo Go installation or development build must contain the instrumented development bundle; release builds cannot provide measurements.
+Use the same target ID and token in `open_session`. Android uses ADB reverse for Metro and the bridge port. iOS Simulator apps can use host loopback. **A physical iPhone can run the instrumented app in compatible Expo Go or a development build:** use the computer's private LAN IPv4 address for both Metro and the native bridge, and set `open_session.nativeHost` to that address. The bridge defaults to loopback; changing only the app's URL will not make it reachable. See the [physical iOS / Expo Go walkthrough](docs/ios-device.md).
+
+Expo Go must support the app's Expo SDK and every native library it uses. Apps needing native modules absent from Expo Go require a development build. NativeMason's measurement runtime introduces no custom native module. Production builds disable collection and networking.
 
 ```sh
 adb -s '<selected-target-id>' reverse tcp:18082 tcp:18082
@@ -203,11 +205,11 @@ adb -s '<selected-target-id>' reverse tcp:19482 tcp:19482
 ADB_SERIAL='<selected-target-id>' NM_ANDROID_METRO_PORT=18082 yarn test:e2e:android
 ```
 
-The acceptance helper calibrates the actual profile, corrects the fixture, previews/applies a batch, verifies native measurements, and verifies an explicit revert. It restores fixture source during cleanup. Select a running emulator using `ADB_SERIAL` and `yarn test:e2e:android:emulator`; this command never starts an emulator on the developer host. CI provides Linux emulator and macOS iOS simulator jobs. See [native acceptance setup](docs/android-acceptance.md) for launch settings.
+The acceptance helper calibrates the actual profile, corrects the fixture, previews/applies a batch, verifies native measurements, and verifies an explicit revert. It restores fixture source during cleanup. Select a running emulator using `ADB_SERIAL` and `yarn test:e2e:android:emulator`; this command never starts an emulator on the developer host. `yarn test:e2e:ios` is specifically the Xcode Simulator fixture helper, not a prerequisite for physical iOS measurement through MCP. CI provides Linux emulator and macOS iOS simulator jobs. See [native acceptance setup](docs/android-acceptance.md) for launch settings.
 
 Native scenario automation additionally requires Maestro and `nativeScenario` configuration in `open_session`, including the application ID. Scripts support navigation, taps, text input, waits, swipes, keyboard dismissal, and registered app hooks. Web supports exact scrolling; native uses explicit swipe gestures. Tap an input to open its software keyboard. Native input replacement checks Maestro’s copied text after entry; empty replacements are unsupported because Maestro can report a placeholder as the value. Replacement is bounded to 100 existing copied characters. Unsupported operations return explicit results.
 
-Native profile runs measure the actual scale/orientation and restore changed settings using a recovery journal. iOS Dynamic Type supports documented scale mappings; arbitrary numerical scales remain unsupported. Chromium font-scale simulation remains unsupported until rendered-text evidence proves it works.
+Native profile runs measure the actual scale/orientation and restore changed settings using a recovery journal. Automated iOS Dynamic Type changes require a simulator and documented scale mappings. On a physical iPhone, change settings/orientation manually and capture the actual profile; automated profile changes and Maestro UI actions are unsupported. Registered app hooks can drive app state over the runtime connection. Chromium font-scale simulation remains unsupported until rendered-text evidence proves it works.
 
 ## Design intent and accessibility
 

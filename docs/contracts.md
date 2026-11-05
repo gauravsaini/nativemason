@@ -61,3 +61,7 @@ By default, source application requires every browser constraint to pass. An exp
 Native Maestro failures retain bounded stdout/stderr, exit/signal information, and a truncation marker in typed error details. Missing diagnostics never imply a successful UI action; source constraints and acceptance results remain separate from driver process evidence.
 
 Native nonempty input replacement uses a bounded erase followed by an exact copied-text check. Maestro can fall back to a placeholder or accessibility label, so this check alone does not establish the actual field value; acceptance harnesses need independent raw-value evidence. The current Maestro adapter rejects empty replacements before running any actions because its text extraction can return placeholders or accessibility labels for empty fields. The erase safety bound is 100 copied characters; a longer value or fallback label is unsupported by this bounded path. Web empty replacement remains supported.
+
+## Native LAN pairing
+
+`open_session.nativeHost` optionally selects a loopback/private LAN IPv4 interface for the native WebSocket listener. The default is `127.0.0.1`. LAN binding requires explicit `nativePort` and `nativeToken`; neither device reachability nor firewall changes are inferred. The phone's runtime URL must use the same interface/port. Authentication, scenario, target and source revision checks also apply to iOS physical targets.

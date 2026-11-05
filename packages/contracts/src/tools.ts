@@ -3,6 +3,7 @@ import {AccessibilityFindingSchema} from './accessibility.js';
 import {SuggestionProfilesSchema,SuggestionProfileEvidenceSchema,NativeSuggestionEvidenceSchema,InteractionRequirementSchema} from './diagnostics.js';
 import {LayoutMutationSchema,EditScopeSchema,TransactionPlanSchema,ScenarioScriptSchema,MatrixCellSchema,RuleFindingSchema,InferenceOptionsSchema,NativeTargetSchema} from './workflow.js';
 import { z } from 'zod';
+import { NativeBindHostSchema } from './native-protocol.js';
 import { DeviceProfileSchema,RectSchema } from './geometry.js';
 import { WireframeSpecSchema,ConstraintResultSchema } from './constraints.js';
 import { RnStylePatchSchema } from './styles.js';
@@ -10,7 +11,7 @@ import { SpatialSnapshotSchema,SpatialDeltaSchema,SpatialNodeSchema,ProfileOverr
 import { CommitReceiptSchema,EditPlanSchema,BridgeErrorSchema } from './source.js';
 const session={sessionId:z.string().min(1)};
 export const ToolSchemas={
-open_session:z.object({projectRoot:z.string().min(1),webUrl:z.string().url(),scenarioId:z.string().min(1),profile:DeviceProfileSchema,nativeTarget:NativeTargetSchema.optional(),nativeScenario:z.object({appId:z.string().min(1),adbSerial:z.string().optional(),maestroPath:z.string().optional(),ssh:z.object({destination:z.string(),identityFile:z.string().optional()}).strict().optional()}).strict().optional(),nativePort:z.number().int().min(1024).max(65535).optional(),nativeToken:z.string().min(16).optional()}).strict(),
+open_session:z.object({projectRoot:z.string().min(1),webUrl:z.string().url(),scenarioId:z.string().min(1),profile:DeviceProfileSchema,nativeTarget:NativeTargetSchema.optional(),nativeScenario:z.object({appId:z.string().min(1),adbSerial:z.string().optional(),maestroPath:z.string().optional(),ssh:z.object({destination:z.string(),identityFile:z.string().optional()}).strict().optional()}).strict().optional(),nativeHost:NativeBindHostSchema.optional(),nativePort:z.number().int().min(1024).max(65535).optional(),nativeToken:z.string().min(16).optional()}).strict(),
 import_design_intent:z.object({...session,design:DesignIntentSchema}).strict(),
 inspect_accessibility:z.object({...session,target:z.enum(['web','native']).default('web')}).strict(),
 load_wireframe_spec:z.object({...session,spec:WireframeSpecSchema}).strict(),

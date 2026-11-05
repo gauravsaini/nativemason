@@ -5,6 +5,14 @@ import {VisualEvidenceReportSchema} from './index.js';
 import {describe,it,expect} from 'vitest';
 import {DeviceProfileSchema,WireframeSpecSchema,ToolSchemas,ToolOutputSchemas,RnStylePatchSchema,NativeClientMessageSchema,SpatialSnapshotSchema,ProfileOverridesSchema} from './index.js';
 import fixture from '../fixtures/footer.json';
+import lanPairing from '../fixtures/native-lan-pairing.json';
+
+it('validates opt-in LAN pairing without accepting public or wildcard listeners',()=>{
+ const input={projectRoot:'/tmp/app',webUrl:'http://localhost:18082',scenarioId:'broken-footer',profile:fixture.profile,...lanPairing};
+ expect(ToolSchemas.open_session.safeParse(input).success).toBe(true);
+ for(const nativeHost of ['0.0.0.0','8.8.8.8','localhost','192.168.1.999','172.32.0.1'])expect(ToolSchemas.open_session.safeParse({...input,nativeHost}).success).toBe(false);
+ for(const nativeHost of ['127.0.0.1','10.1.2.3','172.16.0.2','172.31.255.254'])expect(ToolSchemas.open_session.safeParse({...input,nativeHost}).success).toBe(true);
+});
 import expansion from '../fixtures/design-diagnostics.json';
 import {DesignIntentSchema,AccessibilityEvidenceSchema,SuggestionProfileSchema,NativeSuggestionEvidenceSchema} from './index.js';
 describe('boundary contracts',()=>{

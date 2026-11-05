@@ -1,9 +1,11 @@
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
-import { BridgeFault, NativeClientMessageSchema, type NativeConnectionOptions, type NativePort, type SourceRevisions, type SpatialSnapshot } from '@nativemason/contracts';
+import { BridgeFault, NativeBindHostSchema, NativeClientMessageSchema, type NativeConnectionOptions, type NativePort, type SourceRevisions, type SpatialSnapshot } from '@nativemason/contracts';
 
 export async function createNativeBridge(options: NativeConnectionOptions): Promise<NativePort & { close(): Promise<void> }> {
-  const server = new WebSocketServer({ host: '127.0.0.1', port: options.port, maxPayload: 4 * 1024 * 1024 });
+  const host=NativeBindHostSchema.safeParse(options.host??'127.0.0.1');
+  if(!host.success)throw new BridgeFault('INVALID_INPUT','Native host must be a loopback or private LAN IPv4 interface address');
+  const server = new WebSocketServer({ host: host.data, port: options.port, maxPayload: 4 * 1024 * 1024 });
   await new Promise<void>((resolve, reject) => { server.once('listening', resolve); server.once('error', reject); });
   let client: WebSocket | undefined;
   let closed = false;

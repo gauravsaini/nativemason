@@ -4,6 +4,13 @@ import {createNativeScenarioPort} from './index.js';
 
 const base:NativeScenarioOptions={appId:'com.example.app',projectRoot:'/tmp/example',target:{targetId:'device-123',platform:'android',kind:'physical'}};
 describe('native scenario driver validation',()=>{
+ it('allows physical iOS hooks but rejects mixed UI scripts before any hook runs',async()=>{
+  const runHook=vi.fn(async()=>{}),port=createNativeScenarioPort({...base,target:{targetId:'ios-phone',platform:'ios',kind:'physical'},runHook});
+  await port.run({scenarioId:'checkout',reset:[],actions:[{type:'hook',name:'open-checkout'}]});
+  expect(runHook).toHaveBeenCalledOnce();runHook.mockClear();
+  await expect(port.run({scenarioId:'checkout',reset:[{type:'hook',name:'reset'}],actions:[{type:'tap',elementId:'pay'}]})).rejects.toMatchObject({code:'UNSUPPORTED_ACTION'});
+  expect(runHook).not.toHaveBeenCalled();
+ });
  it('rejects unsafe app and device identifiers before running commands',()=>{
   expect(()=>createNativeScenarioPort({...base,appId:'com.example; touch /tmp/pwned'})).toThrow(BridgeFault);
   expect(()=>createNativeScenarioPort({...base,target:{...base.target,targetId:'device\n--malicious'}})).toThrow(BridgeFault);

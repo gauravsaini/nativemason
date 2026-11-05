@@ -27,6 +27,8 @@ Remote ADB is optional: set `NM_ANDROID_SSH=user@host` and, when needed, `NM_AND
 
 ## Android emulator and iOS simulator
 
+These are automated fixture helpers. Physical iOS measurement can use compatible Expo Go or a development build over LAN through MCP; follow [physical iOS setup](ios-device.md). It does not require the simulator helper below.
+
 CI builds development binaries and runs real Linux Android-emulator and macOS iOS-simulator acceptance. Locally select an already running Android emulator with `ADB_SERIAL` and use `yarn test:e2e:android:emulator`. The emulator helper expects Metro on 8081 and a compatible installed `dev.rnlayout.fixture` build unless configured otherwise.
 
 For iOS, use full Xcode, an explicitly booted `IOS_SIMULATOR_UDID`, a compatible installed debug build, and Metro on 8081. Set `EXPO_PUBLIC_LAYOUT_TARGET_KIND=simulator` and the target ID before starting Metro, then run `yarn test:e2e:ios`. `NM_IOS_BUNDLE_ID` overrides the fixture bundle identifier.

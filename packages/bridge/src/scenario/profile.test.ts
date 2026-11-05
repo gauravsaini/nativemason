@@ -11,6 +11,14 @@ import {type NativeScenarioOptions} from '@nativemason/contracts';
 import {createNativeProfilePort} from './index.js';
 
 const base:NativeScenarioOptions={appId:'com.example.app',projectRoot:'/tmp/example',target:{targetId:'profile-test-device',platform:'android',kind:'physical'}};
+it('checks physical iOS profiles without invoking simulator or device setting commands',async()=>{
+ const readProfile=vi.fn(async()=>({fontScale:1,orientation:'portrait'} as never)),work=vi.fn(async()=>'measured');
+ const port=createNativeProfilePort({...base,target:{targetId:'ios-phone',platform:'ios',kind:'physical'},readProfile});
+ execFileMock.mockClear();
+ await expect(port.withProfile({fontScale:1,orientation:'portrait'},work)).resolves.toBe('measured');
+ await expect(port.withProfile({fontScale:1.3},work)).rejects.toMatchObject({code:'UNSUPPORTED_PROFILE'});
+ expect(work).toHaveBeenCalledOnce();expect(execFileMock).not.toHaveBeenCalled();
+});
 let tempHome:string;
 let settings:Record<string,string>;
 
