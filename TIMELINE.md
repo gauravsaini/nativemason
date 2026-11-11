@@ -1,8 +1,8 @@
 ## UPDATED ON : 2026-11-11
 
-### fix (2026-11-11) — address Dependabot alerts for glob and minimatch
+### fix (2026-11-11) — address Dependabot alerts for glob, minimatch, and node-forge
 
-1. **Security**: Resolved Dependabot alerts GHSA-3g3m-2fjr-6pw4 (`glob` DoS / traversal) and GHSA-g3hv-75wg-m249 (`minimatch` pattern amplification DoS) by pinning resolutions for `glob` to `14.0.4` and `minimatch@^10` to `11.0.5`.
+1. **Security**: Resolved Dependabot alerts GHSA-3g3m-2fjr-6pw4 (`glob`), GHSA-g3hv-75wg-m249 (`minimatch`), and GHSA-44cx-8wjh-hvq5/GHSA-859w-ff9f-43fc/GHSA-92v4-v45w-qvh7/GHSA-5xvp-v24h-mg22 (`node-forge`) by pinning resolutions in `package.json` to patched versions (`glob@14.0.4`, `minimatch@11.0.5`, `node-forge@1.4.3`).
 2. **Tests** (before → after): Vitest 26/26 files, 248/248 passed; Integration 13/13 passed; ESLint & TypeCheck clean.
 3. **Files changed**: `package.json`, `yarn.lock`
 
