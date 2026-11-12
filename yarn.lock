@@ -1426,6 +1426,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo/log-box@npm:^58.0.15":
+  version: 58.0.15
+  resolution: "@expo/log-box@npm:58.0.15"
+  dependencies:
+    "@expo/dom-webview": "npm:^58.0.2"
+    "@expo/log-box-utils": "npm:^58.0.2"
+    anser: "npm:^1.4.9"
+    stacktrace-parser: "npm:^0.1.10"
+  peerDependencies:
+    "@expo/dom-webview": ^58.0.2
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  peerDependenciesMeta:
+    expo:
+      optional: true
+  checksum: 10c0/f9db95b151f5efb4d8029241a43cc623f2c6e7ce3311818463db80c6b50bc6a7f6fe14462d39e8ede92461b4a37306d0c54be97afc72e2bb2e3a24a45144372f
+  languageName: node
+  linkType: hard
+
 "@expo/metro-config@npm:58.0.20, @expo/metro-config@npm:~58.0.20":
   version: 58.0.20
   resolution: "@expo/metro-config@npm:58.0.20"
@@ -1481,17 +1501,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@expo/metro-runtime@npm:58.0.16":
-  version: 58.0.16
-  resolution: "@expo/metro-runtime@npm:58.0.16"
+"@expo/metro-runtime@npm:58.0.17":
+  version: 58.0.17
+  resolution: "@expo/metro-runtime@npm:58.0.17"
   dependencies:
-    "@expo/log-box": "npm:^58.0.14"
+    "@expo/log-box": "npm:^58.0.15"
     anser: "npm:^1.4.9"
     pretty-format: "npm:^29.7.0"
     stacktrace-parser: "npm:^0.1.10"
     whatwg-fetch: "npm:^3.0.0"
   peerDependencies:
-    "@expo/log-box": ^58.0.14
+    "@expo/log-box": ^58.0.15
     expo: "*"
     react: "*"
     react-dom: "*"
@@ -1499,7 +1519,7 @@ __metadata:
   peerDependenciesMeta:
     react-dom:
       optional: true
-  checksum: 10c0/401739a4ad4a5404a65eb6fdf9a5e4ec7fc5af7e7d796d96abe5b3dfa605668e3e693c69e33acbc5cdc9fc697be3c3aff4317ef20e02a206f4315dc87a00e775
+  checksum: 10c0/06994e627bbd4194b062e0708d49a7353204c0eb7f35585d9f3ae78e58d20cca787a3029fd6c07ab30d4f8a44ee829c20e6bdde921eff949daecb20c6d1715f9
   languageName: node
   linkType: hard
 
@@ -2150,7 +2170,7 @@ __metadata:
   resolution: "@nativemason/expo-fixture@workspace:examples/expo-fixture"
   dependencies:
     "@babel/core": "npm:^7.28.5"
-    "@expo/metro-runtime": "npm:58.0.16"
+    "@expo/metro-runtime": "npm:58.0.17"
     "@nativemason/contracts": "workspace:*"
     "@nativemason/runtime": "workspace:*"
     "@react-native/metro-config": "npm:0.88.1"
