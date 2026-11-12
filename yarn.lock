@@ -2163,7 +2163,7 @@ __metadata:
     react-native-reanimated: "npm:4.7.1"
     react-native-safe-area-context: "npm:5.10.1"
     react-native-web: "npm:0.21.4"
-    react-native-worklets: "npm:0.13.0"
+    react-native-worklets: "npm:0.13.1"
     tailwindcss: "npm:3.4.17"
   languageName: unknown
   linkType: soft
@@ -7301,9 +7301,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-worklets@npm:0.13.0":
-  version: 0.13.0
-  resolution: "react-native-worklets@npm:0.13.0"
+"react-native-worklets@npm:0.13.1":
+  version: 0.13.1
+  resolution: "react-native-worklets@npm:0.13.1"
   dependencies:
     "@babel/generator": "npm:^7.27.1"
     "@babel/plugin-transform-arrow-functions": "npm:^7.27.1"
@@ -7326,7 +7326,7 @@ __metadata:
     "@react-native/metro-config": "*"
     react: "*"
     react-native: 0.86 - 0.88
-  checksum: 10c0/bf35b75c9711019a9de757317afab7bc5f4015bf3770c64f1bb13fc5c8edae86b145642b721f6b3c886e4b52c69ea38c6331a3e59de6a1db3386976a6aadfc79
+  checksum: 10c0/914888189aacba41035e9f5fb605cc02c91f17199eb1d83b3b0d5b94152f1d8a4e47fbdfe4c044c495b7e951a1b8c9262e660dd7c47bc0f021c539c5438d3c55
   languageName: node
   linkType: hard
 
