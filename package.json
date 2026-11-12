@@ -30,7 +30,7 @@
     "@types/ws": "^8.18.1",
     "eslint": "^9.39.1",
     "nativemason": "workspace:*",
-    "playwright": "^1.56.1",
+    "playwright": "^1.65.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-test-renderer": "19.3.0",
