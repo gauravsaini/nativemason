@@ -14,7 +14,7 @@
     "@nativemason/contracts": "workspace:*",
     "@nativemason/runtime": "workspace:*",
     "@react-native/metro-config": "0.88.1",
-    "expo": "58.0.22",
+    "expo": "58.0.23",
     "nativemason": "workspace:*",
     "nativewind": "4.2.7",
     "react": "19.3.0",
